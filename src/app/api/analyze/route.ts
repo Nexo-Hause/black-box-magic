@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth';
 import { analyzeImage } from '@/lib/gemini';
-import { buildAnalysisPrompt } from '@/lib/prompts';
+import {
+  buildSinglePassPrompt,
+  buildConditionEscalationPrompt,
+  shouldEscalate,
+} from '@/lib/prompts';
 
 export const maxDuration = 60; // Vercel Pro allows up to 60s
 
@@ -68,23 +72,56 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Build prompt
-  const prompt = buildAnalysisPrompt(body.custom_rules);
-
-  // Analyze
   try {
+    // ─── PASS 1: Single-pass adaptive analysis ───
+    const prompt = buildSinglePassPrompt(body.custom_rules);
     const result = await analyzeImage(imageBase64, mimeType, prompt, geminiKey);
 
-    return NextResponse.json({
+    let conditionDetail = null;
+    let escalated = false;
+    let totalTokens = result.tokens;
+    let totalTime = result.processing_time_ms;
+
+    // ─── PASS 2: Condition escalation (auto, only when needed) ───
+    const analysis = result.data as Record<string, unknown>;
+    if (shouldEscalate(analysis)) {
+      escalated = true;
+      const conditionPrompt = buildConditionEscalationPrompt();
+      const conditionResult = await analyzeImage(
+        imageBase64,
+        mimeType,
+        conditionPrompt,
+        geminiKey
+      );
+
+      conditionDetail = conditionResult.data;
+      totalTime += conditionResult.processing_time_ms;
+      totalTokens = {
+        input: totalTokens.input + conditionResult.tokens.input,
+        output: totalTokens.output + conditionResult.tokens.output,
+        total: totalTokens.total + conditionResult.tokens.total,
+      };
+    }
+
+    // Build response
+    const response: Record<string, unknown> = {
       success: true,
       client: auth.client,
       analysis: result.data,
       meta: {
         model: result.model,
-        tokens: result.tokens,
-        processing_time_ms: result.processing_time_ms,
+        tokens: totalTokens,
+        processing_time_ms: totalTime,
+        engine: 'hybrid-v2',
+        escalated,
       },
-    });
+    };
+
+    if (conditionDetail) {
+      response.condition_detail = conditionDetail;
+    }
+
+    return NextResponse.json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Analysis failed:', message);

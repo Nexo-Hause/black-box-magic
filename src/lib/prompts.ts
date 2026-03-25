@@ -1,149 +1,169 @@
 /**
- * Black Box Magic — Prompt Engine
+ * Black Box Magic — Hybrid Prompt Engine v2
  *
- * Composite prompt that evaluates multiple facets of a retail/field photo
- * in a single pass. Returns structured JSON.
+ * Strategy:
+ * 1. Single-pass auto-priority prompt (fast, covers all photo types)
+ * 2. If severity is MODERATE/CRITICAL or cleanliness is DIRTY,
+ *    auto-escalate with a specialized condition prompt for detailed actions
  */
 
-export const ANALYSIS_PROMPT = `You are an expert retail execution analyst. Analyze this photo taken at a point of sale, retail location, or commercial establishment.
+// ─── PASS 1: Single-pass with auto-prioritization ───
 
-Evaluate ALL of the following facets in a SINGLE pass. Be specific, quantitative, and actionable.
+export const SINGLE_PASS_PROMPT = `You are an expert field analyst for retail, commercial, and industrial locations. Analyze this photo.
 
-## 1. INVENTORY — What's there?
-- List every product, brand, SKU, or item visible
-- Count quantities where possible (exact or estimated)
-- Note product categories
+STEP 1 — CLASSIFY the photo into ONE type:
+- retail_shelf (product shelves, displays, aisles with merchandise)
+- facade (building exterior, storefront, signage)
+- condition (cleanliness issues, damage, maintenance problems, spills)
+- promotional (POP materials, banners, posters, promotions)
+- equipment (kiosks, machines, furniture, fixtures)
+- general (anything else)
 
-## 2. SHELF SHARE — Competitive landscape
-- What brands are present?
-- Estimate % of visible shelf/display space each brand occupies
-- Identify the dominant brand vs competitors
-- Note any brand that appears to be missing or underrepresented
+STEP 2 — PRIORITIZE facets based on photo type:
+- condition → Lead with condition assessment, severity, issues
+- retail_shelf → Lead with inventory, shelf share, pricing
+- facade → Lead with branding, signage, curb appeal
+- promotional → Lead with promotional content, prices, effectiveness
+- equipment → Lead with equipment state, functionality
+- general → Lead with general observations
 
-## 3. PRICING — Price intelligence
-- Read ALL visible prices (exact numbers)
-- Identify currency if possible
-- Flag promotional pricing, discounts, bundles
-- Note psychological pricing strategies (e.g., $99 instead of $100)
+STEP 3 — ANALYZE all 7 facets (reordered by relevance to the photo):
 
-## 4. COMPLIANCE — Execution quality
-- Is promotional material (POP) properly installed?
-- Are planograms being followed (if determinable)?
-- Is signage correctly placed, visible, and undamaged?
-- Are products facing correctly?
-- Rate overall execution compliance: HIGH / MEDIUM / LOW
+1. Inventory (products, brands, quantities visible)
+2. Shelf share (brand space distribution, dominant brand)
+3. Pricing (ALL visible prices with currency, promotions, strategies)
+4. Compliance (execution quality, signage, POP materials, score HIGH/MEDIUM/LOW)
+5. Condition (cleanliness CLEAN/ACCEPTABLE/DIRTY, displays GOOD/WORN/DAMAGED, lighting, safety)
+6. Context (establishment type, location clues, setting)
+7. Insights (strengths, opportunities, actionable recommendations)
 
-## 5. CONDITION — Physical state
-- Cleanliness of the area (CLEAN / ACCEPTABLE / DIRTY)
-- State of displays/furniture (GOOD / WORN / DAMAGED)
-- Product condition (fresh, damaged, expired if visible)
-- Lighting quality
-- Any safety or maintenance issues
+Be specific, quantitative, and actionable. Count items. Read prices. Identify brands.
 
-## 6. CONTEXT — Location & environment
-- Type of establishment (convenience store, supermarket, restaurant, etc.)
-- Infer geographic location from any clues (signage, language, infrastructure)
-- Time of day if determinable (lighting, shadows)
-- Foot traffic indicators
-- Urban/suburban/rural setting
+Respond ONLY with valid JSON matching this schema:`;
 
-## 7. INSIGHTS — Strategic observations
-- What's working well in this location?
-- What opportunities for improvement exist?
-- Any competitive threats visible?
-- Actionable recommendations for the brand/operator
-
-Respond ONLY with valid JSON matching this exact structure. No markdown, no explanation outside the JSON.`;
-
-export const RESPONSE_SCHEMA = `{
-  "summary": "One-paragraph executive summary of the photo",
+export const SINGLE_PASS_SCHEMA = `{
+  "photo_type": "retail_shelf|facade|condition|promotional|equipment|general",
+  "priority_facets": ["most_relevant_facet", "second", "third"],
+  "summary": "2-3 sentence executive summary focusing on what matters most",
+  "severity": "CRITICAL|MODERATE|MINOR|N/A",
   "inventory": {
-    "items": [
-      {
-        "name": "Product or item name",
-        "brand": "Brand if identifiable",
-        "category": "Product category",
-        "quantity": "Number or estimate",
-        "location": "Where in the photo"
-      }
-    ],
+    "items": [{"name": "...", "brand": "...", "category": "...", "quantity": "...", "location": "..."}],
     "total_skus_detected": 0
   },
   "shelf_share": {
-    "brands": [
-      {
-        "name": "Brand name",
-        "estimated_share_pct": 0,
-        "position": "Premium/eye-level/bottom/etc"
-      }
-    ],
-    "dominant_brand": "Brand with most space",
-    "notes": "Any observations about competitive positioning"
+    "brands": [{"name": "...", "estimated_share_pct": 0, "position": "..."}],
+    "dominant_brand": "...",
+    "notes": "..."
   },
   "pricing": {
-    "prices_found": [
-      {
-        "item": "What the price is for",
-        "price": 0,
-        "currency": "MXN/USD/etc",
-        "type": "regular/promo/bundle"
-      }
-    ],
-    "strategies_detected": ["psychological pricing", "bundle deals", etc.]
+    "prices_found": [{"item": "...", "price": 0, "currency": "...", "type": "regular|promo|bundle"}],
+    "strategies_detected": []
   },
   "compliance": {
-    "score": "HIGH/MEDIUM/LOW",
-    "pop_materials": {
-      "present": true,
-      "properly_installed": true,
-      "condition": "GOOD/WORN/DAMAGED"
-    },
-    "product_facing": "CORRECT/PARTIAL/INCORRECT",
-    "signage": "VISIBLE/PARTIAL/MISSING",
-    "issues": ["List of specific compliance issues"]
+    "score": "HIGH|MEDIUM|LOW",
+    "pop_materials": {"present": true, "properly_installed": true, "condition": "GOOD|WORN|DAMAGED"},
+    "product_facing": "CORRECT|PARTIAL|INCORRECT",
+    "signage": "VISIBLE|PARTIAL|MISSING",
+    "issues": []
   },
   "condition": {
-    "cleanliness": "CLEAN/ACCEPTABLE/DIRTY",
-    "displays": "GOOD/WORN/DAMAGED",
-    "lighting": "GOOD/ADEQUATE/POOR",
-    "products": "GOOD/ACCEPTABLE/DAMAGED",
-    "safety_issues": ["List any safety concerns"],
-    "notes": "Additional condition observations"
+    "cleanliness": "CLEAN|ACCEPTABLE|DIRTY",
+    "displays": "GOOD|WORN|DAMAGED",
+    "lighting": "GOOD|ADEQUATE|POOR",
+    "products": "GOOD|ACCEPTABLE|DAMAGED",
+    "safety_issues": [],
+    "notes": "..."
   },
   "context": {
-    "establishment_type": "Type of location",
-    "inferred_location": {
-      "city_or_region": "Best guess",
-      "country": "Best guess",
-      "confidence": "HIGH/MEDIUM/LOW",
-      "clues": ["What evidence supports this"]
-    },
-    "setting": "URBAN/SUBURBAN/RURAL",
-    "time_of_day": "If determinable",
-    "foot_traffic": "HIGH/MEDIUM/LOW/UNKNOWN"
+    "establishment_type": "...",
+    "inferred_location": {"city_or_region": "...", "country": "...", "confidence": "HIGH|MEDIUM|LOW", "clues": []},
+    "setting": "URBAN|SUBURBAN|RURAL",
+    "time_of_day": "...",
+    "foot_traffic": "HIGH|MEDIUM|LOW|UNKNOWN"
   },
   "insights": {
-    "strengths": ["What's working well"],
-    "opportunities": ["What could be improved"],
-    "threats": ["Competitive or operational threats"],
-    "recommendations": ["Specific actionable next steps"]
+    "strengths": [],
+    "opportunities": [],
+    "threats": [],
+    "recommendations": []
   },
-  "metadata": {
-    "analysis_version": "1.0",
-    "model": "Model used for analysis",
-    "confidence": "HIGH/MEDIUM/LOW",
-    "processing_time_ms": 0
-  }
+  "additional_observations": "Anything noteworthy not covered above"
 }`;
 
-export function buildAnalysisPrompt(customRules?: string): string {
-  let prompt = ANALYSIS_PROMPT;
+// ─── PASS 2: Condition escalation (only when needed) ───
+
+export const CONDITION_ESCALATION_PROMPT = `You are a facility condition inspector. A previous analysis flagged this photo for condition issues. Provide a DETAILED condition assessment.
+
+Focus exclusively on:
+
+1. SEVERITY ASSESSMENT: CRITICAL / MODERATE / MINOR — with justification
+2. SPECIFIC ISSUES: List EVERY visible problem (stains, spills, damage, wear, hazards)
+3. SAFETY HAZARDS: Chemical exposure, slip hazards, structural damage, pest indicators
+4. IMMEDIATE ACTIONS: Step-by-step remediation (e.g., "Remove products from shelf", "Deep clean surface", "Report to maintenance")
+5. ROOT CAUSE: What likely caused each issue (product leak, foot traffic, neglect, age)
+6. PRIORITY: Which issues need attention FIRST
+
+Respond ONLY with valid JSON:
+{
+  "severity": "CRITICAL|MODERATE|MINOR",
+  "severity_justification": "Why this severity level",
+  "issues": [
+    {
+      "description": "Specific issue",
+      "location": "Where in the photo",
+      "severity": "CRITICAL|MODERATE|MINOR",
+      "root_cause": "Likely cause",
+      "immediate_action": "What to do now"
+    }
+  ],
+  "safety_hazards": [
+    {"hazard": "...", "risk_level": "HIGH|MEDIUM|LOW", "mitigation": "..."}
+  ],
+  "remediation_plan": {
+    "immediate": ["Actions needed within hours"],
+    "short_term": ["Actions needed within days"],
+    "preventive": ["Prevent recurrence"]
+  },
+  "overall_assessment": "Professional summary for a supervisor report"
+}`;
+
+// ─── Builder functions ───
+
+export function buildSinglePassPrompt(customRules?: string): string {
+  let prompt = SINGLE_PASS_PROMPT;
 
   if (customRules) {
     prompt += `\n\n## CUSTOM CLIENT RULES\n${customRules}\nInclude evaluation of these custom rules in the compliance section.`;
   }
 
-  prompt += `\n\nRespond with JSON following this schema:\n${RESPONSE_SCHEMA}`;
-
+  prompt += `\n\n${SINGLE_PASS_SCHEMA}`;
   return prompt;
+}
+
+export function buildConditionEscalationPrompt(): string {
+  return CONDITION_ESCALATION_PROMPT;
+}
+
+/**
+ * Determine if the first-pass result warrants a condition escalation
+ */
+export function shouldEscalate(analysis: Record<string, unknown>): boolean {
+  const severity = String(analysis.severity || '').toUpperCase();
+  const condition = analysis.condition as Record<string, unknown> | undefined;
+  const cleanliness = String(condition?.cleanliness || '').toUpperCase();
+  const displays = String(condition?.displays || '').toUpperCase();
+  const safetyIssues = condition?.safety_issues as unknown[];
+
+  return (
+    severity === 'CRITICAL' ||
+    severity === 'MODERATE' ||
+    cleanliness === 'DIRTY' ||
+    displays === 'DAMAGED' ||
+    (Array.isArray(safetyIssues) && safetyIssues.length > 0)
+  );
+}
+
+// Keep backward compatibility
+export function buildAnalysisPrompt(customRules?: string): string {
+  return buildSinglePassPrompt(customRules);
 }
