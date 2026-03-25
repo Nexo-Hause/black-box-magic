@@ -1,0 +1,9 @@
+{
+  "framework": "nextjs",
+  "functions": {
+    "src/app/api/analyze/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  }
+}

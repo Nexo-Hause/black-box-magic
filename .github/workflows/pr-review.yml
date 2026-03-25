@@ -1,0 +1,169 @@
+name: AI PR Review (kimi-k2.5)
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff and changed files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr diff "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" > /tmp/pr-diff.txt || true
+          DIFF_SIZE=$(wc -c < /tmp/pr-diff.txt)
+          echo "diff_size=$DIFF_SIZE" >> "$GITHUB_OUTPUT"
+          if [ "$DIFF_SIZE" -gt 60000 ]; then
+            head -c 60000 /tmp/pr-diff.txt > /tmp/pr-diff-trunc.txt
+            mv /tmp/pr-diff-trunc.txt /tmp/pr-diff.txt
+          fi
+
+          # Get list of changed files and concatenate their full content
+          gh pr diff "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --name-only > /tmp/changed-files.txt || true
+          echo "" > /tmp/full-files.txt
+          while IFS= read -r filepath; do
+            [ -z "$filepath" ] && continue
+            if [ -f "$filepath" ]; then
+              FILE_SIZE=$(wc -c < "$filepath")
+              if [ "$FILE_SIZE" -lt 50000 ]; then
+                echo "=== FILE: $filepath ===" >> /tmp/full-files.txt
+                cat "$filepath" >> /tmp/full-files.txt
+                echo -e "\n=== END: $filepath ===\n" >> /tmp/full-files.txt
+              else
+                echo "=== FILE: $filepath (truncated — ${FILE_SIZE} bytes) ===" >> /tmp/full-files.txt
+                head -c 50000 "$filepath" >> /tmp/full-files.txt
+                echo -e "\n=== END: $filepath ===\n" >> /tmp/full-files.txt
+              fi
+            fi
+          done < /tmp/changed-files.txt
+
+          # Truncate total context if needed (keep under 200K chars)
+          TOTAL_SIZE=$(wc -c < /tmp/full-files.txt)
+          if [ "$TOTAL_SIZE" -gt 200000 ]; then
+            head -c 200000 /tmp/full-files.txt > /tmp/full-files-trunc.txt
+            mv /tmp/full-files-trunc.txt /tmp/full-files.txt
+          fi
+        id: diff
+
+      - name: AI Review
+        if: steps.diff.outputs.diff_size != '0'
+        env:
+          ALIBABA_API_KEY: ${{ secrets.ALIBABA_API_KEY }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        shell: python3 {0}
+        run: |
+          import json, os, urllib.request, urllib.error
+
+          diff = open("/tmp/pr-diff.txt").read()
+          full_files = open("/tmp/full-files.txt").read()
+          pr_title = os.environ.get("PR_TITLE", "")
+          pr_body = os.environ.get("PR_BODY", "") or ""
+          api_key = os.environ.get("ALIBABA_API_KEY", "")
+
+          system_prompt = (
+              "You are a senior code reviewer. You will receive:\n"
+              "1. The PR diff (what changed)\n"
+              "2. The FULL content of each modified file (for context)\n\n"
+              "Use the full file content to understand the surrounding code, "
+              "architecture, and how the changes fit into the broader codebase. "
+              "Do NOT review the unchanged code — focus only on the diff, "
+              "but use the full files to catch issues that are invisible from the diff alone "
+              "(e.g., broken call sites, inconsistent patterns, missing updates elsewhere in the file).\n\n"
+              "Review for:\n"
+              "1. Logic errors or bugs\n"
+              "2. Security vulnerabilities (RLS bypass, secrets, injection, auth)\n"
+              "3. Performance issues (N+1, memory, missing indexes, timeouts)\n"
+              "4. Edge cases not handled\n"
+              "5. Data validation gaps\n\n"
+              "Rules:\n"
+              "- Be concise. Only flag real issues, not style preferences.\n"
+              "- Classify each finding as CRITICAL, HIGH, MEDIUM, or LOW.\n"
+              "- If the code looks good, say so briefly.\n"
+              "- Start with a one-line summary verdict.\n"
+              "- Do NOT repeat the full diff back.\n\n"
+              "IMPORTANT — For every issue you find, you MUST include the concrete fix.\n"
+              "Use this format for each issue:\n\n"
+              "### [SEVERITY] Short title\n"
+              "**File:** `path/to/file.ts`\n\n"
+              "Problem: one-line explanation.\n\n"
+              "```suggestion\n"
+              "// the exact replacement code that fixes the issue\n"
+              "```\n\n"
+              "Do not just describe the problem — always show the fixed code.\n"
+              "If the fix requires more context than the diff provides, "
+              "show the best approximation and note what to verify."
+          )
+
+          user_msg = f"PR: {pr_title}\n\nDescription: {pr_body}\n\nDiff:\n{diff}"
+          if full_files.strip():
+              user_msg += f"\n\n--- Full files for context ---\n{full_files}"
+
+          payload = json.dumps({
+              "model": "kimi-k2.5",
+              "max_tokens": 3000,
+              "messages": [
+                  {"role": "system", "content": system_prompt},
+                  {"role": "user", "content": user_msg}
+              ]
+          }).encode()
+
+          req = urllib.request.Request(
+              "https://coding-intl.dashscope.aliyuncs.com/v1/chat/completions",
+              data=payload,
+              headers={
+                  "Authorization": f"Bearer {api_key}",
+                  "Content-Type": "application/json",
+                  "User-Agent": "claude-code/1.0"
+              }
+          )
+
+          import time
+          review = None
+          for attempt in range(3):
+              try:
+                  with urllib.request.urlopen(req, timeout=180) as resp:
+                      result = json.loads(resp.read())
+                  review = result["choices"][0]["message"]["content"]
+                  break
+              except Exception as e:
+                  if attempt < 2:
+                      time.sleep(10 * (attempt + 1))
+                  else:
+                      review = f"Review failed after 3 attempts: {e}"
+
+          with open("/tmp/review-output.txt", "w") as f:
+              f.write(review)
+
+      - name: Post comment
+        if: steps.diff.outputs.diff_size != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: python3 {0}
+        run: |
+          import subprocess, os
+
+          review = open("/tmp/review-output.txt").read()
+          pr = os.environ["PR_NUMBER"]
+          repo = os.environ["GITHUB_REPOSITORY"]
+
+          comment = f"## AI Code Review (kimi-k2.5)\n\n{review}\n\n---\n*Automated review via Alibaba Coding Plan. Not a substitute for human review.*"
+
+          subprocess.run(
+              ["gh", "pr", "comment", pr, "--repo", repo, "--body", comment],
+              check=True
+          )
