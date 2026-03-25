@@ -1,3 +1,5 @@
+import './globals.css';
+
 export const metadata = {
   title: 'Black Box Magic',
   description: 'AI-powered image analysis API for retail execution',
