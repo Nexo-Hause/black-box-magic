@@ -145,7 +145,7 @@ export default function DemoPage() {
   const canAnalyze = jobs.some(j => j.status === 'pending' && j.base64);
 
   return (
-    <div style={{ minHeight: '100vh', padding: '1.5rem', paddingBottom: jobs.length > 0 && !hasResults ? '6rem' : '1.5rem', maxWidth: '960px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '1.5rem', maxWidth: '960px', margin: '0 auto' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border)' }}>
         <Link href="/" style={{ fontSize: '0.875rem', fontWeight: 900, textDecoration: 'none', color: 'var(--text)', letterSpacing: '0.05em' }}>BLACK BOX MAGIC</Link>
         <span className="badge badge--neutral">DEMO</span>
@@ -182,9 +182,9 @@ export default function DemoPage() {
             </div>
           )}
 
-          {/* Bottom bar */}
+          {/* Action buttons — inline, always visible after thumbnails */}
           {jobs.length > 0 && (
-            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '1rem 1.5rem', background: 'var(--bg-white)', borderTop: '2px solid var(--border)', display: 'flex', gap: '0.75rem', zIndex: 100 }}>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
               <button className="btn btn--primary" onClick={analyzeAll} disabled={!canAnalyze} style={{ flex: 1, padding: '1rem', fontSize: '1rem' }}>
                 {canAnalyze ? `ANALYZE ${pendingCount} IMAGE${pendingCount > 1 ? 'S' : ''}` : 'LOADING...'}
               </button>
