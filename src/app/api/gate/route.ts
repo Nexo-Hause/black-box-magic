@@ -33,7 +33,15 @@ export async function POST(request: NextRequest) {
   }
 
   // Sign and set cookie
-  const token = signCookie(email);
+  let token: string;
+  try {
+    token = signCookie(email);
+  } catch {
+    return NextResponse.json(
+      { error: 'Auth not configured — contact admin' },
+      { status: 503 },
+    );
+  }
   const opts = getCookieOptions();
 
   const response = NextResponse.json({ success: true, email });
