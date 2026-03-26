@@ -4,6 +4,14 @@
     "src/app/api/analyze/route.ts": {
       "maxDuration": 60,
       "memory": 1024
+    },
+    "src/app/api/demo/analyze/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "src/app/api/demo/email/route.ts": {
+      "maxDuration": 30,
+      "memory": 512
     }
   }
 }
