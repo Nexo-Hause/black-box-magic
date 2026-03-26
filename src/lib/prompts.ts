@@ -43,6 +43,9 @@ CRITICAL: List ALL visible items, not just the first few. If you detect 15 produ
 you MUST list all 15 in the inventory. Do NOT truncate or summarize with "and others".
 Every visible product, price, and brand must appear in the output.
 
+LANGUAGE: Respond entirely in Spanish (Latin America). All text fields (summary, notes,
+recommendations, product names, descriptions) MUST be in Spanish. JSON keys stay in English.
+
 Respond ONLY with valid JSON matching this schema:`;
 
 export const SINGLE_PASS_SCHEMA = `{
@@ -106,6 +109,8 @@ Focus exclusively on:
 4. IMMEDIATE ACTIONS: Step-by-step remediation (e.g., "Remove products from shelf", "Deep clean surface", "Report to maintenance")
 5. ROOT CAUSE: What likely caused each issue (product leak, foot traffic, neglect, age)
 6. PRIORITY: Which issues need attention FIRST
+
+LANGUAGE: Respond entirely in Spanish (Latin America). All text fields MUST be in Spanish. JSON keys stay in English.
 
 Respond ONLY with valid JSON:
 {
