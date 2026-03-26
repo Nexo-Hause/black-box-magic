@@ -1,20 +1,17 @@
 import nodemailer from 'nodemailer';
 
-const SMTP_HOST = process.env.SMTP_HOST;
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
 
-export const isEmailConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
+export const isEmailConfigured = !!(SMTP_USER && SMTP_PASS);
 
-const transporter = isEmailConfigured
-  ? nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: false, // STARTTLS
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-    })
-  : null;
+function createTransporter() {
+  if (!SMTP_USER || !SMTP_PASS) return null;
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  });
+}
 
 interface AnalysisEmailData {
   photoType?: string;
@@ -30,6 +27,7 @@ export async function sendAnalysisEmail(
   to: string,
   data: AnalysisEmailData
 ): Promise<boolean> {
+  const transporter = createTransporter();
   if (!transporter) {
     console.warn('SMTP not configured — email not sent');
     return false;
@@ -47,7 +45,7 @@ export async function sendAnalysisEmail(
     return true;
   } catch (err) {
     const msg = err instanceof Error ? `${err.message} | code=${(err as NodeJS.ErrnoException).code}` : String(err);
-    console.error(`Email send failed: ${msg} | host=${SMTP_HOST} user=${SMTP_USER}`);
+    console.error(`Email send failed: ${msg} | user=${SMTP_USER}`);
     return false;
   }
 }
