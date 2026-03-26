@@ -1,8 +1,8 @@
 import { createHmac } from 'crypto';
 
 const SECRET = process.env.BBM_COOKIE_SECRET;
-if (!SECRET || SECRET.length < 32) {
-  console.error('BBM_COOKIE_SECRET must be set and at least 32 characters');
+if (typeof window === 'undefined' && (!SECRET || SECRET.length < 32)) {
+  console.error('WARNING: BBM_COOKIE_SECRET must be set and at least 32 characters — cookie auth disabled');
 }
 const COOKIE_NAME = 'bbm_user';
 const MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
@@ -13,9 +13,12 @@ interface CookiePayload {
 }
 
 export function signCookie(email: string): string {
+  if (!SECRET || SECRET.length < 32) {
+    throw new Error('BBM_COOKIE_SECRET not configured — cannot sign cookies');
+  }
   const timestamp = Date.now();
   const data = `${email}:${timestamp}`;
-  const signature = createHmac('sha256', SECRET || '').update(data).digest('hex');
+  const signature = createHmac('sha256', SECRET).update(data).digest('hex');
   return Buffer.from(JSON.stringify({ email, timestamp, signature })).toString('base64url');
 }
 
@@ -27,7 +30,8 @@ export function verifyCookie(cookieValue: string): CookiePayload | null {
     if (!email || !timestamp || !signature) return null;
 
     // Verify HMAC
-    const expected = createHmac('sha256', SECRET || '').update(`${email}:${timestamp}`).digest('hex');
+    if (!SECRET) return null;
+    const expected = createHmac('sha256', SECRET).update(`${email}:${timestamp}`).digest('hex');
     if (signature !== expected) return null;
 
     // Verify expiration (server-side)

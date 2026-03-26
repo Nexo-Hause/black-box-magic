@@ -17,17 +17,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
   }
 
-  // Upsert user in Supabase (fire-and-forget if DB is down)
+  // Upsert user in Supabase
   if (supabase) {
-    supabase
-      .from('bbm_users')
-      .upsert(
-        { email, last_seen_at: new Date().toISOString() },
-        { onConflict: 'email' }
-      )
-      .then(({ error }) => {
-        if (error) console.error('Failed to upsert bbm_user:', error.message);
-      });
+    try {
+      const { error } = await supabase
+        .from('bbm_users')
+        .upsert(
+          { email, last_seen_at: new Date().toISOString() },
+          { onConflict: 'email' }
+        );
+      if (error) console.error('Failed to upsert bbm_user:', error.message);
+    } catch (e) {
+      console.error('Supabase upsert exception:', e);
+    }
   }
 
   // Sign and set cookie
