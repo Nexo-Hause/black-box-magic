@@ -357,19 +357,7 @@ function ResultView({ job, allDoneResults }: { job: ImageJob; allDoneResults: An
               fileName={job.fileName.replace(/\.[^.]+$/, '')}
               allResults={allDoneResults}
             />
-            {job.logId && (
-              <button
-                className="btn btn--secondary btn--small"
-                onClick={sendEmail}
-                disabled={emailStatus === 'sending' || emailStatus === 'sent'}
-                style={{ fontSize: '0.75rem' }}
-              >
-                {emailStatus === 'idle' && 'EMAIL'}
-                {emailStatus === 'sending' && 'ENVIANDO...'}
-                {emailStatus === 'sent' && 'ENVIADO \u2713'}
-                {emailStatus === 'error' && 'ERROR \u2014 REINTENTAR'}
-              </button>
-            )}
+            {/* EMAIL button disabled until SMTP/Gmail API configured for Vercel serverless */}
           </div>
         </div>
       </div>
