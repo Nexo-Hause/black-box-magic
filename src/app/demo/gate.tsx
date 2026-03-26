@@ -20,14 +20,14 @@ export function GateScreen({ onSubmit, error, loading }: GateScreenProps) {
     <div className="gate-container">
       <div className="gate-card">
         <h1 className="gate-title">BLACK BOX MAGIC</h1>
-        <p className="gate-subtitle">Retail photo analysis powered by AI</p>
+        <p className="gate-subtitle">Auditoría visual de punto de venta con IA</p>
 
         <form onSubmit={handleSubmit} className="gate-form">
           <input
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="your@email.com"
+            placeholder="tu@email.com"
             className="gate-input"
             required
             autoFocus
@@ -38,7 +38,7 @@ export function GateScreen({ onSubmit, error, loading }: GateScreenProps) {
             className="btn btn--primary gate-btn"
             disabled={loading || !email.trim()}
           >
-            {loading ? 'LOADING...' : 'ENTER'}
+            {loading ? 'CARGANDO...' : 'ENTRAR'}
           </button>
         </form>
 

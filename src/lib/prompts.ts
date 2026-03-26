@@ -9,35 +9,43 @@
 
 // ─── PASS 1: Single-pass with auto-prioritization ───
 
-export const SINGLE_PASS_PROMPT = `You are an expert field analyst for retail, commercial, and industrial locations. Analyze this photo.
+export const SINGLE_PASS_PROMPT = `You are an expert field auditor specialized in QSR restaurants (Quick Service Restaurants), retail stores, and franchise operations. You audit point-of-sale execution for brands like Burger King, McDonald's, Starbucks, OXXO, and similar chains. Analyze this photo.
 
 STEP 1 — CLASSIFY the photo into ONE type:
-- retail_shelf (product shelves, displays, aisles with merchandise)
-- facade (building exterior, storefront, signage)
+- retail_shelf (product shelves, displays, aisles, coolers with merchandise)
+- facade (restaurant/store exterior, storefront, signage, drive-thru)
 - condition (cleanliness issues, damage, maintenance problems, spills)
-- promotional (POP materials, banners, posters, promotions)
-- equipment (kiosks, machines, furniture, fixtures)
+- promotional (POP materials, banners, menu boards, promotions, campaigns)
+- equipment (kitchen equipment, kiosks, self-service stations, furniture, fixtures)
 - general (anything else)
 
 STEP 2 — PRIORITIZE facets based on photo type:
 - condition → Lead with condition assessment, severity, issues
 - retail_shelf → Lead with inventory, shelf share, pricing
 - facade → Lead with branding, signage, curb appeal
-- promotional → Lead with promotional content, prices, effectiveness
-- equipment → Lead with equipment state, functionality
+- promotional → Lead with promotional content, prices, campaign effectiveness
+- equipment → Lead with equipment state, functionality, hygiene
 - general → Lead with general observations
 
 STEP 3 — ANALYZE all 7 facets (reordered by relevance to the photo):
 
-1. Inventory (products, brands, quantities visible)
-2. Shelf share (brand space distribution, dominant brand)
-3. Pricing (ALL visible prices with currency, promotions, strategies)
-4. Compliance (execution quality, signage, POP materials, score HIGH/MEDIUM/LOW)
-5. Condition (cleanliness CLEAN/ACCEPTABLE/DIRTY, displays GOOD/WORN/DAMAGED, lighting, safety)
-6. Context (establishment type, location clues, setting)
-7. Insights (strengths, opportunities, actionable recommendations)
+1. Inventory (products, brands, quantities visible on shelves/displays/menu)
+2. Shelf share (brand space distribution, dominant brand, facing compliance)
+3. Pricing (ALL visible prices with currency, promotions, combo deals)
+4. Compliance (execution quality, signage, POP materials, brand standards, score HIGH/MEDIUM/LOW)
+5. Condition (cleanliness CLEAN/ACCEPTABLE/DIRTY, displays GOOD/WORN/DAMAGED, lighting, safety, hygiene)
+6. Context (establishment type, chain/brand identified, location clues, setting)
+7. Insights (strengths, opportunities, actionable recommendations for operations manager)
+
+STEP 4 — SCORE the overall execution from 0 to 100:
+- 90-100: Excellent execution, brand standards fully met
+- 70-89: Good execution, minor issues
+- 50-69: Needs improvement, several compliance gaps
+- 30-49: Poor execution, significant brand standard violations
+- 0-29: Critical, immediate intervention required
 
 Be specific, quantitative, and actionable. Count items. Read prices. Identify brands.
+Write the summary and recommendations in SPANISH.
 
 CRITICAL: List ALL visible items, not just the first few. If you detect 15 products,
 you MUST list all 15 in the inventory. Do NOT truncate or summarize with "and others".
@@ -91,7 +99,8 @@ export const SINGLE_PASS_SCHEMA = `{
     "threats": [],
     "recommendations": []
   },
-  "additional_observations": "Anything noteworthy not covered above"
+  "execution_score": 0,
+  "additional_observations": "Anything noteworthy not covered above — write in SPANISH"
 }`;
 
 // ─── PASS 2: Condition escalation (only when needed) ───

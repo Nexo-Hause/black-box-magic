@@ -101,6 +101,7 @@ export interface AnalysisData {
     threats: string[];
     recommendations: string[];
   };
+  execution_score?: number;
   additional_observations?: string;
   metadata?: {
     analysis_version: string;
