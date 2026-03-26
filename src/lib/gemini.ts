@@ -1,8 +1,7 @@
 /**
- * Black Box Magic — Gemini Vision Client
+ * Black Box Magic — Vision Client
  *
- * Calls Gemini 3.1 Flash-Lite for image analysis.
- * Falls back to Gemini 3 Flash if needed.
+ * Image analysis engine with automatic model fallback.
  */
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -62,7 +61,7 @@ async function callGemini(
           },
         ],
         generationConfig: {
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8192,
           temperature: 0.2,
           responseMimeType: 'application/json',
         },
