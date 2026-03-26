@@ -287,10 +287,32 @@ function ResultView({ job, allDoneResults }: { job: ImageJob; allDoneResults: An
     if (!job.logId) return;
     setEmailStatus('sending');
     try {
+      // Convert preview image to base64 JPEG for email embedding
+      let imageBase64: string | undefined;
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = job.previewUrl;
+        });
+        const canvas = document.createElement('canvas');
+        const MAX = 600;
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w > MAX || h > MAX) {
+          const r = Math.min(MAX / w, MAX / h);
+          w = Math.round(w * r); h = Math.round(h * r);
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        imageBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      } catch { /* skip image if conversion fails */ }
+
       const res = await fetch('/api/demo/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ log_id: job.logId }),
+        body: JSON.stringify({ log_id: job.logId, image: imageBase64 }),
       });
       if (!res.ok) {
         const data = await res.json();

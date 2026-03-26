@@ -86,7 +86,21 @@ export async function sendAnalysisEmail(
   const sevLabel = t(SEVERITY_ES, data.severity);
   const typeLabel = data.photoType?.replace('_', ' ') || 'Foto';
 
-  const attachments: { filename: string; content: Buffer; contentType: string }[] = [];
+  const attachments: { filename: string; content: Buffer; contentType: string; cid?: string }[] = [];
+
+  // Embed image as CID attachment for inline display
+  if (data.imageBase64) {
+    const match = data.imageBase64.match(/^data:([^;]+);base64,(.+)$/);
+    if (match) {
+      attachments.push({
+        filename: 'analysis-photo.jpg',
+        content: Buffer.from(match[2], 'base64'),
+        contentType: match[1],
+        cid: 'analysis-photo',
+      });
+    }
+  }
+
   if (data.pdfBuffer) {
     attachments.push({
       filename: `bbm-reporte-${data.fileName || 'analisis'}.pdf`,
@@ -212,6 +226,9 @@ function buildEmailHtml(data: FullAnalysisEmailData): string {
         ${data.severity && data.severity !== 'N/A' ? `<span style="display:inline-block;padding:3px 10px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;background:${sevColor};color:#fff;margin-right:6px;">Gravedad: ${sevLabel}</span>` : ''}
         ${data.escalated ? '<span style="display:inline-block;padding:3px 10px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;background:#ef4444;color:#fff;">ESCALADO</span>' : ''}
       </div>
+
+      <!-- Photo -->
+      ${data.imageBase64 ? '<div style="margin-bottom:1rem;"><img src="cid:analysis-photo" alt="Foto analizada" style="max-width:100%;height:auto;border:2px solid #1A1A2E;" /></div>' : ''}
 
       <!-- Summary -->
       <p style="font-size:0.95rem;line-height:1.7;color:#4A4A6A;margin-bottom:1rem;">

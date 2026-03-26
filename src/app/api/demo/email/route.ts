@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
   }
 
-  let body: { log_id?: string };
+  let body: { log_id?: string; image?: string };
   try {
     body = await request.json();
   } catch {
@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
     shelfBrands: shelfShare?.brands?.slice(0, 5),
     recommendations: insights?.recommendations?.slice(0, 5),
     conditionNotes: condition?.notes,
+    imageBase64: body.image || undefined,
     pdfBuffer,
     fileName: logEntry.image_filename?.replace(/\.[^.]+$/, '') || 'analisis',
   };
