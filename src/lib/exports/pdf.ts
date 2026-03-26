@@ -144,9 +144,53 @@ function badge(
 // Main export
 // ---------------------------------------------------------------------------
 
+/** Convert image URL to JPEG base64 (max 1200px, quality 0.7) */
+async function imageToJpegBase64(url: string): Promise<string | null> {
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.crossOrigin = 'anonymous';
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('Failed to load'));
+      el.src = url;
+    });
+
+    const MAX_DIM = 1200;
+    let w = img.naturalWidth;
+    let h = img.naturalHeight;
+    if (w > MAX_DIM || h > MAX_DIM) {
+      const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL('image/jpeg', 0.7);
+  } catch {
+    return null;
+  }
+}
+
 export function generatePDF(
   response: AnalysisResponse,
-  _imageUrl: string,
+  imageUrl: string,
+  fileName: string,
+): void {
+  // Start async to allow image loading, then generate
+  void (async () => {
+    const photoBase64 = await imageToJpegBase64(imageUrl);
+    _generatePDFSync(response, photoBase64, fileName);
+  })();
+}
+
+function _generatePDFSync(
+  response: AnalysisResponse,
+  photoBase64: string | null,
   fileName: string,
 ): void {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -171,6 +215,18 @@ export function generatePDF(
   doc.setLineWidth(0.8);
   doc.line(PAGE_MARGIN, y, PAGE_WIDTH - PAGE_MARGIN, y);
   y += 6;
+
+  // ------ Photo ------
+  if (photoBase64) {
+    const imgMaxW = CONTENT_WIDTH;
+    const imgMaxH = 80;
+    try {
+      doc.addImage(photoBase64, 'JPEG', PAGE_MARGIN, y, imgMaxW, imgMaxH);
+      y += imgMaxH + 4;
+    } catch {
+      // Skip photo if embedding fails
+    }
+  }
 
   // ------ Badges line ------
   let bx = PAGE_MARGIN;

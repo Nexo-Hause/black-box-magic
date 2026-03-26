@@ -7,18 +7,19 @@ import { downloadJSON } from '@/lib/exports/json-download';
 import { copyToClipboard } from '@/lib/exports/clipboard';
 import { generateAnnotatedImage, downloadBlob } from '@/lib/exports/annotated-image';
 
-type FeedbackState = 'idle' | 'working' | 'success' | 'error';
+type FeedbackState = 'idle' | 'working' | 'success' | 'error' | 'clipboard-fail';
 
 interface ExportMenuProps {
   result: AnalysisResponse;
   imageUrl: string;
   fileName: string;
-  allResults?: AnalysisResponse[];
+  allResults: AnalysisResponse[];
 }
 
-export function ExportMenu({ result, imageUrl, fileName }: ExportMenuProps) {
+export function ExportMenu({ result, imageUrl, fileName, allResults }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
   const [feedback, setFeedback] = useState<Record<string, FeedbackState>>({});
+  const [clipboardText, setClipboardText] = useState<string | null>(null);
 
   const showFeedback = (key: string, state: FeedbackState) => {
     setFeedback(prev => ({ ...prev, [key]: state }));
@@ -31,7 +32,12 @@ export function ExportMenu({ result, imageUrl, fileName }: ExportMenuProps) {
     showFeedback('whatsapp', 'working');
     const text = formatForWhatsApp(result);
     const ok = await copyToClipboard(text);
-    showFeedback('whatsapp', ok ? 'success' : 'error');
+    if (ok) {
+      showFeedback('whatsapp', 'success');
+    } else {
+      setClipboardText(text);
+      showFeedback('whatsapp', 'clipboard-fail');
+    }
     setOpen(false);
   };
 
@@ -75,7 +81,7 @@ export function ExportMenu({ result, imageUrl, fileName }: ExportMenuProps) {
     showFeedback('excel', 'working');
     try {
       const { generateExcel } = await import('@/lib/exports/excel');
-      await generateExcel([result], fileName);
+      await generateExcel(allResults.length > 1 ? allResults : [result], fileName);
       showFeedback('excel', 'success');
     } catch {
       showFeedback('excel', 'error');
@@ -103,7 +109,6 @@ export function ExportMenu({ result, imageUrl, fileName }: ExportMenuProps) {
 
       {open && (
         <>
-          {/* Backdrop to close on outside click */}
           <div
             style={{ position: 'fixed', inset: 0, zIndex: 9 }}
             onClick={() => setOpen(false)}
@@ -126,6 +131,33 @@ export function ExportMenu({ result, imageUrl, fileName }: ExportMenuProps) {
             </button>
           </div>
         </>
+      )}
+
+      {/* Clipboard fallback: show selectable text if copy failed */}
+      {clipboardText && (
+        <div style={{ marginTop: '0.5rem', maxWidth: 400 }}>
+          <div className="text-xs muted" style={{ marginBottom: '0.25rem' }}>
+            No se pudo copiar. Selecciona y copia manualmente:
+          </div>
+          <textarea
+            readOnly
+            value={clipboardText}
+            onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            style={{
+              width: '100%', minHeight: 120, fontSize: '0.75rem',
+              fontFamily: 'var(--mono)', padding: '0.5rem',
+              border: '2px solid var(--border)', background: 'var(--bg)',
+              resize: 'vertical',
+            }}
+          />
+          <button
+            className="btn btn--secondary btn--small"
+            onClick={() => setClipboardText(null)}
+            style={{ marginTop: '0.25rem', fontSize: '0.7rem' }}
+          >
+            CERRAR
+          </button>
+        </div>
       )}
     </div>
   );

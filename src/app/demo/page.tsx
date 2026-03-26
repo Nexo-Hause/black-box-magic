@@ -255,7 +255,7 @@ export default function DemoPage() {
                 </div>
               )}
               {activeJob.status === 'done' && activeJob.result && (
-                <ResultView job={activeJob} />
+                <ResultView job={activeJob} allDoneResults={jobs.filter(j => j.status === 'done' && j.result).map(j => j.result!)} />
               )}
             </div>
           )}
@@ -272,7 +272,7 @@ function StatusDot({ status }: { status: string }) {
 
 // ─── Result View ───
 
-function ResultView({ job }: { job: ImageJob }) {
+function ResultView({ job, allDoneResults }: { job: ImageJob; allDoneResults: AnalysisResponse[] }) {
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   const sendEmail = async () => {
@@ -347,6 +347,7 @@ function ResultView({ job }: { job: ImageJob }) {
               result={result}
               imageUrl={job.previewUrl}
               fileName={job.fileName.replace(/\.[^.]+$/, '')}
+              allResults={allDoneResults}
             />
             {job.logId && (
               <button
