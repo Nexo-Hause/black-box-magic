@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { signCookie, getCookieOptions, COOKIE_NAME } from '@/lib/cookie';
 import { supabase } from '@/lib/supabase';
 
-const EMAIL_REGEX = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
 export async function POST(request: NextRequest) {
   let body: { email?: string };

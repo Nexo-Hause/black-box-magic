@@ -155,11 +155,17 @@ export async function POST(request: NextRequest) {
           if (!insertErr) {
             response.log_id = logId;
             // Fire-and-forget: update counter
-            supabase
-              .from('bbm_users')
-              .update({ total_analyses: (user.total_analyses || 0) + 1, last_seen_at: new Date().toISOString() })
-              .eq('id', user.id)
-              .then(({ error }) => { if (error) console.error('Counter update failed:', error.message); });
+            void (async () => {
+              try {
+                const { error } = await supabase
+                  .from('bbm_users')
+                  .update({ total_analyses: (user.total_analyses || 0) + 1, last_seen_at: new Date().toISOString() })
+                  .eq('id', user.id);
+                if (error) console.error('Counter update failed:', error.message);
+              } catch (e) {
+                console.error('Counter update exception:', e);
+              }
+            })();
           }
         }
       } catch (err) {

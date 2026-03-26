@@ -62,6 +62,7 @@ export function ExportMenu({ result, imageUrl, fileName }: ExportMenuProps) {
     showFeedback('pdf', 'working');
     try {
       const { generatePDF } = await import('@/lib/exports/pdf');
+      await new Promise(resolve => setTimeout(resolve, 0));
       generatePDF(result, imageUrl, fileName);
       showFeedback('pdf', 'success');
     } catch {

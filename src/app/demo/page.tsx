@@ -83,6 +83,8 @@ export default function DemoPage() {
 
   const removeJob = (id: string) => {
     setJobs(prev => {
+      const job = prev.find(j => j.id === id);
+      if (job) URL.revokeObjectURL(job.previewUrl);
       const next = prev.filter(j => j.id !== id);
       if (activeId === id && next.length > 0) setActiveId(next[0].id);
       if (!next.length) setActiveId('');
