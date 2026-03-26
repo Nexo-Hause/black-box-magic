@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyCookie, COOKIE_NAME } from '@/lib/cookie';
 import { supabase } from '@/lib/supabase';
 import { sendAnalysisEmail, isEmailConfigured } from '@/lib/email';
+import type { FullAnalysisEmailData } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   if (!isEmailConfigured) {
@@ -11,7 +12,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Verify user cookie
   const cookieValue = request.cookies.get(COOKIE_NAME)?.value;
   if (!cookieValue) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
@@ -34,7 +34,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid log_id' }, { status: 400 });
   }
 
-  // Fetch analysis from DB
   if (!supabase) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
@@ -55,32 +54,62 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
   }
 
+  // Extract full analysis data
   const result = logEntry.result_json as Record<string, unknown>;
   const analysis = result?.analysis as Record<string, unknown> | undefined;
-  const meta = result?.meta as Record<string, unknown> | undefined;
+  const inventory = analysis?.inventory as { items?: Array<{ name: string; brand?: string; quantity?: string | number }>; total_skus_detected?: number } | undefined;
+  const shelfShare = analysis?.shelf_share as { brands?: Array<{ name: string; estimated_share_pct: number }>; dominant_brand?: string } | undefined;
+  const pricing = analysis?.pricing as { prices_found?: Array<{ item: string; price: number; currency?: string; type?: string }> } | undefined;
+  const compliance = analysis?.compliance as { score?: string } | undefined;
+  const condition = analysis?.condition as { cleanliness?: string; notes?: string } | undefined;
+  const insights = analysis?.insights as { recommendations?: string[] } | undefined;
 
-  const sent = await sendAnalysisEmail(payload.email, {
+  // Generate PDF server-side
+  let pdfBuffer: Buffer | undefined;
+  try {
+    const { generatePDFBuffer } = await import('@/lib/exports/pdf-server');
+    pdfBuffer = await generatePDFBuffer(result);
+  } catch (err) {
+    console.error('PDF generation failed:', err);
+    // Continue without PDF
+  }
+
+  const emailData: FullAnalysisEmailData = {
     photoType: logEntry.photo_type || undefined,
     severity: logEntry.severity || undefined,
     summary: (analysis?.summary as string) || undefined,
-    totalSkus: (analysis?.inventory as { total_skus_detected?: number })?.total_skus_detected,
-    complianceScore: (analysis?.compliance as { score?: string })?.score,
+    totalSkus: inventory?.total_skus_detected,
+    complianceScore: compliance?.score,
+    cleanliness: condition?.cleanliness,
+    dominantBrand: shelfShare?.dominant_brand,
     escalated: logEntry.escalated || false,
     processingTime: logEntry.processing_time_ms || undefined,
-  });
+    inventory: inventory?.items?.slice(0, 20),
+    prices: pricing?.prices_found?.slice(0, 10),
+    shelfBrands: shelfShare?.brands?.slice(0, 5),
+    recommendations: insights?.recommendations?.slice(0, 5),
+    conditionNotes: condition?.notes,
+    pdfBuffer,
+    fileName: logEntry.image_filename?.replace(/\.[^.]+$/, '') || 'analisis',
+  };
+
+  const sent = await sendAnalysisEmail(payload.email, emailData);
 
   if (!sent) {
     return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
   }
 
   // Update emailed_at
-  supabase
-    .from('bbm_analysis_log')
-    .update({ emailed_at: new Date().toISOString() })
-    .eq('id', body.log_id)
-    .then(({ error }) => {
-      if (error) console.error('Failed to update emailed_at:', error.message);
-    });
+  void (async () => {
+    try {
+      await supabase
+        .from('bbm_analysis_log')
+        .update({ emailed_at: new Date().toISOString() })
+        .eq('id', body.log_id);
+    } catch (e) {
+      console.error('Failed to update emailed_at:', e);
+    }
+  })();
 
   return NextResponse.json({ success: true });
 }
