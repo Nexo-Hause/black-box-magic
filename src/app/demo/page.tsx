@@ -173,9 +173,9 @@ export default function DemoPage() {
           >
             <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📷</div>
             <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem' }}>
-              {jobs.length === 0 ? 'Select or drop images' : `${jobs.length} image${jobs.length > 1 ? 's' : ''} selected`}
+              {jobs.length === 0 ? 'Selecciona o arrastra imágenes' : `${jobs.length} imagen${jobs.length > 1 ? 'es' : ''} seleccionada${jobs.length > 1 ? 's' : ''}`}
             </div>
-            <div className="text-sm muted">JPG, PNG, WebP — max 10 MB — up to {MAX_IMAGES} images</div>
+            <div className="text-sm muted">JPG, PNG, WebP — máx 10 MB — hasta {MAX_IMAGES} imágenes</div>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }} style={{ display: 'none' }} />
           </div>
 
@@ -195,9 +195,9 @@ export default function DemoPage() {
           {jobs.length > 0 && (
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
               <button className="btn btn--primary" onClick={analyzeAll} disabled={!canAnalyze} style={{ flex: 1, padding: '1rem', fontSize: '1rem' }}>
-                {canAnalyze ? `ANALYZE ${pendingCount} IMAGE${pendingCount > 1 ? 'S' : ''}` : 'LOADING...'}
+                {canAnalyze ? `ANALIZAR ${pendingCount} IMAGEN${pendingCount > 1 ? 'ES' : ''}` : 'CARGANDO...'}
               </button>
-              <button className="btn btn--secondary" onClick={clearAll} style={{ padding: '1rem', fontSize: '0.8rem' }}>CLEAR</button>
+              <button className="btn btn--secondary" onClick={clearAll} style={{ padding: '1rem', fontSize: '0.8rem' }}>LIMPIAR</button>
             </div>
           )}
         </>
@@ -207,8 +207,8 @@ export default function DemoPage() {
       {isAnalyzing && !hasResults && (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
           <div className="spinner" style={{ margin: '0 auto 1rem' }} />
-          <p style={{ fontWeight: 700, fontSize: '1.1rem' }}>Analyzing {jobs.length} image{jobs.length > 1 ? 's' : ''}...</p>
-          <p className="muted text-sm mt-1">This may take up to 60 seconds per image</p>
+          <p style={{ fontWeight: 700, fontSize: '1.1rem' }}>Analizando {jobs.length} imagen{jobs.length > 1 ? 'es' : ''}...</p>
+          <p className="muted text-sm mt-1">Puede tomar hasta 60 segundos por imagen</p>
         </div>
       )}
 
@@ -216,13 +216,13 @@ export default function DemoPage() {
       {hasResults && (
         <>
           <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            <button className="btn btn--secondary btn--small" onClick={() => fileRef.current?.click()}>+ ADD MORE IMAGES</button>
+            <button className="btn btn--secondary btn--small" onClick={() => fileRef.current?.click()}>+ AGREGAR IMÁGENES</button>
             {pendingCount > 0 && (
               <button className="btn btn--primary btn--small" onClick={analyzeAll} disabled={isAnalyzing || !canAnalyze}>
-                {isAnalyzing ? 'ANALYZING...' : `ANALYZE ${pendingCount} NEW`}
+                {isAnalyzing ? 'ANALIZANDO...' : `ANALIZAR ${pendingCount} NUEVA${pendingCount > 1 ? 'S' : ''}`}
               </button>
             )}
-            <button className="btn btn--secondary btn--small" onClick={clearAll}>CLEAR ALL</button>
+            <button className="btn btn--secondary btn--small" onClick={clearAll}>LIMPIAR TODO</button>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }} style={{ display: 'none' }} />
           </div>
 
@@ -245,21 +245,21 @@ export default function DemoPage() {
               {activeJob.status === 'pending' && (
                 <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
                   <img src={activeJob.previewUrl} alt={activeJob.fileName} style={{ maxWidth: 180, maxHeight: 180, objectFit: 'contain', border: '2px solid var(--border)', marginBottom: '1rem' }} />
-                  <p className="muted text-sm">Pending analysis</p>
+                  <p className="muted text-sm">Pendiente de análisis</p>
                 </div>
               )}
               {activeJob.status === 'analyzing' && (
                 <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
                   <div className="spinner" style={{ margin: '0 auto 1rem' }} />
-                  <p style={{ fontWeight: 700 }}>Analyzing...</p>
+                  <p style={{ fontWeight: 700 }}>Analizando...</p>
                   <p className="muted text-sm mt-1">{activeJob.elapsed ? `${Math.floor(activeJob.elapsed / 1000)}s` : '0s'} elapsed</p>
                 </div>
               )}
               {activeJob.status === 'error' && (
                 <div className="card" style={{ borderColor: 'var(--accent-red)' }}>
-                  <p style={{ fontWeight: 700, color: 'var(--accent-red)', marginBottom: '0.5rem' }}>Analysis Failed</p>
+                  <p style={{ fontWeight: 700, color: 'var(--accent-red)', marginBottom: '0.5rem' }}>Análisis Fallido</p>
                   <p className="text-sm">{activeJob.error}</p>
-                  <button className="btn btn--secondary btn--small" style={{ marginTop: '1rem' }} onClick={() => setJobs(prev => prev.map(j => j.id === activeJob.id ? { ...j, status: 'pending' as const, error: undefined } : j))}>RETRY</button>
+                  <button className="btn btn--secondary btn--small" style={{ marginTop: '1rem' }} onClick={() => setJobs(prev => prev.map(j => j.id === activeJob.id ? { ...j, status: 'pending' as const, error: undefined } : j))}>REINTENTAR</button>
                 </div>
               )}
               {activeJob.status === 'done' && activeJob.result && (
@@ -351,20 +351,20 @@ function ResultView({ job, allDoneResults }: { job: ImageJob; allDoneResults: An
         <div style={{ flex: 1, minWidth: 200 }}>
           {/* Badges row */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-            <span className="badge badge--green">COMPLETE</span>
+            <span className="badge badge--green">COMPLETO</span>
             {a.photo_type && <span className={`badge ${typeBadgeColor}`}>{a.photo_type.replace('_', ' ')}</span>}
             {severityBadge && <span className={`badge ${severityBadge}`}>{a.severity}</span>}
-            {meta.escalated && <span className="badge badge--red">ESCALATED</span>}
+            {meta.escalated && <span className="badge badge--red">ESCALADO</span>}
           </div>
 
           {/* Priority facets */}
           {a.priority_facets && a.priority_facets.length > 0 && (
             <div className="text-xs muted mb-1" style={{ fontFamily: 'var(--mono)' }}>
-              Priority: {a.priority_facets.join(' → ')}
+              Prioridad: {a.priority_facets.join(' → ')}
             </div>
           )}
 
-          <p style={{ fontSize: '0.9rem', lineHeight: 1.7 }}>{a.summary || 'No summary available'}</p>
+          <p style={{ fontSize: '0.9rem', lineHeight: 1.7 }}>{a.summary || 'Sin resumen disponible'}</p>
 
           <div className="text-xs muted mt-2 mono">
             {(meta.processing_time_ms / 1000).toFixed(1)}s · {meta.engine || 'v1'}
@@ -406,38 +406,38 @@ function ResultView({ job, allDoneResults }: { job: ImageJob; allDoneResults: An
 
       {/* Facets */}
       <div className="card mt-2">
-        <Collapsible title="Inventory" defaultOpen>
+        <Collapsible title="Inventario" defaultOpen>
           <InventorySection data={a.inventory} />
         </Collapsible>
-        <Collapsible title="Shelf Share">
+        <Collapsible title="Participación en Anaquel">
           <ShelfShareSection data={a.shelf_share} />
         </Collapsible>
-        <Collapsible title="Pricing">
+        <Collapsible title="Precios">
           <PricingSection data={a.pricing} />
         </Collapsible>
-        <Collapsible title="Compliance">
+        <Collapsible title="Cumplimiento">
           <ComplianceSection data={a.compliance} />
         </Collapsible>
-        <Collapsible title="Condition">
+        <Collapsible title="Condición">
           <ConditionSection data={a.condition} />
         </Collapsible>
-        <Collapsible title="Context">
+        <Collapsible title="Contexto">
           <ContextSection data={a.context} />
         </Collapsible>
-        <Collapsible title="Insights">
+        <Collapsible title="Hallazgos">
           <InsightsSection data={a.insights} />
         </Collapsible>
 
         {/* Additional observations */}
         {a.additional_observations && (
-          <Collapsible title="Additional Observations">
+          <Collapsible title="Observaciones Adicionales">
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{a.additional_observations}</p>
           </Collapsible>
         )}
 
         {/* Condition Detail (escalated) */}
         {result.condition_detail && (
-          <Collapsible title="Condition Detail (Escalated)" defaultOpen>
+          <Collapsible title="Detalle de Condición (Escalado)" defaultOpen>
             <ConditionDetailSection data={result.condition_detail} />
           </Collapsible>
         )}
@@ -464,13 +464,13 @@ function Collapsible({ title, defaultOpen, children }: { title: string; defaultO
 // ─── Section renderers ───
 
 function InventorySection({ data }: { data?: AnalysisResponse['analysis']['inventory'] }) {
-  if (!data?.items?.length) return <p className="muted text-sm">No items detected</p>;
+  if (!data?.items?.length) return <p className="muted text-sm">Sin productos detectados</p>;
   return (
     <>
-      <div className="text-xs muted mb-1">{data.total_skus_detected} SKUs detected</div>
+      <div className="text-xs muted mb-1">{data.total_skus_detected} SKUs detectados</div>
       <div style={{ overflowX: 'auto' }}>
         <table className="table">
-          <thead><tr><th>Product</th><th>Brand</th><th>Qty</th></tr></thead>
+          <thead><tr><th>Producto</th><th>Marca</th><th>Cant.</th></tr></thead>
           <tbody>
             {data.items.map((item, i) => (
               <tr key={i}><td>{item.name}</td><td>{item.brand || '—'}</td><td>{item.quantity}</td></tr>
@@ -483,10 +483,10 @@ function InventorySection({ data }: { data?: AnalysisResponse['analysis']['inven
 }
 
 function ShelfShareSection({ data }: { data?: AnalysisResponse['analysis']['shelf_share'] }) {
-  if (!data?.brands?.length) return <p className="muted text-sm">No data</p>;
+  if (!data?.brands?.length) return <p className="muted text-sm">Sin datos</p>;
   return (
     <>
-      {data.dominant_brand && <div className="text-xs mb-1">Dominant: <strong>{data.dominant_brand}</strong></div>}
+      {data.dominant_brand && <div className="text-xs mb-1">Dominante: <strong>{data.dominant_brand}</strong></div>}
       {data.brands.map((b, i) => (
         <div key={i} style={{ marginBottom: '0.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: 2 }}>
@@ -502,12 +502,12 @@ function ShelfShareSection({ data }: { data?: AnalysisResponse['analysis']['shel
 }
 
 function PricingSection({ data }: { data?: AnalysisResponse['analysis']['pricing'] }) {
-  if (!data?.prices_found?.length) return <p className="muted text-sm">No prices detected</p>;
+  if (!data?.prices_found?.length) return <p className="muted text-sm">Sin precios detectados</p>;
   return (
     <>
       <div style={{ overflowX: 'auto' }}>
         <table className="table">
-          <thead><tr><th>Item</th><th>Price</th><th>Type</th></tr></thead>
+          <thead><tr><th>Producto</th><th>Precio</th><th>Tipo</th></tr></thead>
           <tbody>
             {data.prices_found.map((p, i) => (
               <tr key={i}>
@@ -529,20 +529,20 @@ function PricingSection({ data }: { data?: AnalysisResponse['analysis']['pricing
 }
 
 function ComplianceSection({ data }: { data?: AnalysisResponse['analysis']['compliance'] }) {
-  if (!data) return <p className="muted text-sm">No data</p>;
+  if (!data) return <p className="muted text-sm">Sin datos</p>;
   const color = data.score === 'HIGH' ? 'badge--green' : data.score === 'MEDIUM' ? 'badge--yellow' : 'badge--red';
   return (
     <>
       <div style={{ marginBottom: '1rem' }}><span className={`badge ${color}`}>{data.score}</span></div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
-        <div>Product Facing: <strong>{data.product_facing}</strong></div>
-        <div>Signage: <strong>{data.signage}</strong></div>
-        <div>POP Present: <strong>{data.pop_materials?.present ? 'Yes' : 'No'}</strong></div>
-        <div>POP Condition: <strong>{data.pop_materials?.condition || '—'}</strong></div>
+        <div>Facing de producto: <strong>{data.product_facing}</strong></div>
+        <div>Señalización: <strong>{data.signage}</strong></div>
+        <div>Material POP: <strong>{data.pop_materials?.present ? 'Sí' : 'No'}</strong></div>
+        <div>Estado POP: <strong>{data.pop_materials?.condition || '—'}</strong></div>
       </div>
       {data.issues && data.issues.length > 0 && (
         <div className="mt-2">
-          <div className="text-xs" style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Issues:</div>
+          <div className="text-xs" style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Problemas:</div>
           <ul style={{ paddingLeft: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
             {data.issues.map((issue, i) => <li key={i}>{issue}</li>)}
           </ul>
@@ -553,12 +553,12 @@ function ComplianceSection({ data }: { data?: AnalysisResponse['analysis']['comp
 }
 
 function ConditionSection({ data }: { data?: AnalysisResponse['analysis']['condition'] }) {
-  if (!data) return <p className="muted text-sm">No data</p>;
+  if (!data) return <p className="muted text-sm">Sin datos</p>;
   const fields = [
-    { label: 'Cleanliness', value: data.cleanliness },
-    { label: 'Displays', value: data.displays },
-    { label: 'Lighting', value: data.lighting },
-    { label: 'Products', value: data.products },
+    { label: 'Limpieza', value: data.cleanliness },
+    { label: 'Exhibidores', value: data.displays },
+    { label: 'Iluminación', value: data.lighting },
+    { label: 'Productos', value: data.products },
   ];
   return (
     <>
@@ -566,7 +566,7 @@ function ConditionSection({ data }: { data?: AnalysisResponse['analysis']['condi
         {fields.map(f => <div key={f.label}>{f.label}: <strong>{f.value}</strong></div>)}
       </div>
       {data.safety_issues && data.safety_issues.length > 0 && (
-        <div className="mt-1 text-xs" style={{ color: 'var(--accent-red)' }}>Safety: {data.safety_issues.join(', ')}</div>
+        <div className="mt-1 text-xs" style={{ color: 'var(--accent-red)' }}>Seguridad: {data.safety_issues.join(', ')}</div>
       )}
       {data.notes && <p className="text-xs muted mt-1">{data.notes}</p>}
     </>
@@ -574,26 +574,26 @@ function ConditionSection({ data }: { data?: AnalysisResponse['analysis']['condi
 }
 
 function ContextSection({ data }: { data?: AnalysisResponse['analysis']['context'] }) {
-  if (!data) return <p className="muted text-sm">No data</p>;
+  if (!data) return <p className="muted text-sm">Sin datos</p>;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
-      <div>Type: <strong>{data.establishment_type}</strong></div>
-      <div>Setting: <strong>{data.setting}</strong></div>
-      <div>Location: <strong>{data.inferred_location?.city_or_region || '—'}, {data.inferred_location?.country || '—'}</strong></div>
-      <div>Confidence: <strong>{data.inferred_location?.confidence || '—'}</strong></div>
-      <div>Time: <strong>{data.time_of_day || '—'}</strong></div>
-      <div>Foot Traffic: <strong>{data.foot_traffic}</strong></div>
+      <div>Tipo: <strong>{data.establishment_type}</strong></div>
+      <div>Entorno: <strong>{data.setting}</strong></div>
+      <div>Ubicación: <strong>{data.inferred_location?.city_or_region || '—'}, {data.inferred_location?.country || '—'}</strong></div>
+      <div>Confianza: <strong>{data.inferred_location?.confidence || '—'}</strong></div>
+      <div>Hora: <strong>{data.time_of_day || '—'}</strong></div>
+      <div>Tráfico peatonal: <strong>{data.foot_traffic}</strong></div>
     </div>
   );
 }
 
 function InsightsSection({ data }: { data?: AnalysisResponse['analysis']['insights'] }) {
-  if (!data) return <p className="muted text-sm">No data</p>;
+  if (!data) return <p className="muted text-sm">Sin datos</p>;
   const sections = [
-    { title: 'Strengths', items: data.strengths, color: 'var(--accent-green)' },
-    { title: 'Opportunities', items: data.opportunities, color: 'var(--accent-blue)' },
-    { title: 'Threats', items: data.threats, color: 'var(--accent-red)' },
-    { title: 'Recommendations', items: data.recommendations, color: 'var(--text)' },
+    { title: 'Fortalezas', items: data.strengths, color: 'var(--accent-green)' },
+    { title: 'Oportunidades', items: data.opportunities, color: 'var(--accent-blue)' },
+    { title: 'Amenazas', items: data.threats, color: 'var(--accent-red)' },
+    { title: 'Recomendaciones', items: data.recommendations, color: 'var(--text)' },
   ];
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -602,7 +602,7 @@ function InsightsSection({ data }: { data?: AnalysisResponse['analysis']['insigh
           <div className="text-xs" style={{ fontWeight: 700, color: s.color, marginBottom: '0.25rem' }}>{s.title.toUpperCase()}</div>
           {s.items && s.items.length > 0
             ? <ul style={{ paddingLeft: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{s.items.map((item, i) => <li key={i} style={{ marginBottom: '0.15rem' }}>{item}</li>)}</ul>
-            : <p className="text-xs muted">None identified</p>}
+            : <p className="text-xs muted">Sin identificar</p>}
         </div>
       ))}
     </div>
@@ -625,13 +625,13 @@ function ConditionDetailSection({ data }: { data: NonNullable<AnalysisResponse['
       {/* Issues table */}
       {data.issues && data.issues.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
-          <div className="text-xs" style={{ fontWeight: 700, marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Issues Found</div>
+          <div className="text-xs" style={{ fontWeight: 700, marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Problemas Detectados</div>
           {data.issues.map((issue, i) => (
             <div key={i} style={{ borderLeft: `3px solid ${issue.severity === 'CRITICAL' ? 'var(--accent-red)' : issue.severity === 'MODERATE' ? 'var(--accent-yellow)' : 'var(--border-light)'}`, paddingLeft: '0.75rem', marginBottom: '0.75rem' }}>
               <div className="text-sm" style={{ fontWeight: 700 }}>{issue.description}</div>
-              {issue.location && <div className="text-xs muted">Location: {issue.location}</div>}
-              {issue.root_cause && <div className="text-xs muted">Cause: {issue.root_cause}</div>}
-              {issue.immediate_action && <div className="text-xs" style={{ color: 'var(--accent-blue)' }}>Action: {issue.immediate_action}</div>}
+              {issue.location && <div className="text-xs muted">Ubicación: {issue.location}</div>}
+              {issue.root_cause && <div className="text-xs muted">Causa: {issue.root_cause}</div>}
+              {issue.immediate_action && <div className="text-xs" style={{ color: 'var(--accent-blue)' }}>Acción: {issue.immediate_action}</div>}
             </div>
           ))}
         </div>
@@ -640,7 +640,7 @@ function ConditionDetailSection({ data }: { data: NonNullable<AnalysisResponse['
       {/* Safety hazards */}
       {data.safety_hazards && data.safety_hazards.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
-          <div className="text-xs" style={{ fontWeight: 700, marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-red)' }}>Safety Hazards</div>
+          <div className="text-xs" style={{ fontWeight: 700, marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-red)' }}>Riesgos de Seguridad</div>
           {data.safety_hazards.map((h, i) => (
             <div key={i} className="text-sm" style={{ marginBottom: '0.25rem' }}>
               <span style={{ color: 'var(--accent-red)', fontWeight: 700 }}>[{h.risk_level}]</span> {h.hazard}
@@ -654,9 +654,9 @@ function ConditionDetailSection({ data }: { data: NonNullable<AnalysisResponse['
       {data.remediation_plan && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
           {[
-            { title: 'Immediate', items: data.remediation_plan.immediate, color: 'var(--accent-red)' },
-            { title: 'Short Term', items: data.remediation_plan.short_term, color: 'var(--accent-yellow)' },
-            { title: 'Preventive', items: data.remediation_plan.preventive, color: 'var(--accent-green)' },
+            { title: 'Inmediato', items: data.remediation_plan.immediate, color: 'var(--accent-red)' },
+            { title: 'Corto Plazo', items: data.remediation_plan.short_term, color: 'var(--accent-yellow)' },
+            { title: 'Preventivo', items: data.remediation_plan.preventive, color: 'var(--accent-green)' },
           ].map(col => (
             <div key={col.title}>
               <div className="text-xs" style={{ fontWeight: 700, color: col.color, marginBottom: '0.25rem' }}>{col.title.toUpperCase()}</div>
