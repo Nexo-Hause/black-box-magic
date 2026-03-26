@@ -46,7 +46,8 @@ export async function sendAnalysisEmail(
     });
     return true;
   } catch (err) {
-    console.error('Email send failed:', err);
+    const msg = err instanceof Error ? `${err.message} | code=${(err as NodeJS.ErrnoException).code}` : String(err);
+    console.error(`Email send failed: ${msg} | host=${SMTP_HOST} user=${SMTP_USER}`);
     return false;
   }
 }
