@@ -34,6 +34,101 @@ export default function DemoPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
+  const addFiles = useCallback((files: FileList) => {
+    const valid = Array.from(files).filter(f => ACCEPTED_TYPES.includes(f.type) && f.size <= MAX_SIZE);
+    if (!valid.length) return;
+
+    setJobs(prev => {
+      const allowed = valid.slice(0, MAX_IMAGES - prev.length);
+      if (!allowed.length) return prev;
+
+      const newJobs: ImageJob[] = allowed.map(f => ({
+        id: crypto.randomUUID(),
+        fileName: f.name,
+        previewUrl: URL.createObjectURL(f),
+        base64: '',
+        mimeType: f.type,
+        status: 'pending' as const,
+      }));
+
+      allowed.forEach((file, idx) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const b64 = reader.result as string;
+          setJobs(p => p.map(j => j.id === newJobs[idx].id ? { ...j, base64: b64 } : j));
+        };
+        reader.readAsDataURL(file);
+      });
+
+      setActiveId(newJobs[0].id);
+      return [...prev, ...newJobs];
+    });
+  }, []);
+
+  const removeJob = useCallback((id: string) => {
+    setJobs(prev => {
+      const job = prev.find(j => j.id === id);
+      if (job) URL.revokeObjectURL(job.previewUrl);
+      const next = prev.filter(j => j.id !== id);
+      if (next.length === 0) {
+        setActiveId('');
+      } else {
+        setActiveId(curr => curr === id ? next[0].id : curr);
+      }
+      return next;
+    });
+  }, []);
+
+  const clearAll = useCallback(() => {
+    setJobs(prev => {
+      prev.forEach(j => URL.revokeObjectURL(j.previewUrl));
+      return [];
+    });
+    setActiveId('');
+    setIsAnalyzing(false);
+  }, []);
+
+  const analyzeOne = useCallback(async (job: ImageJob) => {
+    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'analyzing' as const, startedAt: Date.now() } : j));
+    try {
+      const res = await fetch('/api/demo/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: job.base64, mime_type: job.mimeType, fileName: job.fileName }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'done' as const, result: data, logId: data.log_id || undefined, elapsed: Date.now() - (j.startedAt || Date.now()), base64: '' } : j));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'error' as const, error: msg, elapsed: Date.now() - (j.startedAt || Date.now()), base64: '' } : j));
+    }
+  }, []);
+
+  // analyzeAll reads jobs via ref to avoid stale closure
+  const jobsRef = useRef(jobs);
+  jobsRef.current = jobs;
+
+  const analyzeAll = useCallback(async () => {
+    setIsAnalyzing(true);
+    const pending = jobsRef.current.filter(j => j.status === 'pending' && j.base64);
+    for (let i = 0; i < pending.length; i += PARALLEL_LIMIT) {
+      const batch = pending.slice(i, i + PARALLEL_LIMIT);
+      await Promise.all(batch.map(analyzeOne));
+    }
+    setIsAnalyzing(false);
+  }, [analyzeOne]);
+
+  useEffect(() => {
+    if (!jobs.some(j => j.status === 'analyzing')) return;
+    const iv = setInterval(() => {
+      setJobs(prev => prev.map(j =>
+        j.status === 'analyzing' && j.startedAt ? { ...j, elapsed: Date.now() - j.startedAt } : j
+      ));
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [jobs]);
+
   // Gate: show loading spinner or gate screen
   if (gate.loading) {
     return (
@@ -49,93 +144,6 @@ export default function DemoPage() {
 
   const activeJob = jobs.find(j => j.id === activeId);
   const hasResults = jobs.some(j => j.status === 'done' || j.status === 'error');
-
-  const addFiles = useCallback((files: FileList) => {
-    const valid = Array.from(files).filter(f => ACCEPTED_TYPES.includes(f.type) && f.size <= MAX_SIZE);
-    if (!valid.length) return;
-
-    // Enforce max images limit
-    const currentCount = jobs.length;
-    const allowed = valid.slice(0, MAX_IMAGES - currentCount);
-    if (!allowed.length) return;
-
-    const newJobs: ImageJob[] = allowed.map(f => ({
-      id: crypto.randomUUID(),
-      fileName: f.name,
-      previewUrl: URL.createObjectURL(f),
-      base64: '',
-      mimeType: f.type,
-      status: 'pending' as const,
-    }));
-
-    allowed.forEach((file, idx) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const b64 = reader.result as string;
-        setJobs(prev => prev.map(j => j.id === newJobs[idx].id ? { ...j, base64: b64 } : j));
-      };
-      reader.readAsDataURL(file);
-    });
-
-    setJobs(prev => [...prev, ...newJobs]);
-    setActiveId(newJobs[0].id);
-  }, [jobs.length]);
-
-  const removeJob = (id: string) => {
-    setJobs(prev => {
-      const job = prev.find(j => j.id === id);
-      if (job) URL.revokeObjectURL(job.previewUrl);
-      const next = prev.filter(j => j.id !== id);
-      if (activeId === id && next.length > 0) setActiveId(next[0].id);
-      if (!next.length) setActiveId('');
-      return next;
-    });
-  };
-
-  const clearAll = () => {
-    jobs.forEach(j => URL.revokeObjectURL(j.previewUrl));
-    setJobs([]);
-    setActiveId('');
-    setIsAnalyzing(false);
-  };
-
-  const analyzeOne = async (job: ImageJob) => {
-    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'analyzing' as const, startedAt: Date.now() } : j));
-    try {
-      const res = await fetch('/api/demo/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: job.base64, mime_type: job.mimeType, fileName: job.fileName }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
-      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'done' as const, result: data, logId: data.log_id || undefined, elapsed: Date.now() - (j.startedAt || Date.now()), base64: '' } : j));
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'error' as const, error: msg, elapsed: Date.now() - (j.startedAt || Date.now()), base64: '' } : j));
-    }
-  };
-
-  const analyzeAll = async () => {
-    setIsAnalyzing(true);
-    const pending = jobs.filter(j => j.status === 'pending' && j.base64);
-    for (let i = 0; i < pending.length; i += PARALLEL_LIMIT) {
-      const batch = pending.slice(i, i + PARALLEL_LIMIT);
-      await Promise.all(batch.map(analyzeOne));
-    }
-    setIsAnalyzing(false);
-  };
-
-  useEffect(() => {
-    if (!jobs.some(j => j.status === 'analyzing')) return;
-    const iv = setInterval(() => {
-      setJobs(prev => prev.map(j =>
-        j.status === 'analyzing' && j.startedAt ? { ...j, elapsed: Date.now() - j.startedAt } : j
-      ));
-    }, 1000);
-    return () => clearInterval(iv);
-  }, [jobs]);
-
   const pendingCount = jobs.filter(j => j.status === 'pending').length;
   const canAnalyze = jobs.some(j => j.status === 'pending' && j.base64);
 
