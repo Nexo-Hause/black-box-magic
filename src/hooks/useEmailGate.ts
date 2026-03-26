@@ -19,7 +19,10 @@ export function useEmailGate() {
   // Check cookie on mount
   useEffect(() => {
     fetch('/api/gate/check')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) return { authenticated: false };
+        return res.json();
+      })
       .then(data => {
         setState({
           loading: false,
@@ -41,9 +44,15 @@ export function useEmailGate() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed');
-      setState({ loading: false, email: data.email, error: null });
+      const text = await res.text();
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Server error (${res.status})`);
+      }
+      if (!res.ok) throw new Error((data.error as string) || 'Failed');
+      setState({ loading: false, email: data.email as string, error: null });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error';
       setState(prev => ({ ...prev, loading: false, error: msg }));
