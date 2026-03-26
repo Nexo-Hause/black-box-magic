@@ -29,8 +29,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  if (!body.log_id) {
-    return NextResponse.json({ error: 'Missing log_id' }, { status: 400 });
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!body.log_id || !UUID_REGEX.test(body.log_id)) {
+    return NextResponse.json({ error: 'Invalid log_id' }, { status: 400 });
   }
 
   // Fetch analysis from DB

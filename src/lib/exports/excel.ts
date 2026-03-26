@@ -10,7 +10,8 @@ function sanitize(value: unknown): string | number {
   if (typeof value === 'number') return value;
 
   const str = String(value);
-  if (/^[=+\-@\t\r]/.test(str)) {
+  // Block formula injection, DDE, and cmd pipes
+  if (/^[=+\-@\t\r]/.test(str) || /^(DDE|cmd\|)/i.test(str)) {
     return `'${str}`;
   }
   return str;

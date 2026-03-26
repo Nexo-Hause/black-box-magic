@@ -1,10 +1,12 @@
+import 'server-only';
 import { createHmac } from 'crypto';
 
+import { COOKIE_NAME } from './constants';
+
 const SECRET = process.env.BBM_COOKIE_SECRET;
-if (typeof window === 'undefined' && (!SECRET || SECRET.length < 32)) {
+if (!SECRET || SECRET.length < 32) {
   console.error('WARNING: BBM_COOKIE_SECRET must be set and at least 32 characters — cookie auth disabled');
 }
-const COOKIE_NAME = 'bbm_user';
 const MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 interface CookiePayload {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { COOKIE_NAME } from '@/lib/constants';
 
 interface GateState {
   loading: boolean;
@@ -52,7 +53,7 @@ export function useEmailGate() {
   // Clear session ("not you?" link)
   const clearSession = useCallback(async () => {
     // Delete cookie by setting it expired
-    document.cookie = 'bbm_user=; path=/; max-age=0';
+    document.cookie = `${COOKIE_NAME}=; path=/; max-age=0`;
     setState({ loading: false, email: null, error: null });
   }, []);
 
