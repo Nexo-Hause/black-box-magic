@@ -2,15 +2,9 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { useEmailGate } from '@/hooks/useEmailGate';
-import { GateScreen } from './gate';
-import { ExportMenu } from './export-menu';
-import type { AnalysisResponse } from '@/types/analysis';
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE = 10 * 1024 * 1024;
-const MAX_IMAGES = 5;
-const PARALLEL_LIMIT = 2;
 
 interface ImageJob {
   id: string;
@@ -23,29 +17,47 @@ interface ImageJob {
   error?: string;
   startedAt?: number;
   elapsed?: number;
-  logId?: string;
+}
+
+interface AnalysisResponse {
+  success: boolean;
+  analysis: {
+    photo_type?: string;
+    priority_facets?: string[];
+    summary?: string;
+    severity?: string;
+    inventory?: { items?: Array<{ name: string; brand?: string; quantity?: string }>; total_skus_detected?: number };
+    shelf_share?: { brands?: Array<{ name: string; estimated_share_pct: number; position?: string }>; dominant_brand?: string; notes?: string };
+    pricing?: { prices_found?: Array<{ item: string; price: number; currency?: string; type?: string }>; strategies_detected?: string[] };
+    compliance?: { score?: string; pop_materials?: { present?: boolean; properly_installed?: boolean; condition?: string }; product_facing?: string; signage?: string; issues?: string[] };
+    condition?: { cleanliness?: string; displays?: string; lighting?: string; products?: string; safety_issues?: string[]; notes?: string };
+    context?: { establishment_type?: string; inferred_location?: { city_or_region?: string; country?: string; confidence?: string }; setting?: string; time_of_day?: string; foot_traffic?: string };
+    insights?: { strengths?: string[]; opportunities?: string[]; threats?: string[]; recommendations?: string[] };
+    additional_observations?: string;
+  };
+  condition_detail?: {
+    severity?: string;
+    severity_justification?: string;
+    issues?: Array<{ description: string; location?: string; severity?: string; root_cause?: string; immediate_action?: string }>;
+    safety_hazards?: Array<{ hazard: string; risk_level?: string; mitigation?: string }>;
+    remediation_plan?: { immediate?: string[]; short_term?: string[]; preventive?: string[] };
+    overall_assessment?: string;
+  };
+  meta: {
+    model: string;
+    tokens: { input: number; output: number; total: number };
+    processing_time_ms: number;
+    engine?: string;
+    escalated?: boolean;
+  };
 }
 
 export default function DemoPage() {
-  const gate = useEmailGate();
   const [jobs, setJobs] = useState<ImageJob[]>([]);
   const [activeId, setActiveId] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
-
-  // Gate: show loading spinner or gate screen
-  if (gate.loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <div className="spinner" />
-      </div>
-    );
-  }
-
-  if (!gate.email) {
-    return <GateScreen onSubmit={gate.submitEmail} error={gate.error} loading={gate.loading} />;
-  }
 
   const activeJob = jobs.find(j => j.id === activeId);
   const hasResults = jobs.some(j => j.status === 'done' || j.status === 'error');
@@ -54,12 +66,7 @@ export default function DemoPage() {
     const valid = Array.from(files).filter(f => ACCEPTED_TYPES.includes(f.type) && f.size <= MAX_SIZE);
     if (!valid.length) return;
 
-    // Enforce max images limit
-    const currentCount = jobs.length;
-    const allowed = valid.slice(0, MAX_IMAGES - currentCount);
-    if (!allowed.length) return;
-
-    const newJobs: ImageJob[] = allowed.map(f => ({
+    const newJobs: ImageJob[] = valid.map(f => ({
       id: crypto.randomUUID(),
       fileName: f.name,
       previewUrl: URL.createObjectURL(f),
@@ -68,7 +75,7 @@ export default function DemoPage() {
       status: 'pending' as const,
     }));
 
-    allowed.forEach((file, idx) => {
+    valid.forEach((file, idx) => {
       const reader = new FileReader();
       reader.onload = () => {
         const b64 = reader.result as string;
@@ -79,12 +86,10 @@ export default function DemoPage() {
 
     setJobs(prev => [...prev, ...newJobs]);
     setActiveId(newJobs[0].id);
-  }, [jobs.length]);
+  }, []);
 
   const removeJob = (id: string) => {
     setJobs(prev => {
-      const job = prev.find(j => j.id === id);
-      if (job) URL.revokeObjectURL(job.previewUrl);
       const next = prev.filter(j => j.id !== id);
       if (activeId === id && next.length > 0) setActiveId(next[0].id);
       if (!next.length) setActiveId('');
@@ -105,22 +110,22 @@ export default function DemoPage() {
       const res = await fetch('/api/demo/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: job.base64, mime_type: job.mimeType, fileName: job.fileName }),
+        body: JSON.stringify({ image: job.base64, mime_type: job.mimeType }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
-      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'done' as const, result: data, logId: data.log_id || undefined, elapsed: Date.now() - (j.startedAt || Date.now()), base64: '' } : j));
+      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'done' as const, result: data, elapsed: Date.now() - (j.startedAt || Date.now()) } : j));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'error' as const, error: msg, elapsed: Date.now() - (j.startedAt || Date.now()), base64: '' } : j));
+      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'error' as const, error: msg, elapsed: Date.now() - (j.startedAt || Date.now()) } : j));
     }
   };
 
   const analyzeAll = async () => {
     setIsAnalyzing(true);
     const pending = jobs.filter(j => j.status === 'pending' && j.base64);
-    for (let i = 0; i < pending.length; i += PARALLEL_LIMIT) {
-      const batch = pending.slice(i, i + PARALLEL_LIMIT);
+    for (let i = 0; i < pending.length; i += 3) {
+      const batch = pending.slice(i, i + 3);
       await Promise.all(batch.map(analyzeOne));
     }
     setIsAnalyzing(false);
@@ -140,16 +145,10 @@ export default function DemoPage() {
   const canAnalyze = jobs.some(j => j.status === 'pending' && j.base64);
 
   return (
-    <div style={{ minHeight: '100vh', padding: '1.5rem', maxWidth: '960px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '1.5rem', paddingBottom: jobs.length > 0 && !hasResults ? '6rem' : '1.5rem', maxWidth: '960px', margin: '0 auto' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border)' }}>
         <Link href="/" style={{ fontSize: '0.875rem', fontWeight: 900, textDecoration: 'none', color: 'var(--text)', letterSpacing: '0.05em' }}>BLACK BOX MAGIC</Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div className="user-bar">
-            <span className="user-bar__email">{gate.email}</span>
-            <button className="user-bar__logout" onClick={gate.clearSession}>not you?</button>
-          </div>
-          <span className="badge badge--neutral">DEMO</span>
-        </div>
+        <span className="badge badge--neutral">DEMO</span>
       </header>
 
       {/* Upload area */}
@@ -167,7 +166,7 @@ export default function DemoPage() {
             <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem' }}>
               {jobs.length === 0 ? 'Select or drop images' : `${jobs.length} image${jobs.length > 1 ? 's' : ''} selected`}
             </div>
-            <div className="text-sm muted">JPG, PNG, WebP — max 10 MB — up to {MAX_IMAGES} images</div>
+            <div className="text-sm muted">JPG, PNG, WebP — max 10 MB — multiple files allowed</div>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }} style={{ display: 'none' }} />
           </div>
 
@@ -183,9 +182,9 @@ export default function DemoPage() {
             </div>
           )}
 
-          {/* Action buttons — inline, always visible after thumbnails */}
+          {/* Bottom bar */}
           {jobs.length > 0 && (
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '1rem 1.5rem', background: 'var(--bg-white)', borderTop: '2px solid var(--border)', display: 'flex', gap: '0.75rem', zIndex: 100 }}>
               <button className="btn btn--primary" onClick={analyzeAll} disabled={!canAnalyze} style={{ flex: 1, padding: '1rem', fontSize: '1rem' }}>
                 {canAnalyze ? `ANALYZE ${pendingCount} IMAGE${pendingCount > 1 ? 'S' : ''}` : 'LOADING...'}
               </button>
@@ -255,7 +254,7 @@ export default function DemoPage() {
                 </div>
               )}
               {activeJob.status === 'done' && activeJob.result && (
-                <ResultView job={activeJob} allDoneResults={jobs.filter(j => j.status === 'done' && j.result).map(j => j.result!)} />
+                <ResultView job={activeJob} />
               )}
             </div>
           )}
@@ -272,29 +271,7 @@ function StatusDot({ status }: { status: string }) {
 
 // ─── Result View ───
 
-function ResultView({ job, allDoneResults }: { job: ImageJob; allDoneResults: AnalysisResponse[] }) {
-  const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-
-  const sendEmail = async () => {
-    if (!job.logId) return;
-    setEmailStatus('sending');
-    try {
-      const res = await fetch('/api/demo/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ log_id: job.logId }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed');
-      }
-      setEmailStatus('sent');
-      setTimeout(() => setEmailStatus('idle'), 3000);
-    } catch {
-      setEmailStatus('error');
-      setTimeout(() => setEmailStatus('idle'), 3000);
-    }
-  };
+function ResultView({ job }: { job: ImageJob }) {
   const { result } = job;
   if (!result) return null;
   const a = result.analysis;
@@ -340,39 +317,8 @@ function ResultView({ job, allDoneResults }: { job: ImageJob; allDoneResults: An
             {meta.tokens.total} tokens · {(meta.processing_time_ms / 1000).toFixed(1)}s · {meta.engine || 'v1'}
             {meta.escalated && ' · 2-pass'}
           </div>
-
-          {/* Export + Email buttons */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
-            <ExportMenu
-              result={result}
-              imageUrl={job.previewUrl}
-              fileName={job.fileName.replace(/\.[^.]+$/, '')}
-              allResults={allDoneResults}
-            />
-            {job.logId && (
-              <button
-                className="btn btn--secondary btn--small"
-                onClick={sendEmail}
-                disabled={emailStatus === 'sending' || emailStatus === 'sent'}
-                style={{ fontSize: '0.75rem' }}
-              >
-                {emailStatus === 'idle' && 'EMAIL'}
-                {emailStatus === 'sending' && 'ENVIANDO...'}
-                {emailStatus === 'sent' && 'ENVIADO \u2713'}
-                {emailStatus === 'error' && 'ERROR \u2014 REINTENTAR'}
-              </button>
-            )}
-          </div>
         </div>
       </div>
-
-      {/* Truncation warning */}
-      {meta.truncated && (
-        <div className="truncation-banner mt-2">
-          El an&aacute;lisis identific&oacute; m&aacute;s items de los que se pudieron procesar.
-          Se muestran {a.inventory?.items?.length ?? 0} de ~{a.inventory?.total_skus_detected ?? '?'} estimados.
-        </div>
-      )}
 
       {/* Facets */}
       <div className="card mt-2">

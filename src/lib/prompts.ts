@@ -39,10 +39,6 @@ STEP 3 — ANALYZE all 7 facets (reordered by relevance to the photo):
 
 Be specific, quantitative, and actionable. Count items. Read prices. Identify brands.
 
-CRITICAL: List ALL visible items, not just the first few. If you detect 15 products,
-you MUST list all 15 in the inventory. Do NOT truncate or summarize with "and others".
-Every visible product, price, and brand must appear in the output.
-
 Respond ONLY with valid JSON matching this schema:`;
 
 export const SINGLE_PASS_SCHEMA = `{
