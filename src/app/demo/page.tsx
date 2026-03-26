@@ -345,7 +345,7 @@ function ResultView({ job, allDoneResults }: { job: ImageJob; allDoneResults: An
           <p style={{ fontSize: '0.9rem', lineHeight: 1.7 }}>{a.summary || 'No summary available'}</p>
 
           <div className="text-xs muted mt-2 mono">
-            {meta.tokens.total} tokens · {(meta.processing_time_ms / 1000).toFixed(1)}s · {meta.engine || 'v1'}
+            {(meta.processing_time_ms / 1000).toFixed(1)}s · {meta.engine || 'v1'}
             {meta.escalated && ' · 2-pass'}
           </div>
 
