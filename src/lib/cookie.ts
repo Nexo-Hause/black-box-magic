@@ -1,4 +1,3 @@
-import 'server-only';
 import { createHmac } from 'crypto';
 
 import { COOKIE_NAME } from './constants';
