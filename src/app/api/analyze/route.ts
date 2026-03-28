@@ -6,6 +6,8 @@ import {
   buildConditionEscalationPrompt,
   shouldEscalate,
 } from '@/lib/prompts';
+import { getActiveConfig } from '@/lib/engine/config';
+import { analyzeWithConfig } from '@/lib/engine/analyzer';
 
 export const maxDuration = 60; // Vercel Pro allows up to 60s
 
@@ -13,6 +15,7 @@ interface AnalyzeRequest {
   image: string;        // base64-encoded image
   mime_type?: string;    // defaults to image/jpeg
   custom_rules?: string; // optional client-specific evaluation rules
+  client_id?: string;    // if present, use engine v3 with ClientConfig
 }
 
 export async function POST(request: NextRequest) {
@@ -73,7 +76,33 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // ─── PASS 1: Single-pass adaptive analysis ───
+    // ─── Engine v3: config-driven analysis ───
+    if (body.client_id) {
+      const config = await getActiveConfig(body.client_id);
+      if (!config) {
+        return NextResponse.json(
+          { error: `No active config found for client_id: ${body.client_id}`, status: 404 },
+          { status: 404 }
+        );
+      }
+
+      const v3Result = await analyzeWithConfig(imageBase64, mimeType, config, geminiKey);
+
+      return NextResponse.json({
+        success: true,
+        client: auth.client,
+        analysis: v3Result.result,
+        meta: {
+          model: v3Result.model,
+          tokens: v3Result.tokens,
+          processing_time_ms: v3Result.processing_time_ms,
+          engine: 'engine-v3',
+          escalated: v3Result.result.escalations.length > 0,
+        },
+      });
+    }
+
+    // ─── Legacy: PASS 1 — Single-pass adaptive analysis ───
     const prompt = buildSinglePassPrompt(body.custom_rules);
     const result = await analyzeImage(imageBase64, mimeType, prompt, geminiKey);
 
