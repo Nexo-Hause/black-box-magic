@@ -3,7 +3,7 @@
 ## Autenticación
 
 - **Producción**: Bearer token obligatorio en `Authorization` header. Keys en `BBM_API_KEYS`.
-- **Demo**: Cookie HMAC-SHA256 con secreto `BBM_COOKIE_SECRET`. Expiración 30 días.
+- **Demo**: Cookie HMAC-SHA256 con secreto `BBM_COOKIE_SECRET`. Expiración 30 días. Verificación con `crypto.timingSafeEqual()` — nunca comparación directa de strings.
 - Nunca exponer API keys en el cliente. Todo secreto va en `.env.local`.
 - No hardcodear secretos, tokens, o credenciales en el código.
 
