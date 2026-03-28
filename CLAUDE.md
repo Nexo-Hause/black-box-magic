@@ -14,7 +14,7 @@ src/
 │   │   ├── demo/             # Endpoints demo (cookie-gated)
 │   │   │   ├── analyze/      # Análisis demo
 │   │   │   └── email/        # Envío de reportes por email
-│   │   ├── gate/             # Email gate (registro + check)
+│   │   ├── gate/             # Email gate (registro + check + logout)
 │   │   └── health/           # Status + documentación
 │   ├── demo/                 # UI demo (upload, batch, exports)
 │   └── page.tsx              # Landing page
@@ -115,6 +115,26 @@ No hay framework de tests configurado. Cuando se agregue, documentar aquí.
 | Seguridad API | `.claude/rules/security.md` | Endpoints, auth, input validation |
 | Supabase | `.claude/rules/supabase.md` | Queries, RLS, migraciones |
 | Frontend | `.claude/rules/frontend.md` | Componentes React, UI, accesibilidad |
+
+---
+
+## Specs
+
+| Spec | Título | Estado |
+|------|--------|--------|
+| `spec/00-ubiqo-integration.md` | Integración BBM × Ubiqo (Evidence/Gather) | Aprobado, pendiente tokens |
+| `spec/01-engine-v3.md` | Engine v3 — Motor multi-industria con onboarding conversacional | Auditado, PR #3 |
+
+---
+
+## Documentación
+
+| Doc | Contenido |
+|-----|-----------|
+| `docs/guia-discovery-onboarding.md` | Guía de discovery/onboarding (32 preguntas, 5 fases, 3 capas de valor) |
+| `docs/ubiqo/reunion-2026-03-26.md` | Transcripción reunión con Guillermo y Alberto |
+| `docs/ubiqo/roadmap-franquicia-restaurantes.md` | Roadmap franquicia restaurantes con fases y pricing |
+| `docs/ubiqo/analisis-clientes-evidence.md` | Análisis de 12 prospectos Evidence en 5 industrias |
 
 ---
 
