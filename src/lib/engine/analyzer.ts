@@ -81,6 +81,7 @@ function isCriterionFailed(
 function scoreArea(
   area: EvaluationArea,
   rawCriteria: RawLLMCriterionResult[],
+  passingScore: number = 70,
 ): { areaResult: AreaResult; hasCriticalFailure: boolean } {
   const criterionResults: CriterionResult[] = [];
   let hasCriticalFailure = false;
@@ -120,7 +121,7 @@ function scoreArea(
       areaName: area.name,
       score: Math.round(areaScore * 100) / 100,
       weight: area.weight,
-      passed: !hasCriticalFailure && areaScore >= 50,
+      passed: !hasCriticalFailure && areaScore >= passingScore,
       criteria: criterionResults,
     },
     hasCriticalFailure,
@@ -221,7 +222,7 @@ export async function analyzeWithConfig(
   const areaResults: AreaResult[] = config.evaluationAreas.map((area) => {
     const rawArea = rawResponse.areas.find((a) => a.areaId === area.id);
     const rawCriteria = rawArea?.criteria ?? [];
-    const { areaResult } = scoreArea(area, rawCriteria);
+    const { areaResult } = scoreArea(area, rawCriteria, config.passingScore ?? 70);
     return areaResult;
   });
 

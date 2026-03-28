@@ -98,9 +98,19 @@ export const clientConfigSchema = z
     { message: 'evaluationAreas weights must sum to ~1.0 (±0.05)' }
   );
 
+// ─── Input validation ───
+
+const clientIdSchema = z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/);
+
 // ─── Supabase operations ───
 
 export async function getActiveConfig(clientId: string): Promise<ClientConfig | null> {
+  const parseResult = clientIdSchema.safeParse(clientId);
+  if (!parseResult.success) {
+    console.warn('Invalid client_id format:', clientId);
+    return null;
+  }
+
   if (!supabase) return null;
 
   const { data, error } = await supabase
