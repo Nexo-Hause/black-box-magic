@@ -61,7 +61,7 @@
 
 ## Próximos Pasos
 
-1. **Mergear PR #3** — spec 01 + fixes de seguridad
+1. **Mergear PR #4** — security fixes + docs update
 2. **Fase 0:** Instalar Vitest, configurar test runner
 3. **Fase 1:** Motor configurable (src/lib/engine/) — 0 dependencias externas
 4. **Fase 2:** Onboarding por texto (REST chat con Gemini)
