@@ -1,4 +1,4 @@
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 import { COOKIE_NAME } from './constants';
 
@@ -33,7 +33,9 @@ export function verifyCookie(cookieValue: string): CookiePayload | null {
     // Verify HMAC
     if (!SECRET) return null;
     const expected = createHmac('sha256', SECRET).update(`${email}:${timestamp}`).digest('hex');
-    if (signature !== expected) return null;
+    const sigBuf = Buffer.from(signature, 'utf8');
+    const expBuf = Buffer.from(expected, 'utf8');
+    if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) return null;
 
     // Verify expiration (server-side)
     const ageMs = Date.now() - timestamp;

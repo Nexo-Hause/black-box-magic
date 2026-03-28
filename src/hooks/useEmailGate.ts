@@ -50,10 +50,13 @@ export function useEmailGate() {
     }
   }, []);
 
-  // Clear session ("not you?" link)
+  // Clear session ("not you?" link) — server-side cookie deletion
   const clearSession = useCallback(async () => {
-    // Delete cookie by setting it expired
-    document.cookie = `${COOKIE_NAME}=; path=/; max-age=0`;
+    try {
+      await fetch('/api/gate/logout', { method: 'POST' });
+    } catch {
+      // Best-effort — even if the call fails, clear local state
+    }
     setState({ loading: false, email: null, error: null });
   }, []);
 
