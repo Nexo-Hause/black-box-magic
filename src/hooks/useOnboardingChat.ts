@@ -21,6 +21,14 @@ export interface TestPhoto {
   feedback: string;
 }
 
+interface VoiceSession {
+  wsUrl: string;
+  token: string;
+  expiresAt: string;
+  systemPrompt: string;
+  tools: unknown;
+}
+
 interface OnboardingState {
   phase: 'idle' | 'chatting' | 'synthesizing' | 'reviewing' | 'testing' | 'deploying' | 'approved';
   sessionId: string | null;
@@ -38,6 +46,8 @@ interface OnboardingState {
   synthesisProgress: string;
   testPhotos: TestPhoto[];
   iterationCount: number;
+  voiceSession: VoiceSession | null;
+  voiceMode: boolean;
 }
 
 const initialState: OnboardingState = {
@@ -57,6 +67,8 @@ const initialState: OnboardingState = {
   synthesisProgress: '',
   testPhotos: [],
   iterationCount: 0,
+  voiceSession: null,
+  voiceMode: false,
 };
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -84,7 +96,10 @@ type Action =
   | { type: 'START_DEPLOY' }
   | { type: 'DEPLOY_SUCCESS' }
   | { type: 'DEPLOY_ERROR'; error: string }
-  | { type: 'REQUEST_ADJUSTMENT' };
+  | { type: 'REQUEST_ADJUSTMENT' }
+  | { type: 'VOICE_SESSION_STARTED'; session: VoiceSession }
+  | { type: 'VOICE_MODE_TOGGLE' }
+  | { type: 'VOICE_SESSION_ENDED' };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -238,6 +253,27 @@ function reducer(state: OnboardingState, action: Action): OnboardingState {
         confidence: 0,
         iterationCount: state.iterationCount + 1,
         testPhotos: [],
+      };
+
+    case 'VOICE_SESSION_STARTED':
+      return {
+        ...state,
+        voiceSession: action.session,
+        voiceMode: true,
+        error: null,
+      };
+
+    case 'VOICE_MODE_TOGGLE':
+      return {
+        ...state,
+        voiceMode: !state.voiceMode,
+      };
+
+    case 'VOICE_SESSION_ENDED':
+      return {
+        ...state,
+        voiceSession: null,
+        voiceMode: false,
       };
 
     default:
@@ -459,6 +495,44 @@ export function useOnboardingChat() {
     dispatch({ type: 'REQUEST_ADJUSTMENT' });
   }, []);
 
+  const startVoiceSession = useCallback(async () => {
+    const { sessionId, token } = stateRef.current;
+    if (!sessionId || !token) return;
+    try {
+      const res = await fetch('/api/onboarding/voice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión de voz');
+      dispatch({
+        type: 'VOICE_SESSION_STARTED',
+        session: {
+          wsUrl: data.wsUrl,
+          token: data.token,
+          expiresAt: data.expiresAt,
+          systemPrompt: data.systemPrompt,
+          tools: data.tools,
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al iniciar sesión de voz';
+      dispatch({ type: 'CHAT_ERROR', error: message });
+    }
+  }, []);
+
+  const toggleVoiceMode = useCallback(() => {
+    dispatch({ type: 'VOICE_MODE_TOGGLE' });
+  }, []);
+
+  const endVoiceSession = useCallback(() => {
+    dispatch({ type: 'VOICE_SESSION_ENDED' });
+  }, []);
+
   return {
     state,
     startSession,
@@ -472,5 +546,8 @@ export function useOnboardingChat() {
     rateTestResult,
     deployConfig,
     requestAdjustment,
+    startVoiceSession,
+    toggleVoiceMode,
+    endVoiceSession,
   };
 }

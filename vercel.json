@@ -32,6 +32,10 @@
     "src/app/api/onboarding/deploy/route.ts": {
       "maxDuration": 10,
       "memory": 256
+    },
+    "src/app/api/onboarding/voice/route.ts": {
+      "maxDuration": 10,
+      "memory": 256
     }
   }
 }
