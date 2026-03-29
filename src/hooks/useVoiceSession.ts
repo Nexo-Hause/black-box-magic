@@ -189,8 +189,24 @@ export function useVoiceSession({
 
   // ── Connect ──────────────────────────────────────────────────────────────
 
+  const connectAttemptsRef = useRef(0);
+  const MAX_CONNECT_ATTEMPTS = 3;
+
   const connect = useCallback(() => {
     if (wsRef.current) return; // already open
+
+    if (connectAttemptsRef.current >= MAX_CONNECT_ATTEMPTS) {
+      setStatus('error');
+      onErrorRef.current('No se pudo conectar después de varios intentos. Usa el modo texto.');
+      return;
+    }
+    connectAttemptsRef.current++;
+
+    if (!wsUrl.includes('generativelanguage.googleapis.com')) {
+      setStatus('error');
+      onErrorRef.current('Invalid WebSocket endpoint');
+      return;
+    }
 
     setStatus('connecting');
     const ws = new WebSocket(wsUrl);
@@ -210,6 +226,7 @@ export function useVoiceSession({
           tools: [tools],
         },
       }));
+      connectAttemptsRef.current = 0; // Reset on success
       setStatus('connected');
     };
 
@@ -285,7 +302,7 @@ export function useVoiceSession({
     };
 
     source.connect(processor);
-    processor.connect(ctx.destination);
+    processor.connect(ctx.destination); // Required for onaudioprocess to fire
 
     listeningRef.current = true;
     setStatus('listening');
@@ -302,8 +319,11 @@ export function useVoiceSession({
       wsRef.current.send(JSON.stringify({ realtimeInput: { mediaChunks: [] } }));
     }
 
-    stopAudio();
-    setStatus('processing');
+    // Delay audio cleanup to allow final frames to process
+    setTimeout(() => {
+      stopAudio();
+      setStatus('processing');
+    }, 150);
   }, [stopAudio]);
 
   // ── Cleanup on unmount ────────────────────────────────────────────────────
