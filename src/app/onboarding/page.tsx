@@ -265,6 +265,7 @@ function ChatView({ messages, loading, isComplete, onSend, onStartSynthesis, onS
 interface VoiceViewProps {
   wsUrl: string;
   token: string;
+  expiresAt?: string;
   systemPrompt: string;
   tools: unknown;
   onTranscript: (text: string, role: 'user' | 'assistant') => void;
@@ -272,9 +273,16 @@ interface VoiceViewProps {
   onSwitchToText: () => void;
 }
 
-function VoiceView({ wsUrl, token, systemPrompt, tools, onTranscript, onComplete, onSwitchToText }: VoiceViewProps) {
+function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript, onComplete, onSwitchToText }: VoiceViewProps) {
   const transcriptBottomRef = useRef<HTMLDivElement>(null);
   const [transcriptLines, setTranscriptLines] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([]);
+
+  // Check token expiration
+  useEffect(() => {
+    if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
+      onSwitchToText();
+    }
+  }, [expiresAt, onSwitchToText]);
 
   const handleTranscript = useCallback((text: string, role: 'user' | 'assistant') => {
     setTranscriptLines(prev => [...prev, { role, text }]);

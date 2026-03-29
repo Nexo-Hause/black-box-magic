@@ -133,6 +133,12 @@ function buildWsUrl(accessToken: string): string {
  * WARNING: Never use in production — the API key would be exposed to the browser.
  */
 function devFallback(apiKey: string, expireTime: string): EphemeralTokenResponse {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[live-session] Ephemeral token endpoint unavailable in production. ' +
+        'Voice onboarding is temporarily disabled. Please try again later or use text mode.',
+    );
+  }
   console.warn(
     '[live-session] Ephemeral token endpoint unavailable — falling back to raw API key. ' +
       'This is NOT safe for production.',
