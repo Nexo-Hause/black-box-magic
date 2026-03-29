@@ -10,26 +10,52 @@ API de análisis visual con IA para retail y QSR (Quick Service Restaurants). Re
 src/
 ├── app/
 │   ├── api/
-│   │   ├── analyze/          # API producción (Bearer token auth)
+│   │   ├── analyze/          # API producción (Bearer token auth, legacy + engine v3)
 │   │   ├── demo/             # Endpoints demo (cookie-gated)
 │   │   │   ├── analyze/      # Análisis demo
 │   │   │   └── email/        # Envío de reportes por email
 │   │   ├── gate/             # Email gate (registro + check + logout)
+│   │   ├── onboarding/       # Engine v3 onboarding endpoints
+│   │   │   ├── session/      # Crear sesión (code exchange → JWT)
+│   │   │   ├── chat/         # Chat con Gemini (function calling)
+│   │   │   ├── synthesize/   # Síntesis de ClientConfig (Gemini Pro)
+│   │   │   ├── test/         # Test de fotos con config candidato
+│   │   │   ├── deploy/       # Activar config (testing → active)
+│   │   │   └── voice/        # Token efímero para Live API (voz)
 │   │   └── health/           # Status + documentación
 │   ├── demo/                 # UI demo (upload, batch, exports)
+│   ├── onboarding/           # UI onboarding (chat, review, test, voz)
 │   └── page.tsx              # Landing page
 ├── lib/
 │   ├── auth.ts               # Bearer token auth (producción)
 │   ├── cookie.ts             # HMAC-signed email cookie (demo)
 │   ├── gemini.ts             # Cliente Gemini Vision (2 modelos, fallback)
-│   ├── prompts.ts            # Motor de prompt híbrido v2 (2 pasadas)
+│   ├── gemini-chat.ts        # Cliente Gemini texto + function calling
+│   ├── prompts.ts            # Motor de prompt híbrido v2 (legacy, 2 pasadas)
 │   ├── supabase.ts           # Cliente Supabase (logging)
 │   ├── email.ts              # Composición y envío de emails
-│   └── exports/              # PDF, Excel, JSON, clipboard, WhatsApp, imagen anotada
+│   ├── exports/              # PDF, Excel, JSON, clipboard, WhatsApp, imagen anotada
+│   ├── engine/               # Engine v3 — motor configurable
+│   │   ├── config.ts         # ClientConfig Zod validation + CRUD
+│   │   ├── prompt-builder.ts # Prompt dinámico desde config
+│   │   ├── analyzer.ts       # Scoring server-side + orquestación
+│   │   ├── escalation.ts     # Triggers estructurados
+│   │   └── qsr-default-config.ts # Config QSR replicando legacy
+│   └── onboarding/           # Módulos de onboarding
+│       ├── auth.ts           # JWT (jose) + code exchange
+│       ├── tools.ts          # Function calling tools + processing
+│       ├── synthesis.ts      # Síntesis con Gemini Pro
+│       ├── system-prompt.ts  # System prompt del chat
+│       ├── live-session.ts   # Ephemeral tokens para Live API
+│       └── test-runner.ts    # Test de fotos con config
 ├── types/
-│   └── analysis.ts           # Interfaces TypeScript del response
+│   ├── analysis.ts           # Interfaces TypeScript del response (legacy)
+│   ├── engine.ts             # ClientConfig, EngineV3Result, triggers
+│   └── onboarding.ts         # Zod schemas para API de onboarding
 └── hooks/
-    └── useEmailGate.ts       # Hook React para estado del gate
+    ├── useEmailGate.ts       # Hook React para estado del gate
+    ├── useOnboardingChat.ts  # State machine del onboarding (7 fases)
+    └── useVoiceSession.ts    # WebSocket + audio para voz
 ```
 
 ---
@@ -41,7 +67,10 @@ src/
 | Next.js | Framework full-stack | 14.2.21 |
 | TypeScript | Lenguaje (strict mode) | ^5 |
 | React | UI | ^18 |
-| Google Gemini API | Visión AI (análisis de imágenes) | gemini-3.1-flash-lite-preview |
+| Google Gemini API | Visión AI + chat + síntesis + voz | Flash Lite, Flash, Pro, Live |
+| Zod | Validación de schemas | ^4.3.6 |
+| jose | JWT sign/verify (onboarding auth) | latest |
+| Vitest | Test runner | ^4.1.2 |
 | Supabase | PostgreSQL — logging de uso y usuarios | ^2.100.0 |
 | Nodemailer | Email SMTP vía Gmail | ^8.0.4 |
 | jspdf + autotable | Generación de PDF | ^4.2.1 |
@@ -62,6 +91,9 @@ src/
 | Styling | Tailwind CSS (inline) | CSS modules, styled-components |
 | Auth (producción) | Bearer token (BBM_API_KEYS) | NextAuth, Clerk |
 | Auth (demo) | Cookie HMAC-signed | — |
+| Auth (onboarding) | JWT via jose + HKDF derivation | — |
+| Test runner | Vitest | — |
+| Schema validation | Zod v4 (`zod/v4`) | — |
 
 ---
 
@@ -77,6 +109,14 @@ src/
 | `src/app/demo/page.tsx` | UI principal del demo |
 | `src/lib/supabase.ts` | Cliente Supabase + funciones de logging |
 | `vercel.json` | Configuración serverless (timeouts, memoria) |
+| `src/lib/engine/config.ts` | Engine v3 — Zod schemas + CRUD de ClientConfig |
+| `src/lib/engine/analyzer.ts` | Engine v3 — Scoring server-side + orquestación |
+| `src/lib/engine/prompt-builder.ts` | Engine v3 — Prompt dinámico desde config |
+| `src/lib/onboarding/auth.ts` | JWT auth para onboarding (jose + HKDF) |
+| `src/lib/onboarding/synthesis.ts` | Síntesis de ClientConfig con Gemini Pro |
+| `src/types/engine.ts` | Tipos del engine v3 (ClientConfig, EngineV3Result) |
+| `src/hooks/useOnboardingChat.ts` | State machine del onboarding (7 fases) |
+| `supabase/migrations/001_create_bbm_client_configs.sql` | Migración SQL (pendiente) |
 
 ---
 

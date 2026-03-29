@@ -54,33 +54,46 @@ export async function POST(request: NextRequest) {
   const { sessionId } = parsed.data;
 
   // Validate sessionId exists in Supabase with an active status
-  if (supabase) {
-    try {
-      const { data: session, error } = await supabase
-        .from('bbm_client_configs')
-        .select('id, status, client_id')
-        .eq('id', sessionId)
-        .in('status', ['draft', 'testing'])
-        .maybeSingle();
+  // Voice sessions require Supabase — no graceful degradation
+  if (!supabase) {
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable', status: 503 },
+      { status: 503 },
+    );
+  }
 
-      if (error) {
-        console.error('[onboarding/voice] Supabase error:', error.message);
-      } else if (!session) {
-        return NextResponse.json(
-          { error: 'Session not found or no longer active', status: 404 },
-          { status: 404 },
-        );
-      } else if (session.client_id !== auth.payload.clientId) {
-        return NextResponse.json(
-          { error: 'Forbidden', status: 403 },
-          { status: 403 },
-        );
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      console.error('[onboarding/voice] Unexpected Supabase error:', message);
-      // Graceful degradation
+  try {
+    const { data: session, error } = await supabase
+      .from('bbm_client_configs')
+      .select('id, status, client_id')
+      .eq('id', sessionId)
+      .in('status', ['draft', 'testing'])
+      .maybeSingle();
+
+    if (error) {
+      console.error('[onboarding/voice] Supabase error:', error.message);
+      return NextResponse.json(
+        { error: 'Service temporarily unavailable', status: 503 },
+        { status: 503 },
+      );
+    } else if (!session) {
+      return NextResponse.json(
+        { error: 'Session not found or no longer active', status: 404 },
+        { status: 404 },
+      );
+    } else if (session.client_id !== auth.payload.clientId) {
+      return NextResponse.json(
+        { error: 'Forbidden', status: 403 },
+        { status: 403 },
+      );
     }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[onboarding/voice] Unexpected Supabase error:', message);
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable', status: 503 },
+      { status: 503 },
+    );
   }
 
   // Generate ephemeral token

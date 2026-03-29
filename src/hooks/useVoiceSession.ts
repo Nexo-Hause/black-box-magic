@@ -202,6 +202,12 @@ export function useVoiceSession({
     }
     connectAttemptsRef.current++;
 
+    if (!wsUrl.includes('generativelanguage.googleapis.com')) {
+      setStatus('error');
+      onErrorRef.current('Invalid WebSocket endpoint');
+      return;
+    }
+
     setStatus('connecting');
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;

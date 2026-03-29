@@ -283,7 +283,6 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
       onSwitchToText();
     }
   }, [expiresAt, onSwitchToText]);
-
   const handleTranscript = useCallback((text: string, role: 'user' | 'assistant') => {
     setTranscriptLines(prev => [...prev, { role, text }]);
     onTranscript(text, role);
@@ -1043,6 +1042,7 @@ function OnboardingPageInner() {
         <VoiceView
           wsUrl={state.voiceSession.wsUrl}
           token={state.voiceSession.token}
+          expiresAt={state.voiceSession.expiresAt}
           systemPrompt={state.voiceSession.systemPrompt}
           tools={state.voiceSession.tools}
           onTranscript={handleVoiceTranscript}
