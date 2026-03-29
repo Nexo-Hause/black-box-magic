@@ -229,12 +229,15 @@ export async function analyzeWithConfig(
   timeoutMs = 55000,
 ): Promise<AnalyzeWithConfigResult> {
   const prompt = buildAnalysisPrompt(config);
-  const geminiResult = await Promise.race([
-    analyzeImage(imageBase64, mimeType, prompt, apiKey),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Gemini analysis timeout')), timeoutMs),
-    ),
-  ]);
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const geminiResult = await Promise.race([
+      analyzeImage(imageBase64, mimeType, prompt, apiKey),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('Gemini analysis timeout')), timeoutMs);
+      }),
+    ]);
+    clearTimeout(timeoutId);
 
   const rawResponse = parseRawLLMResponse(geminiResult.data, config);
 
@@ -272,6 +275,10 @@ export async function analyzeWithConfig(
     tokens: geminiResult.tokens,
     processing_time_ms: geminiResult.processing_time_ms,
   };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
 }
 
 // Export scoring functions for testing

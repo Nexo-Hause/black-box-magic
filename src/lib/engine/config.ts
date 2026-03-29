@@ -9,7 +9,7 @@ import { INDUSTRIES, type ClientConfig } from '@/types/engine';
 // ─── Anti-injection ───
 
 const INJECTION_PATTERN =
-  /ignore previous|override|forget|new role|system:|assistant:|user:/i;
+  /ignore previous|override|forget|new role|system:|assistant:|user:|disregard all|you are now|from now on/i;
 
 function noInjection(val: string): boolean {
   return !INJECTION_PATTERN.test(val);

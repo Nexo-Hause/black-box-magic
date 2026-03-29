@@ -15,22 +15,33 @@ async function deriveSecret(): Promise<Uint8Array> {
     return new TextEncoder().encode(jwtSecret);
   }
 
-  // Fall back to HMAC derivation from cookie secret
+  // Fall back to HKDF derivation from cookie secret
   const cookieSecret = process.env.BBM_COOKIE_SECRET || '';
   if (!cookieSecret || cookieSecret.length < 32) {
     throw new Error('[onboarding/auth] JWT secret not configured. Set BBM_JWT_SECRET or ensure BBM_COOKIE_SECRET is at least 32 chars.');
   }
 
   const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
+  const baseKey = await crypto.subtle.importKey(
     'raw',
     encoder.encode(cookieSecret),
-    { name: 'HMAC', hash: 'SHA-256' },
+    { name: 'HKDF' },
     false,
-    ['sign'],
+    ['deriveKey'],
   );
-  const derived = await crypto.subtle.sign('HMAC', key, encoder.encode('bbm_jwt_derivation_v1'));
-  return new Uint8Array(derived);
+  const derivedKey = await crypto.subtle.deriveKey(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: encoder.encode('bbm_onboarding_v1'),
+      info: encoder.encode('jwt-signing-key'),
+    },
+    baseKey,
+    { name: 'HMAC', hash: 'SHA-256', length: 256 },
+    true,
+    ['sign', 'verify'],
+  );
+  return new Uint8Array(await crypto.subtle.exportKey('raw', derivedKey));
 }
 
 async function getSecret(): Promise<Uint8Array> {

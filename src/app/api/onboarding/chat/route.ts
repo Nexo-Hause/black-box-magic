@@ -16,7 +16,7 @@ export const maxDuration = 30;
 // ─── Anti-injection ───────────────────────────────────────────────────────────
 
 const INJECTION_PATTERN =
-  /ignore previous|override|forget|new role|system:|assistant:|user:/i;
+  /ignore previous|override|forget|new role|system:|assistant:|user:|disregard all|you are now|from now on/i;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
