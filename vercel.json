@@ -12,6 +12,26 @@
     "src/app/api/demo/email/route.ts": {
       "maxDuration": 30,
       "memory": 512
+    },
+    "src/app/api/onboarding/session/route.ts": {
+      "maxDuration": 10,
+      "memory": 256
+    },
+    "src/app/api/onboarding/chat/route.ts": {
+      "maxDuration": 30,
+      "memory": 512
+    },
+    "src/app/api/onboarding/synthesize/route.ts": {
+      "maxDuration": 120,
+      "memory": 1024
+    },
+    "src/app/api/onboarding/test/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "src/app/api/onboarding/deploy/route.ts": {
+      "maxDuration": 10,
+      "memory": 256
     }
   }
 }
