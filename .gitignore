@@ -36,3 +36,7 @@ next-env.d.ts
 
 # claude code local settings
 .claude/settings.local.json
+
+# worktrees and temp
+.claude/worktrees/
+supabase/.temp/

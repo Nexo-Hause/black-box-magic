@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, Suspense, FormEvent, useCallback } from 'r
 import { useSearchParams } from 'next/navigation';
 import { useOnboardingChat } from '@/hooks/useOnboardingChat';
 import type { TestPhoto } from '@/hooks/useOnboardingChat';
+import { useVoiceSession } from '@/hooks/useVoiceSession';
 import type { ClientConfig, EvaluationArea, EscalationRule } from '@/types/engine';
 
 // ─── Typing indicator ─────────────────────────────────────────────────────────
@@ -140,9 +141,10 @@ interface ChatViewProps {
   isComplete: boolean;
   onSend: (text: string) => void;
   onStartSynthesis: () => void;
+  onStartVoice: () => void;
 }
 
-function ChatView({ messages, loading, isComplete, onSend, onStartSynthesis }: ChatViewProps) {
+function ChatView({ messages, loading, isComplete, onSend, onStartSynthesis, onStartVoice }: ChatViewProps) {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -210,7 +212,7 @@ function ChatView({ messages, loading, isComplete, onSend, onStartSynthesis }: C
         </div>
       )}
 
-      {/* Input */}
+      {/* Input row */}
       <form onSubmit={handleSubmit} className="flex gap-2 pb-safe">
         <label htmlFor="chat-input" className="sr-only">Escribe tu respuesta</label>
         <input
@@ -235,7 +237,239 @@ function ChatView({ messages, loading, isComplete, onSend, onStartSynthesis }: C
         >
           →
         </button>
+        {/* Mic button — progressive enhancement */}
+        <button
+          type="button"
+          onClick={onStartVoice}
+          disabled={loading}
+          aria-label="Cambiar a modo de voz"
+          title="Hablar con el asistente"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center
+                     bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed
+                     rounded-xl text-gray-300 hover:text-white transition-colors"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
+          </svg>
+        </button>
       </form>
+    </div>
+  );
+}
+
+// ─── Voice view ───────────────────────────────────────────────────────────────
+
+interface VoiceViewProps {
+  wsUrl: string;
+  token: string;
+  systemPrompt: string;
+  tools: unknown;
+  onTranscript: (text: string, role: 'user' | 'assistant') => void;
+  onComplete: () => void;
+  onSwitchToText: () => void;
+}
+
+function VoiceView({ wsUrl, token, systemPrompt, tools, onTranscript, onComplete, onSwitchToText }: VoiceViewProps) {
+  const transcriptBottomRef = useRef<HTMLDivElement>(null);
+  const [transcriptLines, setTranscriptLines] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([]);
+
+  const handleTranscript = useCallback((text: string, role: 'user' | 'assistant') => {
+    setTranscriptLines(prev => [...prev, { role, text }]);
+    onTranscript(text, role);
+  }, [onTranscript]);
+
+  const handleToolCall = useCallback((_name: string, _args: Record<string, unknown>) => {
+    // Tool calls are handled server-side during synthesis; we just acknowledge silently
+  }, []);
+
+  const { status, connect, disconnect, startListening, stopListening, audioLevel } = useVoiceSession({
+    wsUrl,
+    token,
+    systemPrompt,
+    tools,
+    onTranscript: handleTranscript,
+    onToolCall: handleToolCall,
+    onComplete,
+    onError: (err) => {
+      setTranscriptLines(prev => [...prev, { role: 'assistant', text: `⚠ ${err}` }]);
+    },
+  });
+
+  // Auto-connect on mount
+  useEffect(() => {
+    connect();
+    return () => { disconnect(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    transcriptBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [transcriptLines]);
+
+  const STATUS_LABEL: Record<typeof status, string> = {
+    connecting:  'Conectando con el asistente de voz...',
+    connected:   'Presiona el micrófono para hablar',
+    listening:   'Escuchando...',
+    processing:  'Procesando tu respuesta...',
+    speaking:    'Respondiendo...',
+    error:       'Error de conexión',
+    closed:      'Sesión cerrada',
+  };
+
+  const isListening  = status === 'listening';
+  const isSpeaking   = status === 'speaking';
+  const isProcessing = status === 'processing';
+  const isConnecting = status === 'connecting';
+  const isError      = status === 'error' || status === 'closed';
+  const canListen    = status === 'connected' || status === 'listening';
+
+  // Audio level bar: convert 0–1 amplitude to percentage width
+  const levelPct = Math.min(100, Math.round(audioLevel * 600));
+
+  const handleMicPress = () => {
+    if (isListening) {
+      stopListening();
+    } else if (canListen) {
+      startListening();
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-[calc(100dvh-4rem)]">
+      {/* Status announcement for screen readers */}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {STATUS_LABEL[status]}
+      </div>
+
+      {/* Top bar */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${
+            isConnecting                  ? 'bg-yellow-400 animate-pulse' :
+            isError                       ? 'bg-red-400' :
+            isSpeaking || isProcessing    ? 'bg-blue-400 animate-pulse' :
+            isListening                   ? 'bg-green-400 animate-pulse' :
+                                            'bg-green-400'
+          }`} aria-hidden="true" />
+          <span className="text-sm text-gray-400">{STATUS_LABEL[status]}</span>
+        </div>
+        <button
+          onClick={onSwitchToText}
+          className="text-xs text-gray-500 hover:text-gray-300 underline underline-offset-2 transition-colors"
+        >
+          Cambiar a texto
+        </button>
+      </div>
+
+      {/* Transcript */}
+      <div
+        role="log"
+        aria-live="polite"
+        aria-label="Transcripción de la conversación de voz"
+        className="flex-1 overflow-y-auto space-y-3 pb-4"
+      >
+        {transcriptLines.length === 0 && !isConnecting && (
+          <p className="text-center text-gray-600 text-sm pt-8">
+            La conversación aparecerá aquí
+          </p>
+        )}
+        {transcriptLines.map((line, i) => (
+          <div key={i} className={`flex ${line.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+              line.role === 'user'
+                ? 'bg-blue-600 text-white rounded-br-sm'
+                : 'bg-gray-800 text-gray-100 rounded-tl-sm'
+            }`}>
+              {line.text}
+            </div>
+          </div>
+        ))}
+        <div ref={transcriptBottomRef} />
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-col items-center gap-4 pb-safe pt-4">
+        {/* Audio level bar */}
+        {isListening && (
+          <div
+            aria-hidden="true"
+            className="w-full max-w-xs h-1.5 bg-gray-700 rounded-full overflow-hidden"
+          >
+            <div
+              className="h-full bg-green-400 rounded-full transition-all duration-75"
+              style={{ width: `${levelPct}%` }}
+            />
+          </div>
+        )}
+
+        {/* Mic button */}
+        {!isError && (
+          <button
+            onClick={handleMicPress}
+            disabled={!canListen || isConnecting}
+            aria-label={isListening ? 'Detener grabación' : 'Iniciar grabación'}
+            aria-pressed={isListening}
+            className={`
+              relative flex items-center justify-center
+              w-20 h-20 rounded-full text-white transition-all duration-200
+              disabled:opacity-40 disabled:cursor-not-allowed
+              focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500
+              ${isListening
+                ? 'bg-green-600 hover:bg-green-500 shadow-[0_0_0_0_rgba(74,222,128,0.4)] animate-pulse-ring'
+                : 'bg-gray-700 hover:bg-gray-600 shadow-lg'
+              }
+            `}
+          >
+            {/* Pulse ring animation when listening */}
+            {isListening && (
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 rounded-full bg-green-500 opacity-30 animate-ping"
+              />
+            )}
+
+            {/* Icon */}
+            {isSpeaking ? (
+              // Speaker icon
+              <svg className="w-8 h-8 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M15.536 8.464a5 5 0 0 1 0 7.072M18.364 5.636a9 9 0 0 1 0 12.728M11 5L6 9H3v6h3l5 4V5z" />
+              </svg>
+            ) : isProcessing ? (
+              // Spinner
+              <div
+                className="w-8 h-8 border-4 border-gray-500 border-t-white rounded-full animate-spin relative z-10"
+                aria-hidden="true"
+              />
+            ) : (
+              // Microphone icon
+              <svg className="w-8 h-8 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
+              </svg>
+            )}
+          </button>
+        )}
+
+        {/* Error fallback */}
+        {isError && (
+          <div className="flex flex-col items-center gap-3 text-center">
+            <p className="text-red-400 text-sm">{STATUS_LABEL[status]}</p>
+            <button
+              onClick={onSwitchToText}
+              className="min-h-[44px] px-6 py-2 bg-gray-700 hover:bg-gray-600
+                         rounded-xl font-semibold text-white text-sm transition-colors"
+            >
+              Continuar por texto
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -739,6 +973,8 @@ function OnboardingPageInner() {
     rateTestResult,
     deployConfig,
     requestAdjustment,
+    startVoiceSession,
+    endVoiceSession,
   } = useOnboardingChat();
 
   const handleStart = () => {
@@ -748,6 +984,26 @@ function OnboardingPageInner() {
     }
     startSession(code);
   };
+
+  const handleStartVoice = () => {
+    startVoiceSession();
+  };
+
+  const handleSwitchToText = () => {
+    endVoiceSession();
+  };
+
+  // When a voice transcript arrives, inject it into the text message history
+  const handleVoiceTranscript = useCallback(
+    (text: string, role: 'user' | 'assistant') => {
+      if (role === 'user') {
+        // User speech — dispatch as a chat message so the server is notified
+        sendMessage(text);
+      }
+      // Assistant transcripts are already captured in VoiceView's local state
+    },
+    [sendMessage],
+  );
 
   return (
     <div className="relative">
@@ -764,13 +1020,26 @@ function OnboardingPageInner() {
         <IdleView onStart={handleStart} loading={state.loading} />
       )}
 
-      {state.phase === 'chatting' && (
+      {state.phase === 'chatting' && !state.voiceMode && (
         <ChatView
           messages={state.messages}
           loading={state.loading}
           isComplete={state.isComplete}
           onSend={sendMessage}
           onStartSynthesis={startSynthesis}
+          onStartVoice={handleStartVoice}
+        />
+      )}
+
+      {state.phase === 'chatting' && state.voiceMode && state.voiceSession && (
+        <VoiceView
+          wsUrl={state.voiceSession.wsUrl}
+          token={state.voiceSession.token}
+          systemPrompt={state.voiceSession.systemPrompt}
+          tools={state.voiceSession.tools}
+          onTranscript={handleVoiceTranscript}
+          onComplete={startSynthesis}
+          onSwitchToText={handleSwitchToText}
         />
       )}
 
