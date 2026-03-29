@@ -1,0 +1,5 @@
+remotion/
+.agents/
+.claude/skills/
+*.wav
+out/
