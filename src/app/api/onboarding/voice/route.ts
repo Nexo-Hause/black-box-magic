@@ -58,18 +58,22 @@ export async function POST(request: NextRequest) {
     try {
       const { data: session, error } = await supabase
         .from('bbm_client_configs')
-        .select('id, status')
+        .select('id, status, client_id')
         .eq('id', sessionId)
         .in('status', ['draft', 'testing'])
         .maybeSingle();
 
       if (error) {
         console.error('[onboarding/voice] Supabase error:', error.message);
-        // Graceful degradation — proceed without blocking the user
       } else if (!session) {
         return NextResponse.json(
           { error: 'Session not found or no longer active', status: 404 },
           { status: 404 },
+        );
+      } else if (session.client_id !== auth.payload.clientId) {
+        return NextResponse.json(
+          { error: 'Forbidden', status: 403 },
+          { status: 403 },
         );
       }
     } catch (err) {
