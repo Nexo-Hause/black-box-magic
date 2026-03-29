@@ -1,7 +1,7 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-03-28 (sesión 4: engine v3 Fases 0-3 implementadas)
+> Última actualización: 2026-03-28 (sesión 5: video Remotion BBM+Evidence)
 
 ---
 
@@ -85,6 +85,18 @@ Ejecutar manualmente en Supabase SQL Editor. Crea tabla `bbm_client_configs` con
 | Config versioning sin UNIQUE | Partial unique index para active, múltiples versiones por cliente | 3 |
 | jose para JWT | Ligero, ESM-first, edge-compatible. No jsonwebtoken (CommonJS, pesado) | 4 |
 | gemini-chat.ts separado de gemini.ts | Chat texto ≠ análisis imagen. Módulos paralelos, no extensión | 4 |
+| Remotion para video marketing | Video programático con React, skill oficial instalado. TTS con Gemini, música con Lyria 3 | 5 |
+| Proteger IP en materiales públicos | Nunca exponer modelos, costos, arquitectura en videos/presentaciones. Solo beneficios. | 5 |
+| SVG icons sobre emojis | Emojis renderizan diferente por OS. SVG inline para consistencia cross-platform. | 5 |
+
+---
+
+## Video BBM + Evidence (Remotion)
+
+**Estado:** Renderizado, listo para review
+**Archivo:** `out/bbm-evidence.mp4` (10 MB, 1920x1080, 2:10)
+**Audio:** Voiceover Gemini TTS + música Lyria 3
+**Archivos fuente:** `remotion/src/` (8 escenas, 7 componentes, theme centralizado)
 
 ---
 
@@ -95,3 +107,4 @@ Ejecutar manualmente en Supabase SQL Editor. Crea tabla `bbm_client_configs` con
 3. **Test E2E manual** — onboarding completo con Gemini real
 4. **Fase 4 (opcional):** Investigar Live API token efímero para voz
 5. **Pendiente Ubiqo:** Solicitar tokens a Alberto para spec 00
+6. **Video BBM+Evidence:** Iterar pacing voiceover vs escenas, considerar re-render con audio ajustado
