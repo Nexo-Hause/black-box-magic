@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState, Suspense, FormEvent } from 'react';
+import { useEffect, useRef, useState, Suspense, FormEvent, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useOnboardingChat } from '@/hooks/useOnboardingChat';
+import type { TestPhoto } from '@/hooks/useOnboardingChat';
 import type { ClientConfig, EvaluationArea, EscalationRule } from '@/types/engine';
 
 // ─── Typing indicator ─────────────────────────────────────────────────────────
@@ -337,15 +338,304 @@ function ReviewingView({ config, gaps, confidence, onApprove, onModify }: Review
           className="flex-1 min-h-[44px] py-3 bg-green-600 hover:bg-green-500
                      rounded-xl font-semibold text-white transition-colors"
         >
-          Aprobar configuración
+          Aprobar y probar
         </button>
         <button
           onClick={onModify}
           className="flex-1 min-h-[44px] py-3 bg-gray-700 hover:bg-gray-600
                      rounded-xl font-semibold text-gray-100 transition-colors"
         >
-          Tengo algo que modificar
+          Modificar
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Testing view ─────────────────────────────────────────────────────────────
+
+interface TestingViewProps {
+  photos: TestPhoto[];
+  iterationCount: number;
+  onAddPhoto: (file: File) => Promise<void>;
+  onRate: (photoId: string, rating: 'ok' | 'no', feedback?: string) => void;
+  onDeploy: () => void;
+  onAdjust: () => void;
+}
+
+function TestingView({ photos, iterationCount, onAddPhoto, onRate, onDeploy, onAdjust }: TestingViewProps) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const handleFiles = useCallback((files: FileList) => {
+    Array.from(files).forEach(f => onAddPhoto(f));
+  }, [onAddPhoto]);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = () => setDragActive(false);
+
+  const allDone = photos.length > 0 && photos.every(p => p.status === 'done' || p.status === 'error');
+  const allRated = allDone && photos.filter(p => p.status === 'done').every(p => p.rating !== null);
+  const hasNoRatings = photos.some(p => p.rating === 'no');
+  const canDeploy = allRated && !hasNoRatings;
+  const canAdjust = allRated && hasNoRatings;
+  const MAX_PHOTOS = 10;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-bold text-white">Prueba tu configuración</h2>
+        <p className="text-gray-400 text-sm mt-1">
+          Sube 5-10 fotos de tus visitas de campo para verificar que el análisis funciona correctamente.
+        </p>
+        {iterationCount > 0 && (
+          <p className="text-yellow-400 text-xs mt-1 font-medium">
+            Iteración {iterationCount} de 5
+          </p>
+        )}
+      </div>
+
+      {/* Upload area */}
+      {photos.length < MAX_PHOTOS && (
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => fileRef.current?.click()}
+          className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors
+            ${dragActive
+              ? 'border-blue-400 bg-blue-900/20'
+              : 'border-gray-600 hover:border-gray-500 hover:bg-gray-800/40'
+            }`}
+        >
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="sr-only"
+            onChange={e => e.target.files && handleFiles(e.target.files)}
+          />
+          <div className="flex flex-col items-center gap-2 pointer-events-none">
+            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18v-1.5M16.5 12L12 7.5m0 0L7.5 12M12 7.5V18" />
+            </svg>
+            <p className="text-gray-300 text-sm font-medium">
+              {dragActive ? 'Suelta las fotos aquí' : 'Arrastra fotos o haz clic para seleccionar'}
+            </p>
+            <p className="text-gray-500 text-xs">JPEG, PNG o WebP · máx. 10 MB · {photos.length}/{MAX_PHOTOS} fotos</p>
+          </div>
+        </div>
+      )}
+
+      {/* Photo list */}
+      {photos.length > 0 && (
+        <ul className="space-y-3">
+          {photos.map(photo => (
+            <li key={photo.id} className="bg-gray-800 rounded-xl overflow-hidden">
+              {/* Photo row */}
+              <div className="flex items-center gap-3 p-3">
+                {/* Thumbnail */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photo.previewUrl}
+                  alt={photo.fileName}
+                  className="w-12 h-12 rounded-lg object-cover shrink-0"
+                />
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white truncate">{photo.fileName}</p>
+                  {photo.status === 'done' && photo.result && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Puntaje: <span className={photo.result.passed ? 'text-green-400' : 'text-red-400'}>
+                        {Math.round(photo.result.globalScore)}%
+                      </span>
+                      {' · '}
+                      <span className={photo.result.passed ? 'text-green-400' : 'text-red-400'}>
+                        {photo.result.passed ? 'Aprobado' : 'Reprobado'}
+                      </span>
+                    </p>
+                  )}
+                  {photo.status === 'error' && (
+                    <p className="text-xs text-red-400 mt-0.5">Error al analizar</p>
+                  )}
+                  {photo.status === 'analyzing' && (
+                    <p className="text-xs text-blue-400 mt-0.5">Analizando...</p>
+                  )}
+                  {photo.status === 'pending' && (
+                    <p className="text-xs text-gray-500 mt-0.5">En cola</p>
+                  )}
+                </div>
+
+                {/* Status indicator */}
+                <div className="shrink-0">
+                  {photo.status === 'analyzing' && (
+                    <div
+                      role="status"
+                      aria-label="Analizando"
+                      className="w-5 h-5 border-2 border-gray-600 border-t-blue-400 rounded-full animate-spin"
+                    />
+                  )}
+                  {photo.status === 'done' && photo.rating === null && (
+                    <button
+                      onClick={() => setExpandedId(prev => prev === photo.id ? null : photo.id)}
+                      aria-label="Ver resultado"
+                      className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d={expandedId === photo.id ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
+                      </svg>
+                    </button>
+                  )}
+                  {photo.status === 'done' && photo.rating === 'ok' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-900/60 text-green-300">OK</span>
+                  )}
+                  {photo.status === 'done' && photo.rating === 'no' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-900/60 text-red-300">NO</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Expanded result + rating */}
+              {photo.status === 'done' && photo.result && (expandedId === photo.id || photo.rating === null) && photo.rating === null && (
+                <div className="border-t border-gray-700 p-3 space-y-3">
+                  {/* Summary */}
+                  <p className="text-sm text-gray-300">{photo.result.summary}</p>
+
+                  {/* Area scores */}
+                  <div className="space-y-1.5">
+                    {photo.result.areas.map(area => (
+                      <div key={area.areaId} className="flex items-center justify-between text-xs">
+                        <span className="text-gray-400">{area.areaName}</span>
+                        <span className={area.passed ? 'text-green-400' : 'text-red-400'}>
+                          {Math.round(area.score)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Rating buttons */}
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-400 font-medium">¿El resultado es correcto?</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          onRate(photo.id, 'ok');
+                          setExpandedId(null);
+                        }}
+                        className="flex-1 min-h-[44px] py-2 bg-green-700 hover:bg-green-600 rounded-lg text-sm font-semibold text-white transition-colors"
+                      >
+                        Sí, está bien
+                      </button>
+                      <button
+                        onClick={() => setExpandedId(photo.id)}
+                        className="flex-1 min-h-[44px] py-2 bg-red-800 hover:bg-red-700 rounded-lg text-sm font-semibold text-white transition-colors"
+                      >
+                        No, hay problemas
+                      </button>
+                    </div>
+
+                    {/* Feedback for NO */}
+                    <div className="space-y-2">
+                      <label htmlFor={`feedback-${photo.id}`} className="sr-only">
+                        ¿Qué esperabas diferente?
+                      </label>
+                      <input
+                        id={`feedback-${photo.id}`}
+                        type="text"
+                        value={feedbackMap[photo.id] ?? ''}
+                        onChange={e => setFeedbackMap(prev => ({ ...prev, [photo.id]: e.target.value }))}
+                        placeholder="¿Qué esperabas diferente?"
+                        className="w-full min-h-[44px] px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
+                      />
+                      <button
+                        onClick={() => {
+                          onRate(photo.id, 'no', feedbackMap[photo.id] ?? '');
+                          setExpandedId(null);
+                        }}
+                        disabled={!feedbackMap[photo.id]?.trim()}
+                        className="w-full min-h-[44px] py-2 bg-red-700 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-semibold text-white transition-colors"
+                      >
+                        Confirmar problema
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Bottom actions */}
+      {photos.length > 0 && (
+        <div className="flex flex-col gap-3 pt-2">
+          {canDeploy && (
+            <button
+              onClick={onDeploy}
+              className="w-full min-h-[44px] py-3 bg-green-600 hover:bg-green-500 rounded-xl font-semibold text-white transition-colors"
+            >
+              Desplegar configuración
+            </button>
+          )}
+          {canAdjust && iterationCount < 5 && (
+            <button
+              onClick={onAdjust}
+              className="w-full min-h-[44px] py-3 bg-yellow-600 hover:bg-yellow-500 rounded-xl font-semibold text-white transition-colors"
+            >
+              Ajustar configuración
+            </button>
+          )}
+          {canAdjust && iterationCount >= 5 && (
+            <div className="bg-red-900/30 border border-red-700/40 rounded-xl p-4 text-center">
+              <p className="text-red-300 text-sm">
+                Alcanzaste el límite de iteraciones. Contacta soporte para continuar.
+              </p>
+            </div>
+          )}
+          {!allRated && allDone && (
+            <p className="text-center text-sm text-gray-500">
+              Califica todos los resultados para continuar
+            </p>
+          )}
+          {!allDone && photos.length > 0 && (
+            <p className="text-center text-sm text-gray-500">
+              Esperando análisis...
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Deploying view ───────────────────────────────────────────────────────────
+
+function DeployingView() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-6 py-16 text-center">
+      <div
+        role="status"
+        aria-label="Desplegando configuración"
+        className="w-12 h-12 border-4 border-gray-700 border-t-green-500 rounded-full animate-spin"
+      />
+      <div className="space-y-2">
+        <p className="text-white font-medium">Desplegando tu configuración...</p>
+        <p className="text-gray-500 text-sm">Esto tomará unos segundos</p>
       </div>
     </div>
   );
@@ -436,8 +726,20 @@ function ErrorBanner({ message, onDismiss, onRetry }: ErrorBannerProps) {
 function OnboardingPageInner() {
   const searchParams = useSearchParams();
   const code = searchParams.get('code') ?? '';
-  const { state, startSession, sendMessage, startSynthesis, approveConfig, requestModification, resetError } =
-    useOnboardingChat();
+  const {
+    state,
+    startSession,
+    sendMessage,
+    startSynthesis,
+    approveConfig,
+    requestModification,
+    resetError,
+    startTesting,
+    addTestPhoto,
+    rateTestResult,
+    deployConfig,
+    requestAdjustment,
+  } = useOnboardingChat();
 
   const handleStart = () => {
     if (code) {
@@ -481,10 +783,23 @@ function OnboardingPageInner() {
           config={state.synthesizedConfig}
           gaps={state.gaps}
           confidence={state.confidence}
-          onApprove={approveConfig}
+          onApprove={startTesting}
           onModify={requestModification}
         />
       )}
+
+      {state.phase === 'testing' && (
+        <TestingView
+          photos={state.testPhotos}
+          iterationCount={state.iterationCount}
+          onAddPhoto={addTestPhoto}
+          onRate={rateTestResult}
+          onDeploy={deployConfig}
+          onAdjust={requestAdjustment}
+        />
+      )}
+
+      {state.phase === 'deploying' && <DeployingView />}
 
       {state.phase === 'approved' && state.synthesizedConfig && (
         <ApprovedView config={state.synthesizedConfig} />

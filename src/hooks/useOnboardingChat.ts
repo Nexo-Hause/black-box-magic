@@ -1,7 +1,7 @@
 'use client';
 
 import { useReducer, useCallback, useRef } from 'react';
-import type { ClientConfig } from '@/types/engine';
+import type { ClientConfig, EngineV3Result } from '@/types/engine';
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -11,8 +11,18 @@ interface ChatMessage {
   timestamp: number;
 }
 
+export interface TestPhoto {
+  id: string;
+  fileName: string;
+  previewUrl: string;
+  status: 'pending' | 'analyzing' | 'done' | 'error';
+  result: EngineV3Result | null;
+  rating: 'ok' | 'no' | null;
+  feedback: string;
+}
+
 interface OnboardingState {
-  phase: 'idle' | 'chatting' | 'synthesizing' | 'reviewing' | 'approved';
+  phase: 'idle' | 'chatting' | 'synthesizing' | 'reviewing' | 'testing' | 'deploying' | 'approved';
   sessionId: string | null;
   token: string | null;
   clientName: string | null;
@@ -26,6 +36,8 @@ interface OnboardingState {
   error: string | null;
   loading: boolean;
   synthesisProgress: string;
+  testPhotos: TestPhoto[];
+  iterationCount: number;
 }
 
 const initialState: OnboardingState = {
@@ -43,6 +55,8 @@ const initialState: OnboardingState = {
   error: null,
   loading: false,
   synthesisProgress: '',
+  testPhotos: [],
+  iterationCount: 0,
 };
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -60,7 +74,17 @@ type Action =
   | { type: 'SYNTHESIS_ERROR'; error: string }
   | { type: 'APPROVE_CONFIG' }
   | { type: 'REQUEST_MODIFICATION' }
-  | { type: 'RESET_ERROR' };
+  | { type: 'RESET_ERROR' }
+  | { type: 'START_TESTING' }
+  | { type: 'ADD_TEST_PHOTO'; photo: TestPhoto }
+  | { type: 'TEST_PHOTO_ANALYZING'; photoId: string }
+  | { type: 'TEST_PHOTO_RESULT'; photoId: string; result: EngineV3Result }
+  | { type: 'TEST_PHOTO_ERROR'; photoId: string; error: string }
+  | { type: 'RATE_TEST_RESULT'; photoId: string; rating: 'ok' | 'no'; feedback: string }
+  | { type: 'START_DEPLOY' }
+  | { type: 'DEPLOY_SUCCESS' }
+  | { type: 'DEPLOY_ERROR'; error: string }
+  | { type: 'REQUEST_ADJUSTMENT' };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -156,6 +180,66 @@ function reducer(state: OnboardingState, action: Action): OnboardingState {
     case 'RESET_ERROR':
       return { ...state, error: null };
 
+    case 'START_TESTING':
+      return { ...state, phase: 'testing', testPhotos: [], error: null };
+
+    case 'ADD_TEST_PHOTO':
+      if (state.testPhotos.length >= 10) return state;
+      return { ...state, testPhotos: [...state.testPhotos, action.photo] };
+
+    case 'TEST_PHOTO_ANALYZING':
+      return {
+        ...state,
+        testPhotos: state.testPhotos.map(p =>
+          p.id === action.photoId ? { ...p, status: 'analyzing' } : p
+        ),
+      };
+
+    case 'TEST_PHOTO_RESULT':
+      return {
+        ...state,
+        testPhotos: state.testPhotos.map(p =>
+          p.id === action.photoId ? { ...p, status: 'done', result: action.result } : p
+        ),
+      };
+
+    case 'TEST_PHOTO_ERROR':
+      return {
+        ...state,
+        testPhotos: state.testPhotos.map(p =>
+          p.id === action.photoId ? { ...p, status: 'error' } : p
+        ),
+      };
+
+    case 'RATE_TEST_RESULT':
+      return {
+        ...state,
+        testPhotos: state.testPhotos.map(p =>
+          p.id === action.photoId ? { ...p, rating: action.rating, feedback: action.feedback } : p
+        ),
+      };
+
+    case 'START_DEPLOY':
+      return { ...state, phase: 'deploying', loading: true, error: null };
+
+    case 'DEPLOY_SUCCESS':
+      return { ...state, phase: 'approved', loading: false };
+
+    case 'DEPLOY_ERROR':
+      return { ...state, phase: 'testing', loading: false, error: action.error };
+
+    case 'REQUEST_ADJUSTMENT':
+      return {
+        ...state,
+        phase: 'chatting',
+        isComplete: false,
+        synthesizedConfig: null,
+        gaps: [],
+        confidence: 0,
+        iterationCount: state.iterationCount + 1,
+        testPhotos: [],
+      };
+
     default:
       return state;
   }
@@ -166,6 +250,8 @@ function reducer(state: OnboardingState, action: Action): OnboardingState {
 export function useOnboardingChat() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const clearProgressTimer = () => {
     if (progressTimerRef.current) {
@@ -281,6 +367,98 @@ export function useOnboardingChat() {
     dispatch({ type: 'RESET_ERROR' });
   }, []);
 
+  const startTesting = useCallback(() => {
+    dispatch({ type: 'START_TESTING' });
+  }, []);
+
+  const addTestPhoto = useCallback(async (file: File) => {
+    const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'];
+    const MAX_SIZE = 10 * 1024 * 1024;
+
+    if (!ACCEPTED.includes(file.type)) {
+      dispatch({ type: 'CHAT_ERROR', error: 'Tipo de archivo no permitido. Usa JPEG, PNG o WebP.' });
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      dispatch({ type: 'CHAT_ERROR', error: 'El archivo supera el límite de 10 MB.' });
+      return;
+    }
+
+    const photoId = crypto.randomUUID();
+    const previewUrl = URL.createObjectURL(file);
+
+    const photo: TestPhoto = {
+      id: photoId,
+      fileName: file.name,
+      previewUrl,
+      status: 'pending',
+      result: null,
+      rating: null,
+      feedback: '',
+    };
+    dispatch({ type: 'ADD_TEST_PHOTO', photo });
+
+    // Read as base64 then POST to /api/onboarding/test
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Error leyendo archivo'));
+      reader.readAsDataURL(file);
+    });
+
+    dispatch({ type: 'TEST_PHOTO_ANALYZING', photoId });
+
+    try {
+      // Access current token via closure — we read it from a ref to stay stable
+      const token = stateRef.current.token;
+      const res = await fetch('/api/onboarding/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ image: base64, mimeType: file.type, fileName: file.name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      dispatch({ type: 'TEST_PHOTO_RESULT', photoId, result: data.result as EngineV3Result });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al analizar foto';
+      dispatch({ type: 'TEST_PHOTO_ERROR', photoId, error: message });
+    }
+  }, []);
+
+  const rateTestResult = useCallback((photoId: string, rating: 'ok' | 'no', feedback = '') => {
+    dispatch({ type: 'RATE_TEST_RESULT', photoId, rating, feedback });
+  }, []);
+
+  const deployConfig = useCallback(async () => {
+    const { sessionId, token } = stateRef.current;
+    if (!sessionId || !token) return;
+    dispatch({ type: 'START_DEPLOY' });
+    try {
+      const res = await fetch('/api/onboarding/deploy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      dispatch({ type: 'DEPLOY_SUCCESS' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al desplegar configuración';
+      dispatch({ type: 'DEPLOY_ERROR', error: message });
+    }
+  }, []);
+
+  const requestAdjustment = useCallback(() => {
+    if (stateRef.current.iterationCount >= 5) return;
+    dispatch({ type: 'REQUEST_ADJUSTMENT' });
+  }, []);
+
   return {
     state,
     startSession,
@@ -289,5 +467,10 @@ export function useOnboardingChat() {
     approveConfig,
     requestModification,
     resetError,
+    startTesting,
+    addTestPhoto,
+    rateTestResult,
+    deployConfig,
+    requestAdjustment,
   };
 }
