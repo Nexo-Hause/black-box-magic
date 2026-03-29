@@ -212,9 +212,15 @@ export async function analyzeWithConfig(
   mimeType: string,
   config: ClientConfig,
   apiKey: string,
+  timeoutMs = 55000,
 ): Promise<AnalyzeWithConfigResult> {
   const prompt = buildAnalysisPrompt(config);
-  const geminiResult = await analyzeImage(imageBase64, mimeType, prompt, apiKey);
+  const geminiResult = await Promise.race([
+    analyzeImage(imageBase64, mimeType, prompt, apiKey),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Gemini analysis timeout')), timeoutMs),
+    ),
+  ]);
 
   const rawResponse = parseRawLLMResponse(geminiResult.data, config);
 

@@ -4,14 +4,41 @@ import { NextRequest } from 'next/server';
 import { randomUUID } from 'crypto';
 import type { OnboardingTokenPayload } from '@/types/onboarding';
 
-// ─── Secret ───────────────────────────────────────────────────────────────────
+// ─── Secret (HMAC derivation from cookie secret as fallback) ─────────────────
 
-function getSecret(): Uint8Array {
-  const raw = process.env.BBM_JWT_SECRET || process.env.BBM_COOKIE_SECRET || '';
-  if (!raw) {
-    console.warn('[onboarding/auth] No JWT secret configured. Set BBM_JWT_SECRET or BBM_COOKIE_SECRET.');
+let cachedSecret: Uint8Array | null = null;
+
+async function deriveSecret(): Promise<Uint8Array> {
+  // Prefer dedicated JWT secret
+  const jwtSecret = process.env.BBM_JWT_SECRET;
+  if (jwtSecret) {
+    return new TextEncoder().encode(jwtSecret);
   }
-  return new TextEncoder().encode(raw);
+
+  // Fall back to HMAC derivation from cookie secret
+  const cookieSecret = process.env.BBM_COOKIE_SECRET || '';
+  if (!cookieSecret) {
+    console.warn('[onboarding/auth] No JWT secret configured. Set BBM_JWT_SECRET or BBM_COOKIE_SECRET.');
+    return new TextEncoder().encode('');
+  }
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(cookieSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const derived = await crypto.subtle.sign('HMAC', key, encoder.encode('bbm_jwt_derivation_v1'));
+  return new Uint8Array(derived);
+}
+
+async function getSecret(): Promise<Uint8Array> {
+  if (!cachedSecret) {
+    cachedSecret = await deriveSecret();
+  }
+  return cachedSecret;
 }
 
 // ─── Code Store (in-memory, short-lived) ─────────────────────────────────────
@@ -21,6 +48,7 @@ const TTL_MS = 5 * 60 * 1000; // 5 minutes
 interface CodeEntry {
   payload: OnboardingTokenPayload;
   expiresAt: number;
+  exchanged: boolean;
 }
 
 const codeStore = new Map<string, CodeEntry>();
@@ -39,7 +67,7 @@ function pruneExpiredCodes(): void {
 export async function generateOnboardingToken(
   payload: OnboardingTokenPayload,
 ): Promise<string> {
-  const secret = getSecret();
+  const secret = await getSecret();
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -50,7 +78,7 @@ export async function generateOnboardingToken(
 export async function verifyOnboardingToken(
   token: string,
 ): Promise<OnboardingTokenPayload | null> {
-  const secret = getSecret();
+  const secret = await getSecret();
   if (!secret.length) return null;
   try {
     const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] });
@@ -76,6 +104,7 @@ export async function generateOnboardingCode(
   codeStore.set(code, {
     payload: { clientId, clientName, email },
     expiresAt: Date.now() + TTL_MS,
+    exchanged: false,
   });
   return code;
 }
@@ -85,10 +114,11 @@ export async function exchangeCode(
 ): Promise<{ token: string; payload: OnboardingTokenPayload } | null> {
   pruneExpiredCodes();
   const entry = codeStore.get(code);
-  if (!entry || entry.expiresAt <= Date.now()) {
+  if (!entry || entry.expiresAt <= Date.now() || entry.exchanged) {
     codeStore.delete(code);
     return null;
   }
+  entry.exchanged = true;
   codeStore.delete(code);
   const token = await generateOnboardingToken(entry.payload);
   return { token, payload: entry.payload };
