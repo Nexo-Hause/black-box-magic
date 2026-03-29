@@ -188,11 +188,25 @@ function parseRawLLMResponse(
 
       return {
         areaId,
-        criteria: rawCriteria.map((rc) => ({
-          criterionId: rc.criterionId as string,
-          rawValue: rc.rawValue as boolean | number,
-          observation: (rc.observation as string) ?? undefined,
-        })),
+        criteria: rawCriteria.map((rc) => {
+          const raw = rc.rawValue;
+          let rawValue: boolean | number;
+          if (typeof raw === 'boolean' || typeof raw === 'number') {
+            rawValue = raw;
+          } else if (typeof raw === 'string') {
+            // LLM sometimes returns "true"/"false" as strings
+            if (raw === 'true') rawValue = true;
+            else if (raw === 'false') rawValue = false;
+            else rawValue = Number(raw) || 0;
+          } else {
+            rawValue = 0;
+          }
+          return {
+            criterionId: rc.criterionId as string,
+            rawValue,
+            observation: (rc.observation as string) ?? undefined,
+          };
+        }),
       };
     }),
   };

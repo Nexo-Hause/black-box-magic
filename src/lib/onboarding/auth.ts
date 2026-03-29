@@ -17,9 +17,8 @@ async function deriveSecret(): Promise<Uint8Array> {
 
   // Fall back to HMAC derivation from cookie secret
   const cookieSecret = process.env.BBM_COOKIE_SECRET || '';
-  if (!cookieSecret) {
-    console.warn('[onboarding/auth] No JWT secret configured. Set BBM_JWT_SECRET or BBM_COOKIE_SECRET.');
-    return new TextEncoder().encode('');
+  if (!cookieSecret || cookieSecret.length < 32) {
+    throw new Error('[onboarding/auth] JWT secret not configured. Set BBM_JWT_SECRET or ensure BBM_COOKIE_SECRET is at least 32 chars.');
   }
 
   const encoder = new TextEncoder();
@@ -48,7 +47,6 @@ const TTL_MS = 5 * 60 * 1000; // 5 minutes
 interface CodeEntry {
   payload: OnboardingTokenPayload;
   expiresAt: number;
-  exchanged: boolean;
 }
 
 const codeStore = new Map<string, CodeEntry>();
@@ -104,7 +102,6 @@ export async function generateOnboardingCode(
   codeStore.set(code, {
     payload: { clientId, clientName, email },
     expiresAt: Date.now() + TTL_MS,
-    exchanged: false,
   });
   return code;
 }
@@ -114,12 +111,14 @@ export async function exchangeCode(
 ): Promise<{ token: string; payload: OnboardingTokenPayload } | null> {
   pruneExpiredCodes();
   const entry = codeStore.get(code);
-  if (!entry || entry.expiresAt <= Date.now() || entry.exchanged) {
-    codeStore.delete(code);
+  if (!entry) return null;
+
+  // Delete first (atomic single-use) then validate
+  codeStore.delete(code);
+
+  if (entry.expiresAt <= Date.now()) {
     return null;
   }
-  entry.exchanged = true;
-  codeStore.delete(code);
   const token = await generateOnboardingToken(entry.payload);
   return { token, payload: entry.payload };
 }
