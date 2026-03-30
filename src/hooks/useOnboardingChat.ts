@@ -312,6 +312,32 @@ export function useOnboardingChat() {
         token: data.token,
         clientName: data.clientName,
       });
+
+      // Auto-send initial message so Gemini starts the conversation
+      try {
+        const chatRes = await fetch('/api/onboarding/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${data.token}`,
+          },
+          body: JSON.stringify({
+            sessionId: data.sessionId,
+            message: 'Hola, estoy listo para configurar mi análisis visual.',
+          }),
+        });
+        const chatData = await chatRes.json();
+        if (chatRes.ok) {
+          dispatch({
+            type: 'CHAT_RESPONSE',
+            response: chatData.response,
+            isComplete: chatData.isComplete ?? false,
+            turnCount: chatData.turnCount ?? 1,
+          });
+        }
+      } catch {
+        // Non-fatal — user can still type manually
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al iniciar sesión';
       dispatch({ type: 'CHAT_ERROR', error: message });

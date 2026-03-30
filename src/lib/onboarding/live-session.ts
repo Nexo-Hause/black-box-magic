@@ -16,7 +16,7 @@ const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com';
  * Live API model. Must use v1alpha — ephemeral tokens are only supported there.
  * @see https://ai.google.dev/gemini-api/docs/live
  */
-export const LIVE_MODEL = 'gemini-2.0-flash-live-001';
+export const LIVE_MODEL = 'gemini-3.1-flash-live-preview';
 
 /**
  * WebSocket endpoint for the Gemini Live BidiGenerateContent service.
@@ -40,8 +40,8 @@ export interface EphemeralTokenResponse {
 /** Raw response shape from POST /v1alpha/auth_tokens */
 interface AuthTokenApiResponse {
   name?: string;
-  expireTime?: string;
-  newSessionExpireTime?: string;
+  expire_time?: string;
+  new_session_expire_time?: string;
 }
 
 // ─── Token generation ─────────────────────────────────────────────────────────
@@ -67,14 +67,8 @@ export async function generateEphemeralToken(
   const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
   const requestBody = {
-    authToken: {
-      expireTime,
-      // Allow only a single session per token — prevents token reuse
-      uses: 1,
-      liveConnectConstraints: {
-        model: LIVE_MODEL,
-      },
-    },
+    expire_time: expireTime,
+    uses: 1,
   };
 
   let response: Response;
@@ -113,7 +107,7 @@ export async function generateEphemeralToken(
     );
   }
 
-  const expiresAt = data.expireTime ?? expireTime;
+  const expiresAt = data.expire_time ?? expireTime;
   const wsUrl = buildWsUrl(token);
 
   return { token, expiresAt, wsUrl };
