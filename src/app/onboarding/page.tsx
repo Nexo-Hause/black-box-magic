@@ -11,10 +11,26 @@ import type { ClientConfig, EvaluationArea, EscalationRule } from '@/types/engin
 
 function TypingIndicator() {
   return (
-    <div className="flex items-center gap-1 px-4 py-3 bg-gray-800 rounded-2xl rounded-tl-sm w-fit">
-      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
-      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
-      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
+    <div style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      padding: '0.75rem 1rem',
+      background: 'var(--bg-white)',
+      border: '2px solid var(--border-light)',
+    }}>
+      {[0, 1, 2].map(i => (
+        <span
+          key={i}
+          className="spinner"
+          style={{
+            width: '6px',
+            height: '6px',
+            borderWidth: '1px',
+            animationDelay: `${i * 150}ms`,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -23,13 +39,12 @@ function TypingIndicator() {
 
 function ConfidenceBadge({ confidence }: { confidence: number }) {
   const pct = Math.round(confidence * 100);
-  const color =
-    pct >= 80 ? 'bg-green-900 text-green-300' :
-    pct >= 60 ? 'bg-yellow-900 text-yellow-300' :
-                'bg-red-900 text-red-300';
+  const badgeClass =
+    pct >= 80 ? 'badge badge--green' :
+    pct >= 60 ? 'badge badge--yellow' :
+                'badge badge--red';
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+    <span className={badgeClass}>
       {pct}% confianza
     </span>
   );
@@ -40,38 +55,42 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
 function AreaCard({ area }: { area: EvaluationArea }) {
   const weightPct = Math.round(area.weight * 100);
   return (
-    <div className="bg-gray-800 rounded-xl p-4 space-y-3">
-      <div className="flex items-start justify-between gap-3">
+    <div className="card" style={{ marginBottom: '0.75rem' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
         <div>
-          <h3 className="font-semibold text-white">{area.name}</h3>
+          <h3 style={{ fontWeight: 700, fontSize: '0.95rem' }}>{area.name}</h3>
           {area.description && (
-            <p className="text-sm text-gray-400 mt-0.5">{area.description}</p>
+            <p className="text-sm muted" style={{ marginTop: '0.25rem' }}>{area.description}</p>
           )}
         </div>
-        <span className="shrink-0 bg-blue-900 text-blue-300 text-xs font-medium px-2 py-0.5 rounded-full">
+        <span className="badge badge--blue" style={{ flexShrink: 0 }}>
           {weightPct}%
         </span>
       </div>
       {area.criteria.length > 0 && (
-        <ul className="space-y-1.5">
-          {area.criteria.map(c => (
-            <li key={c.id} className="flex items-start gap-2 text-sm">
-              <span className={`mt-0.5 shrink-0 px-1.5 py-0.5 rounded text-xs font-mono ${
-                c.type === 'binary'   ? 'bg-purple-900/60 text-purple-300' :
-                c.type === 'scale'    ? 'bg-cyan-900/60 text-cyan-300' :
-                c.type === 'count'    ? 'bg-orange-900/60 text-orange-300' :
-                                        'bg-gray-700 text-gray-300'
-              }`}>
-                {c.type}
-              </span>
-              <span className="text-gray-300">
-                {c.name}
-                {c.critical && (
-                  <span className="ml-1.5 text-red-400 text-xs font-medium">crítico</span>
-                )}
-              </span>
-            </li>
-          ))}
+        <ul style={{ listStyle: 'none', marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {area.criteria.map(c => {
+            const typeClass =
+              c.type === 'binary' ? 'badge badge--neutral' :
+              c.type === 'scale'  ? 'badge badge--blue' :
+              c.type === 'count'  ? 'badge badge--yellow' :
+                                    'badge badge--neutral';
+            return (
+              <li key={c.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem' }}>
+                <span className={typeClass} style={{ flexShrink: 0 }}>
+                  {c.type}
+                </span>
+                <span>
+                  {c.name}
+                  {c.critical && (
+                    <span style={{ marginLeft: '0.5rem', color: 'var(--accent-red)', fontSize: '0.75rem', fontWeight: 600 }}>
+                      critico
+                    </span>
+                  )}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
@@ -82,17 +101,17 @@ function AreaCard({ area }: { area: EvaluationArea }) {
 
 function EscalationRuleItem({ rule }: { rule: EscalationRule }) {
   const severityColor =
-    rule.severity === 'critical' ? 'text-red-400' :
-    rule.severity === 'high'     ? 'text-orange-400' :
-    rule.severity === 'medium'   ? 'text-yellow-400' :
-                                   'text-gray-400';
+    rule.severity === 'critical' ? 'var(--accent-red)' :
+    rule.severity === 'high'     ? 'var(--accent-yellow)' :
+    rule.severity === 'medium'   ? 'var(--accent-yellow)' :
+                                   'var(--text-muted)';
   return (
-    <li className="flex items-start gap-2 text-sm">
-      <span className={`shrink-0 font-medium capitalize ${severityColor}`}>
+    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem' }}>
+      <span style={{ flexShrink: 0, fontWeight: 600, textTransform: 'capitalize', color: severityColor }}>
         {rule.severity}
       </span>
-      <span className="text-gray-400">—</span>
-      <span className="text-gray-300">{rule.description}</span>
+      <span className="muted">&mdash;</span>
+      <span>{rule.description}</span>
     </li>
   );
 }
@@ -114,23 +133,30 @@ interface IdleViewProps {
 
 function IdleView({ onStart, loading }: IdleViewProps) {
   return (
-    <div className="flex flex-col items-center text-center gap-6 py-12">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-white">BLACK BOX MAGIC</h1>
-        <p className="text-gray-400 mt-1 text-sm uppercase tracking-widest">Onboarding</p>
+    <div className="gate-container">
+      <div className="gate-card">
+        <h1 className="gate-title">BLACK BOX MAGIC</h1>
+        <p className="gate-subtitle" style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          Onboarding
+        </p>
+        <p style={{
+          fontSize: '0.9rem',
+          color: 'var(--text-muted)',
+          lineHeight: 1.7,
+          marginBottom: '2rem',
+          maxWidth: '400px',
+        }}>
+          Vamos a configurar el analisis visual para tu operacion. Te hare algunas preguntas
+          para entender que es lo mas importante en tu negocio.
+        </p>
+        <button
+          onClick={onStart}
+          disabled={loading}
+          className="btn btn--primary gate-btn"
+        >
+          {loading ? 'CARGANDO...' : 'COMENZAR'}
+        </button>
       </div>
-      <p className="text-gray-300 max-w-md leading-relaxed">
-        Vamos a configurar el análisis visual para tu operación. Te haré algunas preguntas
-        para entender qué es lo más importante en tu negocio.
-      </p>
-      <button
-        onClick={onStart}
-        disabled={loading}
-        className="min-h-[44px] px-8 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50
-                   disabled:cursor-not-allowed rounded-xl font-semibold text-white transition-colors"
-      >
-        {loading ? 'Cargando...' : 'Comenzar'}
-      </button>
     </div>
   );
 }
@@ -161,25 +187,43 @@ function ChatView({ messages, loading, isComplete, onSend, onStartSynthesis, onS
   };
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-4rem)]">
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 4rem)' }}>
       {/* Messages */}
       <div
         role="log"
         aria-live="polite"
-        aria-label="Conversación de onboarding"
-        className="flex-1 overflow-y-auto py-4 space-y-4 pb-2"
+        aria-label="Conversacion de onboarding"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          paddingTop: '1rem',
+          paddingBottom: '0.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+        }}
       >
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            style={{
+              display: 'flex',
+              justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+            }}
           >
             <div
-              className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                msg.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-br-sm'
-                  : 'bg-gray-800 text-gray-100 rounded-tl-sm'
-              }`}
+              style={{
+                maxWidth: '80%',
+                padding: '0.75rem 1rem',
+                fontSize: '0.875rem',
+                lineHeight: 1.6,
+                whiteSpace: 'pre-wrap',
+                border: '2px solid var(--border)',
+                ...(msg.role === 'user'
+                  ? { background: 'var(--text)', color: 'var(--bg-white)' }
+                  : { background: 'var(--bg-white)', color: 'var(--text)' }
+                ),
+              }}
             >
               {msg.content}
             </div>
@@ -187,7 +231,7 @@ function ChatView({ messages, loading, isComplete, onSend, onStartSynthesis, onS
         ))}
 
         {loading && (
-          <div className="flex justify-start">
+          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
             <TypingIndicator />
           </div>
         )}
@@ -197,24 +241,33 @@ function ChatView({ messages, loading, isComplete, onSend, onStartSynthesis, onS
 
       {/* Complete banner */}
       {isComplete && !loading && (
-        <div className="bg-green-900/40 border border-green-700/50 rounded-xl p-4 mb-3 flex
-                        flex-col sm:flex-row sm:items-center gap-3">
-          <p className="text-green-300 text-sm flex-1">
-            Tengo suficiente información para generar tu configuración.
+        <div style={{
+          background: 'var(--bg-white)',
+          border: '2px solid var(--accent-green)',
+          padding: '1rem',
+          marginBottom: '0.75rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+        }}>
+          <p style={{ color: 'var(--accent-green)', fontSize: '0.875rem', flex: 1, fontWeight: 600 }}>
+            Tengo suficiente informacion para generar tu configuracion.
           </p>
           <button
             onClick={onStartSynthesis}
-            className="min-h-[44px] shrink-0 px-5 py-2 bg-green-600 hover:bg-green-500
-                       rounded-lg font-semibold text-white text-sm transition-colors"
+            className="btn btn--primary"
+            style={{ minHeight: '44px' }}
           >
-            Generar configuración
+            GENERAR CONFIGURACION
           </button>
         </div>
       )}
 
       {/* Input row */}
-      <form onSubmit={handleSubmit} className="flex gap-2 pb-safe">
-        <label htmlFor="chat-input" className="sr-only">Escribe tu respuesta</label>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <label htmlFor="chat-input" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
+          Escribe tu respuesta
+        </label>
         <input
           id="chat-input"
           type="text"
@@ -223,32 +276,29 @@ function ChatView({ messages, loading, isComplete, onSend, onStartSynthesis, onS
           placeholder="Escribe tu respuesta..."
           disabled={loading}
           autoComplete="off"
-          className="flex-1 min-h-[44px] px-4 py-2 bg-gray-800 border border-gray-700
-                     rounded-xl text-white placeholder-gray-500 text-sm
-                     focus:outline-none focus:border-blue-500 disabled:opacity-50"
+          className="gate-input"
+          style={{ flex: 1, minHeight: '44px' }}
         />
         <button
           type="submit"
           disabled={loading || !input.trim()}
           aria-label="Enviar mensaje"
-          className="min-h-[44px] min-w-[44px] px-4 bg-blue-600 hover:bg-blue-500
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     rounded-xl font-semibold text-white text-sm transition-colors"
+          className="btn btn--primary"
+          style={{ minHeight: '44px', minWidth: '44px', padding: '0.75rem' }}
         >
-          →
+          &rarr;
         </button>
-        {/* Mic button — progressive enhancement */}
+        {/* Mic button */}
         <button
           type="button"
           onClick={onStartVoice}
           disabled={loading}
           aria-label="Cambiar a modo de voz"
           title="Hablar con el asistente"
-          className="min-h-[44px] min-w-[44px] flex items-center justify-center
-                     bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed
-                     rounded-xl text-gray-300 hover:text-white transition-colors"
+          className="btn btn--secondary"
+          style={{ minHeight: '44px', minWidth: '44px', padding: '0.75rem' }}
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+          <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round"
               d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
             <path strokeLinecap="round" strokeLinejoin="round"
@@ -277,12 +327,12 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
   const transcriptBottomRef = useRef<HTMLDivElement>(null);
   const [transcriptLines, setTranscriptLines] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([]);
 
-  // Check token expiration
   useEffect(() => {
     if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
       onSwitchToText();
     }
   }, [expiresAt, onSwitchToText]);
+
   const handleTranscript = useCallback((text: string, role: 'user' | 'assistant') => {
     setTranscriptLines(prev => [...prev, { role, text }]);
     onTranscript(text, role);
@@ -301,7 +351,7 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
     onToolCall: handleToolCall,
     onComplete,
     onError: (err) => {
-      setTranscriptLines(prev => [...prev, { role: 'assistant', text: `⚠ ${err}` }]);
+      setTranscriptLines(prev => [...prev, { role: 'assistant', text: `Error: ${err}` }]);
     },
   });
 
@@ -318,12 +368,12 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
 
   const STATUS_LABEL: Record<typeof status, string> = {
     connecting:  'Conectando con el asistente de voz...',
-    connected:   'Presiona el micrófono para hablar',
+    connected:   'Presiona el microfono para hablar',
     listening:   'Escuchando...',
     processing:  'Procesando tu respuesta...',
     speaking:    'Respondiendo...',
-    error:       'Error de conexión',
-    closed:      'Sesión cerrada',
+    error:       'Error de conexion',
+    closed:      'Sesion cerrada',
   };
 
   const isListening  = status === 'listening';
@@ -333,7 +383,6 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
   const isError      = status === 'error' || status === 'closed';
   const canListen    = status === 'connected' || status === 'listening';
 
-  // Audio level bar: convert 0–1 amplitude to percentage width
   const levelPct = Math.min(100, Math.round(audioLevel * 600));
 
   const handleMicPress = () => {
@@ -344,28 +393,47 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
     }
   };
 
+  // Status indicator color
+  const statusDotColor =
+    isConnecting               ? 'var(--accent-yellow)' :
+    isError                    ? 'var(--accent-red)' :
+    isSpeaking || isProcessing ? 'var(--accent-blue)' :
+    isListening                ? 'var(--accent-green)' :
+                                 'var(--accent-green)';
+
   return (
-    <div className="flex flex-col h-[calc(100dvh-4rem)]">
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 4rem)' }}>
       {/* Status announcement for screen readers */}
-      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+      <div role="status" aria-live="polite" aria-atomic="true" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
         {STATUS_LABEL[status]}
       </div>
 
       {/* Top bar */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${
-            isConnecting                  ? 'bg-yellow-400 animate-pulse' :
-            isError                       ? 'bg-red-400' :
-            isSpeaking || isProcessing    ? 'bg-blue-400 animate-pulse' :
-            isListening                   ? 'bg-green-400 animate-pulse' :
-                                            'bg-green-400'
-          }`} aria-hidden="true" />
-          <span className="text-sm text-gray-400">{STATUS_LABEL[status]}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div
+            aria-hidden="true"
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: statusDotColor,
+            }}
+          />
+          <span className="text-sm muted">{STATUS_LABEL[status]}</span>
         </div>
         <button
           onClick={onSwitchToText}
-          className="text-xs text-gray-500 hover:text-gray-300 underline underline-offset-2 transition-colors"
+          style={{
+            background: 'none',
+            border: 'none',
+            fontFamily: 'var(--font)',
+            fontSize: '0.75rem',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+            padding: 0,
+          }}
         >
           Cambiar a texto
         </button>
@@ -375,21 +443,37 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
       <div
         role="log"
         aria-live="polite"
-        aria-label="Transcripción de la conversación de voz"
-        className="flex-1 overflow-y-auto space-y-3 pb-4"
+        aria-label="Transcripcion de la conversacion de voz"
+        className="card"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          padding: '1rem',
+          marginBottom: '1rem',
+        }}
       >
         {transcriptLines.length === 0 && !isConnecting && (
-          <p className="text-center text-gray-600 text-sm pt-8">
-            La conversación aparecerá aquí
+          <p className="muted" style={{ textAlign: 'center', fontSize: '0.85rem', paddingTop: '2rem' }}>
+            La conversacion aparecera aqui
           </p>
         )}
         {transcriptLines.map((line, i) => (
-          <div key={i} className={`flex ${line.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-              line.role === 'user'
-                ? 'bg-blue-600 text-white rounded-br-sm'
-                : 'bg-gray-800 text-gray-100 rounded-tl-sm'
-            }`}>
+          <div key={i} style={{ display: 'flex', justifyContent: line.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div style={{
+              maxWidth: '80%',
+              padding: '0.75rem 1rem',
+              fontSize: '0.875rem',
+              lineHeight: 1.6,
+              whiteSpace: 'pre-wrap',
+              border: '2px solid var(--border)',
+              ...(line.role === 'user'
+                ? { background: 'var(--text)', color: 'var(--bg-white)' }
+                : { background: 'var(--bg-white)', color: 'var(--text)' }
+              ),
+            }}>
               {line.text}
             </div>
           </div>
@@ -398,17 +482,11 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col items-center gap-4 pb-safe pt-4">
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', paddingBottom: 'env(safe-area-inset-bottom)', paddingTop: '1rem' }}>
         {/* Audio level bar */}
         {isListening && (
-          <div
-            aria-hidden="true"
-            className="w-full max-w-xs h-1.5 bg-gray-700 rounded-full overflow-hidden"
-          >
-            <div
-              className="h-full bg-green-400 rounded-full transition-all duration-75"
-              style={{ width: `${levelPct}%` }}
-            />
+          <div className="progress-bar" style={{ width: '100%', maxWidth: '200px' }}>
+            <div className="progress-bar__fill" style={{ width: `${levelPct}%`, transition: 'width 75ms' }} />
           </div>
         )}
 
@@ -417,43 +495,33 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
           <button
             onClick={handleMicPress}
             disabled={!canListen || isConnecting}
-            aria-label={isListening ? 'Detener grabación' : 'Iniciar grabación'}
+            aria-label={isListening ? 'Detener grabacion' : 'Iniciar grabacion'}
             aria-pressed={isListening}
-            className={`
-              relative flex items-center justify-center
-              w-20 h-20 rounded-full text-white transition-all duration-200
-              disabled:opacity-40 disabled:cursor-not-allowed
-              focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500
-              ${isListening
-                ? 'bg-green-600 hover:bg-green-500 shadow-[0_0_0_0_rgba(74,222,128,0.4)] animate-pulse-ring'
-                : 'bg-gray-700 hover:bg-gray-600 shadow-lg'
-              }
-            `}
+            className="btn"
+            style={{
+              width: '72px',
+              height: '72px',
+              borderRadius: '50%',
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '3px solid var(--border)',
+              background: isListening ? 'var(--accent-green)' : 'var(--bg-white)',
+              color: isListening ? 'var(--bg-white)' : 'var(--text)',
+              position: 'relative',
+            }}
           >
-            {/* Pulse ring animation when listening */}
-            {isListening && (
-              <span
-                aria-hidden="true"
-                className="absolute inset-0 rounded-full bg-green-500 opacity-30 animate-ping"
-              />
-            )}
-
             {/* Icon */}
             {isSpeaking ? (
-              // Speaker icon
-              <svg className="w-8 h-8 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <svg style={{ width: '28px', height: '28px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round"
                   d="M15.536 8.464a5 5 0 0 1 0 7.072M18.364 5.636a9 9 0 0 1 0 12.728M11 5L6 9H3v6h3l5 4V5z" />
               </svg>
             ) : isProcessing ? (
-              // Spinner
-              <div
-                className="w-8 h-8 border-4 border-gray-500 border-t-white rounded-full animate-spin relative z-10"
-                aria-hidden="true"
-              />
+              <div className="spinner" aria-hidden="true" />
             ) : (
-              // Microphone icon
-              <svg className="w-8 h-8 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <svg style={{ width: '28px', height: '28px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round"
                   d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                 <path strokeLinecap="round" strokeLinejoin="round"
@@ -465,14 +533,14 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
 
         {/* Error fallback */}
         {isError && (
-          <div className="flex flex-col items-center gap-3 text-center">
-            <p className="text-red-400 text-sm">{STATUS_LABEL[status]}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', textAlign: 'center' }}>
+            <p style={{ color: 'var(--accent-red)', fontSize: '0.875rem' }}>{STATUS_LABEL[status]}</p>
             <button
               onClick={onSwitchToText}
-              className="min-h-[44px] px-6 py-2 bg-gray-700 hover:bg-gray-600
-                         rounded-xl font-semibold text-white text-sm transition-colors"
+              className="btn btn--secondary"
+              style={{ minHeight: '44px' }}
             >
-              Continuar por texto
+              CONTINUAR POR TEXTO
             </button>
           </div>
         )}
@@ -481,26 +549,39 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
   );
 }
 
+// ─── Synthesizing view ───────────────────────────────────────────────────────
+
 interface SynthesizingViewProps {
   progress: string;
 }
 
 function SynthesizingView({ progress }: SynthesizingViewProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-6 py-16 text-center">
-      {/* Spinner */}
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '1.5rem',
+      paddingTop: '4rem',
+      paddingBottom: '4rem',
+      textAlign: 'center',
+    }}>
       <div
         role="status"
-        aria-label="Generando configuración"
-        className="w-12 h-12 border-4 border-gray-700 border-t-blue-500 rounded-full animate-spin"
+        aria-label="Generando configuracion"
+        className="spinner"
+        style={{ width: '40px', height: '40px', borderWidth: '4px' }}
       />
-      <div className="space-y-2">
-        <p className="text-white font-medium">{progress || 'Analizando tu conversación...'}</p>
-        <p className="text-gray-500 text-sm">Este paso toma aproximadamente 2 minutos</p>
+      <div>
+        <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>{progress || 'Analizando tu conversacion...'}</p>
+        <p className="text-sm muted">Este paso toma aproximadamente 2 minutos</p>
       </div>
     </div>
   );
 }
+
+// ─── Reviewing view ──────────────────────────────────────────────────────────
 
 interface ReviewingViewProps {
   config: ClientConfig;
@@ -512,31 +593,38 @@ interface ReviewingViewProps {
 
 function ReviewingView({ config, gaps, confidence, onApprove, onModify }: ReviewingViewProps) {
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Header */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div>
-            <h2 className="text-xl font-bold text-white">Tu configuración</h2>
-            <p className="text-gray-400 text-sm mt-0.5">{config.clientName}</p>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Tu configuracion</h2>
+            <p className="text-sm muted" style={{ marginTop: '0.25rem' }}>{config.clientName}</p>
           </div>
           <ConfidenceBadge confidence={confidence} />
         </div>
-        <p className="text-sm text-gray-400">
-          Método de puntuación:{' '}
-          <span className="text-gray-200 font-medium">
+        <p className="text-sm muted" style={{ marginTop: '0.5rem' }}>
+          Metodo de puntuacion:{' '}
+          <span style={{ fontWeight: 600, color: 'var(--text)' }}>
             {SCORING_LABELS[config.globalScoringMethod]}
           </span>
           {config.passingScore !== undefined && (
-            <> · Aprobación desde <span className="text-gray-200 font-medium">{config.passingScore}%</span></>
+            <> &middot; Aprobacion desde <span style={{ fontWeight: 600, color: 'var(--text)' }}>{config.passingScore}%</span></>
           )}
         </p>
       </div>
 
       {/* Evaluation areas */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
-          Áreas de evaluación
+      <div>
+        <h3 style={{
+          fontSize: '0.75rem',
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          color: 'var(--text-muted)',
+          marginBottom: '0.75rem',
+        }}>
+          Areas de evaluacion
         </h3>
         {config.evaluationAreas.map(area => (
           <AreaCard key={area.id} area={area} />
@@ -545,26 +633,48 @@ function ReviewingView({ config, gaps, confidence, onApprove, onModify }: Review
 
       {/* Escalation rules */}
       {config.escalationRules.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
-            Reglas de escalación
+        <div>
+          <h3 style={{
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: 'var(--text-muted)',
+            marginBottom: '0.75rem',
+          }}>
+            Reglas de escalacion
           </h3>
-          <ul className="space-y-2 bg-gray-800/50 rounded-xl p-4">
-            {config.escalationRules.map(rule => (
-              <EscalationRuleItem key={rule.id} rule={rule} />
-            ))}
-          </ul>
+          <div className="card" style={{ padding: '1rem' }}>
+            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {config.escalationRules.map(rule => (
+                <EscalationRuleItem key={rule.id} rule={rule} />
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 
       {/* Gaps */}
       {gaps.length > 0 && (
-        <div className="bg-yellow-900/30 border border-yellow-700/40 rounded-xl p-4 space-y-2">
-          <h3 className="text-sm font-semibold text-yellow-300">Información pendiente</h3>
-          <ul className="space-y-1">
+        <div className="truncation-banner" style={{
+          background: '#fef3c7',
+          borderColor: 'var(--accent-yellow)',
+        }}>
+          <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+            Informacion pendiente
+          </h3>
+          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
             {gaps.map((gap, i) => (
-              <li key={i} className="text-sm text-yellow-200/80 flex items-start gap-2">
-                <span className="mt-1 shrink-0 w-1.5 h-1.5 rounded-full bg-yellow-400" />
+              <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem' }}>
+                <span style={{
+                  marginTop: '0.35rem',
+                  flexShrink: 0,
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: 'var(--accent-yellow)',
+                  display: 'inline-block',
+                }} />
                 {gap}
               </li>
             ))}
@@ -573,20 +683,20 @@ function ReviewingView({ config, gaps, confidence, onApprove, onModify }: Review
       )}
 
       {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '0.5rem' }}>
         <button
           onClick={onApprove}
-          className="flex-1 min-h-[44px] py-3 bg-green-600 hover:bg-green-500
-                     rounded-xl font-semibold text-white transition-colors"
+          className="btn btn--primary"
+          style={{ width: '100%', minHeight: '44px' }}
         >
-          Aprobar y probar
+          APROBAR Y PROBAR
         </button>
         <button
           onClick={onModify}
-          className="flex-1 min-h-[44px] py-3 bg-gray-700 hover:bg-gray-600
-                     rounded-xl font-semibold text-gray-100 transition-colors"
+          className="btn btn--secondary"
+          style={{ width: '100%', minHeight: '44px' }}
         >
-          Modificar
+          MODIFICAR
         </button>
       </div>
     </div>
@@ -635,16 +745,16 @@ function TestingView({ photos, iterationCount, onAddPhoto, onRate, onDeploy, onA
   const MAX_PHOTOS = 10;
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-white">Prueba tu configuración</h2>
-        <p className="text-gray-400 text-sm mt-1">
-          Sube 5-10 fotos de tus visitas de campo para verificar que el análisis funciona correctamente.
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Prueba tu configuracion</h2>
+        <p className="text-sm muted" style={{ marginTop: '0.25rem' }}>
+          Sube 5-10 fotos de tus visitas de campo para verificar que el analisis funciona correctamente.
         </p>
         {iterationCount > 0 && (
-          <p className="text-yellow-400 text-xs mt-1 font-medium">
-            Iteración {iterationCount} de 5
+          <p style={{ color: 'var(--accent-yellow)', fontSize: '0.75rem', marginTop: '0.25rem', fontWeight: 600 }}>
+            Iteracion {iterationCount} de 5
           </p>
         )}
       </div>
@@ -652,117 +762,118 @@ function TestingView({ photos, iterationCount, onAddPhoto, onRate, onDeploy, onA
       {/* Upload area */}
       {photos.length < MAX_PHOTOS && (
         <div
+          className={`drop-zone${dragActive ? ' drop-zone--active' : ''}`}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onClick={() => fileRef.current?.click()}
-          className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors
-            ${dragActive
-              ? 'border-blue-400 bg-blue-900/20'
-              : 'border-gray-600 hover:border-gray-500 hover:bg-gray-800/40'
-            }`}
         >
           <input
             ref={fileRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             multiple
-            className="sr-only"
-            onChange={e => e.target.files && handleFiles(e.target.files)}
+            style={{ display: 'none' }}
+            onChange={e => { if (e.target.files) handleFiles(e.target.files); e.target.value = ''; }}
           />
-          <div className="flex flex-col items-center gap-2 pointer-events-none">
-            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18v-1.5M16.5 12L12 7.5m0 0L7.5 12M12 7.5V18" />
-            </svg>
-            <p className="text-gray-300 text-sm font-medium">
-              {dragActive ? 'Suelta las fotos aquí' : 'Arrastra fotos o haz clic para seleccionar'}
-            </p>
-            <p className="text-gray-500 text-xs">JPEG, PNG o WebP · máx. 10 MB · {photos.length}/{MAX_PHOTOS} fotos</p>
+          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>&#128247;</div>
+          <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.25rem' }}>
+            {dragActive ? 'Suelta las fotos aqui' : 'Arrastra fotos o haz clic para seleccionar'}
           </div>
+          <div className="text-sm muted">JPEG, PNG o WebP &middot; max. 10 MB &middot; {photos.length}/{MAX_PHOTOS} fotos</div>
         </div>
       )}
 
       {/* Photo list */}
       {photos.length > 0 && (
-        <ul className="space-y-3">
+        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {photos.map(photo => (
-            <li key={photo.id} className="bg-gray-800 rounded-xl overflow-hidden">
+            <li key={photo.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
               {/* Photo row */}
-              <div className="flex items-center gap-3 p-3">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem' }}>
                 {/* Thumbnail */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photo.previewUrl}
                   alt={photo.fileName}
-                  className="w-12 h-12 rounded-lg object-cover shrink-0"
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    objectFit: 'cover',
+                    flexShrink: 0,
+                    border: '1px solid var(--border-light)',
+                  }}
                 />
 
                 {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white truncate">{photo.fileName}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {photo.fileName}
+                  </p>
                   {photo.status === 'done' && photo.result && (
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Puntaje: <span className={photo.result.passed ? 'text-green-400' : 'text-red-400'}>
+                    <p className="text-xs muted" style={{ marginTop: '0.15rem' }}>
+                      Puntaje:{' '}
+                      <span style={{ color: photo.result.passed ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 600 }}>
                         {Math.round(photo.result.globalScore)}%
                       </span>
-                      {' · '}
-                      <span className={photo.result.passed ? 'text-green-400' : 'text-red-400'}>
+                      {' \u00b7 '}
+                      <span style={{ color: photo.result.passed ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 600 }}>
                         {photo.result.passed ? 'Aprobado' : 'Reprobado'}
                       </span>
                     </p>
                   )}
                   {photo.status === 'error' && (
-                    <p className="text-xs text-red-400 mt-0.5">Error al analizar</p>
+                    <p className="text-xs" style={{ color: 'var(--accent-red)', marginTop: '0.15rem' }}>Error al analizar</p>
                   )}
                   {photo.status === 'analyzing' && (
-                    <p className="text-xs text-blue-400 mt-0.5">Analizando...</p>
+                    <p className="text-xs" style={{ color: 'var(--accent-blue)', marginTop: '0.15rem' }}>Analizando...</p>
                   )}
                   {photo.status === 'pending' && (
-                    <p className="text-xs text-gray-500 mt-0.5">En cola</p>
+                    <p className="text-xs muted" style={{ marginTop: '0.15rem' }}>En cola</p>
                   )}
                 </div>
 
                 {/* Status indicator */}
-                <div className="shrink-0">
+                <div style={{ flexShrink: 0 }}>
                   {photo.status === 'analyzing' && (
                     <div
                       role="status"
                       aria-label="Analizando"
-                      className="w-5 h-5 border-2 border-gray-600 border-t-blue-400 rounded-full animate-spin"
+                      className="spinner"
+                      style={{ width: '18px', height: '18px', borderWidth: '2px' }}
                     />
                   )}
                   {photo.status === 'done' && photo.rating === null && (
                     <button
                       onClick={() => setExpandedId(prev => prev === photo.id ? null : photo.id)}
                       aria-label="Ver resultado"
-                      className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      className="btn btn--small"
+                      style={{ padding: '0.25rem 0.5rem' }}
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" d={expandedId === photo.id ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
-                      </svg>
+                      {expandedId === photo.id ? '\u25B2' : '\u25BC'}
                     </button>
                   )}
                   {photo.status === 'done' && photo.rating === 'ok' && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-900/60 text-green-300">OK</span>
+                    <span className="badge badge--green">OK</span>
                   )}
                   {photo.status === 'done' && photo.rating === 'no' && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-900/60 text-red-300">NO</span>
+                    <span className="badge badge--red">NO</span>
                   )}
                 </div>
               </div>
 
               {/* Expanded result + rating */}
               {photo.status === 'done' && photo.result && (expandedId === photo.id || photo.rating === null) && photo.rating === null && (
-                <div className="border-t border-gray-700 p-3 space-y-3">
+                <div style={{ borderTop: '1px solid var(--border-light)', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {/* Summary */}
-                  <p className="text-sm text-gray-300">{photo.result.summary}</p>
+                  <p className="text-sm">{photo.result.summary}</p>
 
                   {/* Area scores */}
-                  <div className="space-y-1.5">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                     {photo.result.areas.map(area => (
-                      <div key={area.areaId} className="flex items-center justify-between text-xs">
-                        <span className="text-gray-400">{area.areaName}</span>
-                        <span className={area.passed ? 'text-green-400' : 'text-red-400'}>
+                      <div key={area.areaId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                        <span className="muted">{area.areaName}</span>
+                        <span style={{ color: area.passed ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 600 }}>
                           {Math.round(area.score)}%
                         </span>
                       </div>
@@ -770,38 +881,41 @@ function TestingView({ photos, iterationCount, onAddPhoto, onRate, onDeploy, onA
                   </div>
 
                   {/* Rating buttons */}
-                  <div className="space-y-2">
-                    <p className="text-xs text-gray-400 font-medium">¿El resultado es correcto?</p>
-                    <div className="flex gap-2">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <p className="text-xs muted" style={{ fontWeight: 600 }}>El resultado es correcto?</p>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button
                         onClick={() => {
                           onRate(photo.id, 'ok');
                           setExpandedId(null);
                         }}
-                        className="flex-1 min-h-[44px] py-2 bg-green-700 hover:bg-green-600 rounded-lg text-sm font-semibold text-white transition-colors"
+                        className="btn btn--primary"
+                        style={{ flex: 1, minHeight: '44px', background: 'var(--accent-green)', borderColor: 'var(--accent-green)', fontSize: '0.8rem' }}
                       >
-                        Sí, está bien
+                        SI, ESTA BIEN
                       </button>
                       <button
                         onClick={() => setExpandedId(photo.id)}
-                        className="flex-1 min-h-[44px] py-2 bg-red-800 hover:bg-red-700 rounded-lg text-sm font-semibold text-white transition-colors"
+                        className="btn btn--primary"
+                        style={{ flex: 1, minHeight: '44px', background: 'var(--accent-red)', borderColor: 'var(--accent-red)', fontSize: '0.8rem' }}
                       >
-                        No, hay problemas
+                        NO, HAY PROBLEMAS
                       </button>
                     </div>
 
                     {/* Feedback for NO */}
-                    <div className="space-y-2">
-                      <label htmlFor={`feedback-${photo.id}`} className="sr-only">
-                        ¿Qué esperabas diferente?
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <label htmlFor={`feedback-${photo.id}`} style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
+                        Que esperabas diferente?
                       </label>
                       <input
                         id={`feedback-${photo.id}`}
                         type="text"
                         value={feedbackMap[photo.id] ?? ''}
                         onChange={e => setFeedbackMap(prev => ({ ...prev, [photo.id]: e.target.value }))}
-                        placeholder="¿Qué esperabas diferente?"
-                        className="w-full min-h-[44px] px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
+                        placeholder="Que esperabas diferente?"
+                        className="gate-input"
+                        style={{ minHeight: '44px' }}
                       />
                       <button
                         onClick={() => {
@@ -809,9 +923,10 @@ function TestingView({ photos, iterationCount, onAddPhoto, onRate, onDeploy, onA
                           setExpandedId(null);
                         }}
                         disabled={!feedbackMap[photo.id]?.trim()}
-                        className="w-full min-h-[44px] py-2 bg-red-700 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-semibold text-white transition-colors"
+                        className="btn btn--primary"
+                        style={{ width: '100%', minHeight: '44px', background: 'var(--accent-red)', borderColor: 'var(--accent-red)' }}
                       >
-                        Confirmar problema
+                        CONFIRMAR PROBLEMA
                       </button>
                     </div>
                   </div>
@@ -824,38 +939,40 @@ function TestingView({ photos, iterationCount, onAddPhoto, onRate, onDeploy, onA
 
       {/* Bottom actions */}
       {photos.length > 0 && (
-        <div className="flex flex-col gap-3 pt-2">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '0.5rem' }}>
           {canDeploy && (
             <button
               onClick={onDeploy}
-              className="w-full min-h-[44px] py-3 bg-green-600 hover:bg-green-500 rounded-xl font-semibold text-white transition-colors"
+              className="btn btn--primary"
+              style={{ width: '100%', minHeight: '44px' }}
             >
-              Desplegar configuración
+              DESPLEGAR CONFIGURACION
             </button>
           )}
           {canAdjust && iterationCount < 5 && (
             <button
               onClick={onAdjust}
-              className="w-full min-h-[44px] py-3 bg-yellow-600 hover:bg-yellow-500 rounded-xl font-semibold text-white transition-colors"
+              className="btn btn--primary"
+              style={{ width: '100%', minHeight: '44px', background: 'var(--accent-yellow)', borderColor: 'var(--accent-yellow)', color: 'var(--text)' }}
             >
-              Ajustar configuración
+              AJUSTAR CONFIGURACION
             </button>
           )}
           {canAdjust && iterationCount >= 5 && (
-            <div className="bg-red-900/30 border border-red-700/40 rounded-xl p-4 text-center">
-              <p className="text-red-300 text-sm">
-                Alcanzaste el límite de iteraciones. Contacta soporte para continuar.
+            <div className="truncation-banner" style={{ textAlign: 'center', background: '#fee2e2', borderColor: 'var(--accent-red)' }}>
+              <p style={{ fontSize: '0.875rem' }}>
+                Alcanzaste el limite de iteraciones. Contacta soporte para continuar.
               </p>
             </div>
           )}
           {!allRated && allDone && (
-            <p className="text-center text-sm text-gray-500">
+            <p className="text-sm muted" style={{ textAlign: 'center' }}>
               Califica todos los resultados para continuar
             </p>
           )}
           {!allDone && photos.length > 0 && (
-            <p className="text-center text-sm text-gray-500">
-              Esperando análisis...
+            <p className="text-sm muted" style={{ textAlign: 'center' }}>
+              Esperando analisis...
             </p>
           )}
         </div>
@@ -868,19 +985,31 @@ function TestingView({ photos, iterationCount, onAddPhoto, onRate, onDeploy, onA
 
 function DeployingView() {
   return (
-    <div className="flex flex-col items-center justify-center gap-6 py-16 text-center">
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '1.5rem',
+      paddingTop: '4rem',
+      paddingBottom: '4rem',
+      textAlign: 'center',
+    }}>
       <div
         role="status"
-        aria-label="Desplegando configuración"
-        className="w-12 h-12 border-4 border-gray-700 border-t-green-500 rounded-full animate-spin"
+        aria-label="Desplegando configuracion"
+        className="spinner"
+        style={{ width: '40px', height: '40px', borderWidth: '4px' }}
       />
-      <div className="space-y-2">
-        <p className="text-white font-medium">Desplegando tu configuración...</p>
-        <p className="text-gray-500 text-sm">Esto tomará unos segundos</p>
+      <div>
+        <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Desplegando tu configuracion...</p>
+        <p className="text-sm muted">Esto tomara unos segundos</p>
       </div>
     </div>
   );
 }
+
+// ─── Approved view ───────────────────────────────────────────────────────────
 
 interface ApprovedViewProps {
   config: ClientConfig;
@@ -888,37 +1017,53 @@ interface ApprovedViewProps {
 
 function ApprovedView({ config }: ApprovedViewProps) {
   return (
-    <div className="flex flex-col items-center text-center gap-6 py-12">
-      <div className="w-16 h-16 rounded-full bg-green-900/50 flex items-center justify-center">
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      textAlign: 'center',
+      gap: '1.5rem',
+      paddingTop: '3rem',
+      paddingBottom: '3rem',
+    }}>
+      <div style={{
+        width: '64px',
+        height: '64px',
+        borderRadius: '50%',
+        border: '3px solid var(--accent-green)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
         <svg
-          className="w-8 h-8 text-green-400"
+          style={{ width: '28px', height: '28px', color: 'var(--accent-green)' }}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
-          strokeWidth={2}
+          strokeWidth={3}
           aria-hidden="true"
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-white">Configuración aprobada</h2>
-        <p className="text-gray-400">
-          El perfil de <span className="text-white font-medium">{config.clientName}</span> ha sido guardado.
+      <div>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Configuracion aprobada</h2>
+        <p className="muted">
+          El perfil de <span style={{ fontWeight: 600, color: 'var(--text)' }}>{config.clientName}</span> ha sido guardado.
         </p>
       </div>
-      <div className="bg-gray-800 rounded-xl p-4 text-left w-full max-w-sm space-y-2 text-sm">
-        <p className="text-gray-400">
-          Industria:{' '}
-          <span className="text-gray-200 capitalize">{config.industry.replace('_', ' ')}</span>
+      <div className="card" style={{ textAlign: 'left', width: '100%', maxWidth: '360px' }}>
+        <p className="text-sm" style={{ marginBottom: '0.35rem' }}>
+          <span className="muted">Industria: </span>
+          <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{config.industry.replace('_', ' ')}</span>
         </p>
-        <p className="text-gray-400">
-          Áreas de evaluación:{' '}
-          <span className="text-gray-200">{config.evaluationAreas.length}</span>
+        <p className="text-sm" style={{ marginBottom: '0.35rem' }}>
+          <span className="muted">Areas de evaluacion: </span>
+          <span style={{ fontWeight: 600 }}>{config.evaluationAreas.length}</span>
         </p>
-        <p className="text-gray-400">
-          Método de puntuación:{' '}
-          <span className="text-gray-200">{SCORING_LABELS[config.globalScoringMethod]}</span>
+        <p className="text-sm">
+          <span className="muted">Metodo de puntuacion: </span>
+          <span style={{ fontWeight: 600 }}>{SCORING_LABELS[config.globalScoringMethod]}</span>
         </p>
       </div>
     </div>
@@ -937,15 +1082,32 @@ function ErrorBanner({ message, onDismiss, onRetry }: ErrorBannerProps) {
   return (
     <div
       role="alert"
-      className="flex items-start gap-3 bg-red-900/40 border border-red-700/50 rounded-xl p-4 mb-4"
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.75rem',
+        background: '#fee2e2',
+        border: '2px solid var(--accent-red)',
+        padding: '1rem',
+        marginBottom: '1rem',
+      }}
     >
-      <span className="shrink-0 text-red-400 mt-0.5" aria-hidden="true">✕</span>
-      <p className="flex-1 text-red-300 text-sm">{message}</p>
-      <div className="flex gap-2 shrink-0">
+      <span style={{ flexShrink: 0, color: 'var(--accent-red)', fontWeight: 700 }} aria-hidden="true">!</span>
+      <p style={{ flex: 1, fontSize: '0.875rem' }}>{message}</p>
+      <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
         {onRetry && (
           <button
             onClick={onRetry}
-            className="text-red-300 hover:text-white text-sm underline underline-offset-2"
+            style={{
+              background: 'none',
+              border: 'none',
+              fontFamily: 'var(--font)',
+              fontSize: '0.8rem',
+              color: 'var(--accent-red)',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              padding: 0,
+            }}
           >
             Reintentar
           </button>
@@ -953,9 +1115,18 @@ function ErrorBanner({ message, onDismiss, onRetry }: ErrorBannerProps) {
         <button
           onClick={onDismiss}
           aria-label="Cerrar error"
-          className="text-red-400 hover:text-white text-sm"
+          style={{
+            background: 'none',
+            border: 'none',
+            fontFamily: 'var(--font)',
+            fontSize: '0.875rem',
+            color: 'var(--accent-red)',
+            cursor: 'pointer',
+            fontWeight: 700,
+            padding: 0,
+          }}
         >
-          ✕
+          X
         </button>
       </div>
     </div>
@@ -987,7 +1158,7 @@ function OnboardingPageInner() {
   const handleStart = () => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!code || !uuidRegex.test(code)) {
-      return; // Invalid code — button should be disabled without valid code
+      return;
     }
     startSession(code);
   };
@@ -1000,20 +1171,17 @@ function OnboardingPageInner() {
     endVoiceSession();
   };
 
-  // When a voice transcript arrives, inject it into the text message history
   const handleVoiceTranscript = useCallback(
     (text: string, role: 'user' | 'assistant') => {
       if (role === 'user') {
-        // User speech — dispatch as a chat message so the server is notified
         sendMessage(text);
       }
-      // Assistant transcripts are already captured in VoiceView's local state
     },
     [sendMessage],
   );
 
   return (
-    <div className="relative">
+    <div style={{ position: 'relative' }}>
       {/* Error banner */}
       {state.error && (
         <ErrorBanner
@@ -1091,11 +1259,12 @@ export default function OnboardingPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center py-16">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '4rem' }}>
           <div
             role="status"
             aria-label="Cargando"
-            className="w-8 h-8 border-4 border-gray-700 border-t-blue-500 rounded-full animate-spin"
+            className="spinner"
+            style={{ width: '32px', height: '32px', borderWidth: '4px' }}
           />
         </div>
       }

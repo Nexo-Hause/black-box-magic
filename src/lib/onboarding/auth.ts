@@ -55,7 +55,7 @@ async function getSecret(): Promise<Uint8Array> {
 
 import { supabase } from '@/lib/supabase';
 
-const TTL_MS = 5 * 60 * 1000; // 5 minutes
+const TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (matches JWT expiry)
 
 const memoryStore = new Map<string, { payload: OnboardingTokenPayload; expiresAt: number }>();
 

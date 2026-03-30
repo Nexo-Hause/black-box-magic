@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     code,
     url,
-    expiresIn: '5 minutes',
+    expiresIn: '7 days',
     client: { clientId, clientName, email },
   });
 }
