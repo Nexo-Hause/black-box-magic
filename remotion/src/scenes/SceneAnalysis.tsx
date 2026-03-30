@@ -8,6 +8,7 @@ import {
 } from "remotion";
 import { FONT, COLORS, TIMING } from "../theme";
 import { FadeWrapper } from "../components/FadeWrapper";
+import { MediaBackground } from "../components/MediaBackground";
 import { AnimatedText } from "../components/AnimatedText";
 import {
   IconChart,
@@ -37,11 +38,12 @@ export const SceneAnalysis: React.FC = () => {
 
   return (
     <FadeWrapper>
+      <MediaBackground type="image" src="images/scene-4.png" kenBurns="pan-right" overlayOpacity={0.75} />
       <AbsoluteFill
         style={{
           justifyContent: "center",
           alignItems: "center",
-          background: `linear-gradient(180deg, ${COLORS.bgDark} 0%, #0d0d1a 100%)`,
+          background: "transparent",
           padding: 100,
         }}
       >

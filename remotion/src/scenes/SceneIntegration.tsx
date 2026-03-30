@@ -8,6 +8,7 @@ import {
 } from "remotion";
 import { FONT, COLORS, TIMING } from "../theme";
 import { FadeWrapper } from "../components/FadeWrapper";
+import { MediaBackground } from "../components/MediaBackground";
 import { AnimatedText } from "../components/AnimatedText";
 import { IconPhone, IconBrain, IconDashboard, IconArrowDown } from "../components/icons";
 
@@ -56,11 +57,11 @@ export const SceneIntegration: React.FC = () => {
 
   return (
     <FadeWrapper>
+      <MediaBackground type="image" src="images/scene-5.png" kenBurns="zoom-out" overlayOpacity={0.78} />
       <AbsoluteFill
         style={{
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: COLORS.bgDark,
           padding: 80,
         }}
       >

@@ -8,6 +8,7 @@ import {
 } from "remotion";
 import { FONT, COLORS, TIMING } from "../theme";
 import { FadeWrapper } from "../components/FadeWrapper";
+import { MediaBackground } from "../components/MediaBackground";
 import { AnimatedText } from "../components/AnimatedText";
 import { Card } from "../components/Card";
 import {
@@ -46,11 +47,12 @@ export const SceneSolution: React.FC = () => {
 
   return (
     <FadeWrapper>
+      <MediaBackground type="video" src="clips/scene-3.mp4" playbackRate={0.65} overlayOpacity={0.7} />
       <AbsoluteFill
         style={{
           justifyContent: "center",
           alignItems: "center",
-          background: `radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0, 212, 170, 0.04) 0%, ${COLORS.bgDark} 100%)`,
+          background: "transparent",
           padding: 100,
         }}
       >
