@@ -24,7 +24,7 @@ export const LIVE_MODEL = 'gemini-3.1-flash-live-preview';
  * in dev fallback mode).
  */
 const LIVE_WS_BASE =
-  'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent';
+  'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
