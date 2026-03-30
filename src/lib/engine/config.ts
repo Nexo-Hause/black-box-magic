@@ -59,8 +59,13 @@ const escalationRuleSchema = z.object({
   description: z.string().min(1),
 });
 
+const PRIVATE_IP_PATTERN = /\/\/(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/i;
+
 const referenceImageSchema = z.object({
-  url: z.string().url(),
+  url: z.string()
+    .url()
+    .refine((u) => u.startsWith('https://'), { message: 'Only HTTPS URLs allowed for reference images' })
+    .refine((u) => !PRIVATE_IP_PATTERN.test(u), { message: 'Private network URLs not allowed' }),
   label: z.enum(['correct', 'incorrect']),
   area: z.string().min(1),
   description: z.string().min(1),

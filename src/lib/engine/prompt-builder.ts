@@ -5,6 +5,7 @@ import type {
   AreaResult,
   Industry,
 } from '@/types/engine';
+import type { ReferenceData } from '@/types/comparison';
 
 // ─── Industry name mapping ───
 
@@ -247,5 +248,107 @@ export function buildEscalationPrompt(
     'IMPORTANTE: Proporciona un análisis detallado en español (Latinoamérica) de los problemas detectados.',
     'Incluye: causa probable, impacto potencial, y acciones correctivas recomendadas.',
     'Sé específico y accionable. NO repitas los datos crudos — interprétalos.',
+  ].join('\n');
+}
+
+// ─── Comparison Prompt ───
+
+function formatReferenceItems(data: ReferenceData): string {
+  return data.items
+    .map((item, i) => {
+      const parts = [`${i + 1}. ${item.name}`];
+      if (item.category) parts.push(`Categoría: ${item.category}`);
+      if (item.expectedPosition) parts.push(`Posición esperada: ${item.expectedPosition}`);
+      if (item.expectedPrice != null) parts.push(`Precio esperado: $${item.expectedPrice.toFixed(2)}`);
+      if (item.expectedQuantity != null) parts.push(`Cantidad esperada: ${item.expectedQuantity}`);
+      if (item.attributes) {
+        const attrs = Object.entries(item.attributes)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(', ');
+        parts.push(`Atributos: ${attrs}`);
+      }
+      return parts.join(' | ');
+    })
+    .join('\n');
+}
+
+/**
+ * Builds a comparison prompt for reference-vs-field-photo analysis.
+ * Used in both Demo Mode (with minimal context) and Complete Mode (with full ClientConfig).
+ *
+ * The LLM receives both images and returns raw comparison data.
+ * Server-side code then calculates compliance scores.
+ */
+export function buildComparisonPrompt(referenceData: ReferenceData): string {
+  const referenceTypeNames: Record<string, string> = {
+    planogram: 'planograma de productos',
+    brand_manual: 'manual de marca',
+    checklist: 'checklist normativo',
+    blueprint: 'plano o especificación técnica',
+  };
+
+  const typeName = referenceTypeNames[referenceData.type] || referenceData.type;
+  const sectionLabel = referenceData.section
+    ? ` (sección: ${referenceData.section})`
+    : '';
+
+  const itemsList = formatReferenceItems(referenceData);
+
+  return [
+    `Eres un inspector visual experto en cumplimiento de ${typeName}.`,
+    '',
+    'Se te proporcionan DOS imágenes:',
+    `1. IMAGEN DE REFERENCIA: Un ${typeName}${sectionLabel} que muestra cómo DEBE verse el anaquel/espacio.`,
+    '2. IMAGEN DE CAMPO: Una foto real tomada en tienda/sitio que se debe comparar contra la referencia.',
+    '',
+    '## PRODUCTOS ESPERADOS (según la referencia)',
+    '',
+    itemsList || '(No se proporcionaron items estructurados — analiza directamente desde la imagen de referencia)',
+    '',
+    '## INSTRUCCIONES',
+    '',
+    '1. Compara la imagen de campo contra la imagen de referencia.',
+    '2. Para CADA producto esperado, determina si está presente en la foto de campo.',
+    '3. Si está presente, indica si está en la posición correcta según la referencia.',
+    '4. Si hay precios visibles, compáralos con los precios esperados.',
+    '5. Reporta productos que están en la foto pero NO en la referencia (inesperados).',
+    '6. Cuenta los huecos visibles (posiciones vacías donde debería haber producto).',
+    '7. Evalúa la calidad de la foto: ¿se puede analizar correctamente?',
+    '8. Evalúa la cobertura: ¿la foto muestra todo el espacio de la referencia o solo una parte?',
+    '',
+    'IMPORTANTE:',
+    '- Retorna SOLO datos crudos. NO calcules porcentajes ni scores — eso se hace en el servidor.',
+    '- Si un producto no es visible porque la foto no cubre esa zona, indica reason: "out of frame".',
+    '- Si la posición no se puede determinar, pon correctPosition: false con observation explicando por qué.',
+    '',
+    'IDIOMA: Responde completamente en español (Latinoamérica). Los keys del JSON se mantienen en inglés.',
+    '',
+    '## FORMATO DE RESPUESTA',
+    '',
+    'Retorna exclusivamente un objeto JSON con esta estructura (sin markdown, sin texto adicional):',
+    '',
+    '{',
+    '  "summary": "string (resumen ejecutivo 2-3 oraciones del cumplimiento observado)",',
+    '  "photoQuality": "good | acceptable | poor",',
+    '  "coverage": "full | partial",',
+    '  "items": [',
+    '    {',
+    '      "referenceItemId": "string (id del item de referencia, o null si no aplica)",',
+    '      "name": "string (nombre del producto detectado)",',
+    '      "found": true/false,',
+    '      "correctPosition": true/false,',
+    '      "observedPrice": number o null,',
+    '      "observation": "string opcional con notas"',
+    '    }',
+    '  ],',
+    '  "unexpectedItems": [',
+    '    {',
+    '      "name": "string",',
+    '      "position": "string opcional",',
+    '      "observation": "string opcional"',
+    '    }',
+    '  ],',
+    '  "gaps": number (posiciones vacías detectadas)',
+    '}',
   ].join('\n');
 }
