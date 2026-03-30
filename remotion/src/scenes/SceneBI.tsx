@@ -6,6 +6,7 @@ import {
 } from "remotion";
 import { FONT, COLORS } from "../theme";
 import { FadeWrapper } from "../components/FadeWrapper";
+import { MediaBackground } from "../components/MediaBackground";
 import { AnimatedText } from "../components/AnimatedText";
 import { BIDashboard } from "../components/BIDashboard";
 
@@ -19,11 +20,11 @@ export const SceneBI: React.FC = () => {
 
   return (
     <FadeWrapper>
+      <MediaBackground type="image" src="images/scene-6.png" kenBurns="pan-left" overlayOpacity={0.72} />
       <AbsoluteFill
         style={{
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: COLORS.bgDark,
           padding: 80,
         }}
       >

@@ -8,6 +8,7 @@ import {
 } from "remotion";
 import { FONT, COLORS, TIMING } from "../theme";
 import { FadeWrapper } from "../components/FadeWrapper";
+import { MediaBackground } from "../components/MediaBackground";
 import { MetricCounter } from "../components/MetricCounter";
 import { IconClock, IconCheck, IconChart } from "../components/icons";
 
@@ -83,32 +84,16 @@ const QualitativeBlock: React.FC<QualitativeBlockProps> = ({
 };
 
 export const SceneBenefits: React.FC = () => {
-  const frame = useCurrentFrame();
-
-  // Subtle accent gradient in background
-  const gradientOpacity = interpolate(frame, [0, 60], [0, 0.15], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
   return (
     <FadeWrapper>
+      <MediaBackground type="image" src="images/scene-7.png" kenBurns="zoom-in" overlayOpacity={0.75} />
       <AbsoluteFill
         style={{
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: COLORS.bgDark,
           padding: 80,
         }}
       >
-        {/* Subtle accent gradient overlay */}
-        <AbsoluteFill
-          style={{
-            background: `radial-gradient(ellipse 60% 50% at 50% 50%, ${COLORS.accentDim} 0%, transparent 100%)`,
-            opacity: gradientOpacity,
-          }}
-        />
-
         <div
           style={{
             display: "flex",
