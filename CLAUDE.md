@@ -175,6 +175,8 @@ No hay framework de tests configurado. Cuando se agregue, documentar aquí.
 | `docs/ubiqo/reunion-2026-03-26.md` | Transcripción reunión con Guillermo y Alberto |
 | `docs/ubiqo/roadmap-franquicia-restaurantes.md` | Roadmap franquicia restaurantes con fases y pricing |
 | `docs/ubiqo/analisis-clientes-evidence.md` | Análisis de 12 prospectos Evidence en 5 industrias |
+| `docs/ubiqo/reunion-2026-03-30-retail.md` | Transcripción reunión con René y Carlos (retail, Fruit of the Loom) |
+| `docs/ubiqo/resumen-reunion-2026-03-30-retail.md` | Resumen ejecutivo + análisis de la reunión del 30 marzo |
 
 ---
 
