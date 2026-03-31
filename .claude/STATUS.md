@@ -1,16 +1,16 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-03-28 (sesión 6: engine v3 Fases 0-4 implementadas)
+> Última actualización: 2026-03-31 (sesión 9: media Veo/Imagen para video Remotion + render v2)
 
 ---
 
 ## Foco Actual
 
-**Activo:** Engine v3 — Implementación completa (4 fases)
-**Spec:** `spec/01-engine-v3.md` (1,190 líneas, auditado, implementado)
-**PRs:** #5 mergeado (Fases 0-3), #6 en review (Fase 4 voz)
-**Siguiente:** Mergear PR #6, ejecutar migración Supabase, test E2E manual
+**Activo:** Spec 02 — Comparación contra Planograma (Producción Beta)
+**Spec:** `spec/02-reference-comparison.md` (auditado, con auditoría pre-implementación)
+**PRs:** #8 (docs reunión retail), #9 (implementación Demo + Fase 0 producción)
+**Siguiente:** Implementar Fase 1 (process endpoint) + Fase 2 (dashboard)
 
 ---
 
@@ -19,7 +19,20 @@
 | Spec | Título | Estado |
 |------|--------|--------|
 | 00 | Integración BBM × Ubiqo (Evidence/Gather) | Aprobado, pendiente tokens de Ubiqo |
-| 01 | Engine v3 — Motor multi-industria con onboarding conversacional | **Implementado** (Fases 0-4), PR #5 mergeado, PR #6 en review |
+| 01 | Engine v3 — Motor multi-industria con onboarding conversacional | **Implementado** (Fases 0-4), PRs #5-#6 mergeados |
+| 02 | Comparación contra Planograma (Producción Beta) | **En implementación** — Demo + Fase 0 prod completas, Fases 1-3 pendientes |
+
+---
+
+## Spec 02 — Progreso
+
+| Fase | Descripción | Estado |
+|------|-------------|--------|
+| Demo | UI `/compare` + endpoint `/api/compare` + share tokens | **Completada** |
+| 0 — Foundation | Migraciones, tipos, storage, prompt, parser, endpoints upload/list/status | **Completada** |
+| 1 — Pipeline | Endpoint process + ingest + webhook + cron | **Pendiente** (process no tiene bloqueo) |
+| 2 — Dashboard | Endpoints incidences + UI `/dashboard` + `/dashboard/planograms` | **Pendiente** |
+| 3 — Export | Excel 4 hojas + cron producción | **Pendiente** |
 
 ---
 
@@ -28,35 +41,28 @@
 | App | Tests | Estado |
 |-----|-------|--------|
 | API producción (`/api/analyze`) | 60 | Funcional + engine v3 routing |
+| API comparación (`/api/compare`) | — | Nuevo — multi-imagen Gemini + retry/backoff |
+| Planogram API (`/api/planogram/*`) | — | Nuevo — upload, list, status |
 | Demo (`/demo`) | 0 | Funcional (legacy, intacto) |
+| Compare (`/compare`) | — | Nuevo — UI responsive comparación |
 | Email (`/api/demo/email`) | 0 | Funcional |
-| Onboarding (`/onboarding`) | 40 | Nuevo — chat + síntesis + test + deploy + voz |
-| Engine v3 (`src/lib/engine/`) | 60 | Nuevo — config, prompt-builder, analyzer, escalation |
-| Voice (`src/hooks/useVoiceSession.ts`) | 7 | Nuevo — live-session, ephemeral tokens |
-| **Total** | **107** | — |
+| Onboarding (`/onboarding`) | 40 | Funcional — chat + síntesis + test + deploy + voz |
+| Engine v3 (`src/lib/engine/`) | 60 | Funcional — config, prompt-builder, analyzer, escalation |
+| Planogram lib (`src/lib/planogram/`) | — | Nuevo — storage, incidence-prompt, incidence-parser |
+| **Total** | **107+** | — |
 
 ---
 
-## Engine v3 — Progreso de Fases
+## Migraciones Supabase
 
-| Fase | Descripción | Estado | Archivos |
-|------|-------------|--------|----------|
-| 0 | Infraestructura de tests (Vitest + Zod) | **Completada** | vitest.config.ts, package.json |
-| 1 | Motor configurable | **Completada** | src/lib/engine/* (6 módulos) |
-| 2 | Onboarding por texto | **Completada** | src/lib/onboarding/* (5 módulos), 3 endpoints, UI |
-| 3 | Test de fotos + deploy | **Completada** | test-runner, 2 endpoints, UI testing/deploy |
-| 4 | Voz con Live API | **Completada** | live-session, voice endpoint, useVoiceSession, voice UI |
-
----
-
-## Migración Supabase Pendiente
-
-Archivo: `supabase/migrations/001_create_bbm_client_configs.sql`
-
-Ejecutar manualmente en Supabase SQL Editor. Crea tabla `bbm_client_configs` con:
-- Config JSONB, transcript JSONB, partial_config JSONB
-- Partial unique index: un solo config `active` por client_id
-- Indexes para (client_id, status), status, industry
+| Migración | Tabla | Estado |
+|-----------|-------|--------|
+| 001 | `bbm_client_configs` | Pendiente |
+| 002 | `bbm_comparison_log` | Pendiente |
+| 003 | `bbm_share_tokens` | Pendiente |
+| 004 | `bbm_planograms` | Pendiente |
+| 005 | `bbm_incidences` | Pendiente |
+| 006 | `bbm_planogram_assignments` | Pendiente |
 
 ---
 
@@ -64,9 +70,9 @@ Ejecutar manualmente en Supabase SQL Editor. Crea tabla `bbm_client_configs` con
 
 | Bloqueo | Depende de | Afecta |
 |---------|-----------|--------|
-| Tokens de Ubiqo (Bearer, Evidence account, urlBase) | Alberto (Ubiqo) | Spec 00 implementación |
-| PAT de GitHub sin permisos de write | Gonzalo | Crear PRs y mergear desde CLI |
-| Migración Supabase no ejecutada | Gonzalo (SQL Editor) | Onboarding funcional en producción |
+| Tokens de Ubiqo (Bearer, Evidence account, urlBase) | Alberto (Ubiqo) | Spec 00 + spec 02 Fase 1 (ingest) |
+| Webhook payload format de Evidence | Ubiqo | Spec 02 Fase 1 (webhook) |
+| PAT de GitHub sin permisos de write | Gonzalo | Crear PRs desde CLI |
 
 ---
 
@@ -79,35 +85,42 @@ Ejecutar manualmente en Supabase SQL Editor. Crea tabla `bbm_client_configs` con
 | UI y reportes en español | Target market latinoamericano | Pre-init |
 | Cookie HMAC para demo gate | Simplicidad, sin auth provider externo | Pre-init |
 | Path B: Rule engine estructurado | Motor configurable por cliente, no prompt templates por industria | 2-3 |
-| Todo Gemini (Live + Pro + Flash Lite) | Una sola API, una key. Live para voz, Pro para síntesis, Flash Lite para análisis | 3 |
+| Todo Gemini (Live + Pro + Flash Lite) | Una sola API, una key | 3 |
 | Scoring server-side | LLM retorna raw values, servidor calcula scores determinísticamente | 3 |
-| Auth onboarding: JWT con HKDF derivation | JWT derivado de BBM_COOKIE_SECRET via HKDF-SHA256, no reuso directo. Code exchange en vez de JWT en URL | 6 |
+| Auth onboarding: JWT con HKDF derivation | JWT derivado de BBM_COOKIE_SECRET via HKDF-SHA256 | 6 |
 | Triggers de escalación estructurados | Gramática tipada evaluada server-side, no texto libre | 3 |
-| Config versioning sin UNIQUE | Partial unique index para active, múltiples versiones por cliente | 3 |
-| jose para JWT | Ligero, ESM-first, edge-compatible. No jsonwebtoken (CommonJS, pesado) | 6 |
-| gemini-chat.ts separado de gemini.ts | Chat texto ≠ análisis imagen. Módulos paralelos, no extensión | 6 |
-| Ephemeral tokens para Live API | Browser conecta directo a Gemini via WebSocket. No necesita proxy externo | 6 |
-| Remotion para video marketing | Video programático con React, skill oficial instalado. TTS con Gemini, música con Lyria 3 | 5 |
-| Proteger IP en materiales públicos | Nunca exponer modelos, costos, arquitectura en videos/presentaciones. Solo beneficios. | 5 |
-| SVG icons sobre emojis | Emojis renderizan diferente por OS. SVG inline para consistencia cross-platform. | 5 |
+| jose para JWT | Ligero, ESM-first, edge-compatible | 6 |
+| Ephemeral tokens para Live API | Browser conecta directo a Gemini via WebSocket | 6 |
+| Remotion para video marketing | Video programático con React, TTS con Gemini, música con Lyria 3 | 5 |
+| Media con Veo 3.1 + Imagen 4 | Clips de video e imágenes AI para fondos de escenas Remotion | 9 |
+| Proteger IP en materiales públicos | Nunca exponer modelos, costos, arquitectura en videos/presentaciones | 5 |
+| CSS del proyecto (no Tailwind) | globals.css classes + CSS variables. NO Tailwind | 7 |
+| Comparación como feature de primer nivel | ComparisonResult tipo separado de EngineV3Result (no criterion type) | 8 |
+| Incidencias > scoring de cumplimiento | Carlos necesita "qué está mal", no "qué % está bien" | 8 |
+| Webhook async (enqueue only) | Webhook solo encola (202), cron procesa. 90s timeout insuficiente para sync | 8 |
+| Auth dashboard: email gate + allowlist | DASHBOARD_ALLOWED_EMAILS en env. Para producción futura: auth real | 8 |
+| Supabase Storage privado + signed URLs | Bucket privado, TTL 30 min, paths en DB (no URLs firmadas) | 8 |
+| Planograma ↔ formulario Evidence (1:1) | Carlos asigna planograma a form. bbm_planogram_assignments | 8 |
+| Multi-foto por captura Evidence | Un folio = un grupo de fotos, se comparan juntas | 8 |
 
 ---
 
-## Video BBM + Evidence (Remotion)
+## Documentación Retail
 
-**Estado:** Renderizado, listo para review
-**Archivo:** `out/bbm-evidence.mp4` (10 MB, 1920x1080, 2:10)
-**Audio:** Voiceover Gemini TTS + música Lyria 3
-**Archivos fuente:** `remotion/src/` (8 escenas, 7 componentes, theme centralizado)
+| Doc | Contenido |
+|-----|-----------|
+| `docs/ubiqo/reunion-2026-03-30-retail.md` | Transcripción reunión con René y Carlos (FOTL) |
+| `docs/ubiqo/resumen-reunion-2026-03-30-retail.md` | Resumen ejecutivo + análisis planograma |
+| `docs/ubiqo/analisis-implicaciones-retail-2026-03-30.md` | Análisis de implicaciones 1er/2do orden (auditado) |
 
 ---
 
 ## Próximos Pasos
 
-1. **Mergear PR #6** — Fase 4 voz con Live API
-2. **Ejecutar migración SQL** — `supabase/migrations/001_create_bbm_client_configs.sql`
-3. **Configurar Supabase en .env.local** — SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
-4. **Test E2E manual** — onboarding completo con Gemini real (texto y voz)
-5. **Endpoint admin para generar códigos de onboarding** — necesario para compartir ligas con clientes
-6. **Pendiente Ubiqo:** Solicitar tokens a Alberto para spec 00
-7. **Video BBM+Evidence:** Iterar pacing voiceover vs escenas
+1. **Mergear PRs #8 y #9** — docs retail + implementación spec 02
+2. **Implementar Fase 1** — endpoint `process` (sin bloqueo externo)
+3. **Implementar Fase 2** — dashboard para Carlos + gestión planogramas
+4. **Implementar Fase 3** — Excel export 4 hojas
+5. **Ejecutar migraciones** — 001-006 en Supabase SQL Editor
+6. **Test E2E con fotos reales FOTL** — validar precisión del prompt de incidencias
+7. **Pendiente Ubiqo:** Tokens para ingest + formato webhook

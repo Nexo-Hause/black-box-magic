@@ -8,6 +8,9 @@
 | 4 | 2026-03-28 | session/engine-v3-fase0-1 | Engine v3 Fases 0-3 implementadas, 4 rondas review | #5 (mergeado) |
 | 5 | 2026-03-28 | feat/remotion-video | Video Remotion BBM+Evidence con voiceover TTS y música Lyria 3 | pendiente |
 | 6 | 2026-03-28 | session/engine-v3-fase4-voice | Completar engine v3: Fase 4 voz + reviews ronda 4 + Fase 3 | #6 |
+| 7 | 2026-03-31 | feat/reference-comparison | E2E fixes + spec 02 planogram comparison Demo Mode | #9 |
+| 8 | 2026-03-31 | feat/reference-comparison | Reunión retail FOTL + análisis implicaciones + spec 02 auditado + Fase 0 producción | #8, #9 |
+| 9 | 2026-03-31 | feat/remotion-video | Validar commits worktree anterior + media Veo/Imagen + render v2 | — |
 
 ### Sesión 3 (2026-03-28)
 Diseño completo del motor multi-industria (engine v3) con onboarding conversacional.
@@ -32,3 +35,19 @@ Video Remotion BBM+Evidence para prospectos. Skill oficial de Remotion instalado
 Voiceover generado con Gemini TTS (Orus), música con Lyria 3 Clip.
 Auditoría pre-implementación: IP protegida (sin Gemini/costos), datos genéricos (sin marcas reales),
 stat "73%" eliminada por regla anti-fabricación. Render MP4 final: 10MB, 1920x1080, 2:10.
+
+### Sesión 8 (2026-03-31)
+Reunión con René y Carlos (FOTL retail, via UBIQO). Transcripción, resumen ejecutivo, y análisis
+de implicaciones de 1er/2do orden guardados en repo. Spec 02 escrito y auditado (9 críticos resueltos,
+8 observaciones). Fase 0 producción implementada: migraciones 004-006 (planograms, incidences,
+assignments), tipos incidence.ts, storage module (Supabase private bucket + signed URLs),
+incidence prompt ("find what's wrong"), parser, endpoints upload/list/status. Demo mode probado
+con fotos reales FOTL. 2 rondas de AI review procesadas (HMAC hex encoding, SSRF IPv6, rate
+limiting, missing columns). Deploy a Vercel verificado.
+
+### Sesión 9 (2026-03-31)
+Rescate de sesión interrumpida en worktree. Validamos que el worktree `tender-williamson` no
+tenía trabajo relevante. Recuperamos cambios sin commitear: 8 escenas con MediaBackground
+(reemplazo de gradients por media reales), componente MediaBackground (Ken Burns + video overlay),
+script generate-media.ts (Veo 3.1 + Imagen 4). Media generada: 3 clips Veo (29MB) + 5 imágenes
+Imagen 4 (7MB). Commit a feat/remotion-video. Render v2: out/bbm-evidence-v2.mp4 (93MB, 1920x1080, 2:10).

@@ -148,7 +148,8 @@ async function generateTTS(text: string, outputPath: string) {
         const rateMatch = mime.match(/rate=(\d+)/);
         const sampleRate = rateMatch ? parseInt(rateMatch[1]) : 24000;
         console.log(`  Converting PCM to WAV (${sampleRate}Hz, ${buffer.length} bytes)`);
-        buffer = pcmToWav(buffer, sampleRate);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        buffer = pcmToWav(buffer, sampleRate) as any;
       }
 
       const ext = mime.includes("mp3") || mime.includes("mpeg") ? "mp3" : "wav";

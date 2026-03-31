@@ -40,3 +40,7 @@ next-env.d.ts
 # worktrees and temp
 .claude/worktrees/
 supabase/.temp/
+
+# remotion public (copies of public/ for staticFile)
+remotion/public/clips/
+remotion/public/images/

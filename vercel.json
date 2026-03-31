@@ -36,6 +36,26 @@
     "src/app/api/onboarding/voice/route.ts": {
       "maxDuration": 10,
       "memory": 256
+    },
+    "src/app/api/compare/route.ts": {
+      "maxDuration": 90,
+      "memory": 1024
+    },
+    "src/app/api/planogram/upload/route.ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "src/app/api/planogram/list/route.ts": {
+      "maxDuration": 10,
+      "memory": 512
+    },
+    "src/app/api/planogram/status/route.ts": {
+      "maxDuration": 10,
+      "memory": 512
+    },
+    "src/app/api/demo/share/route.ts": {
+      "maxDuration": 10,
+      "memory": 256
     }
   }
 }
