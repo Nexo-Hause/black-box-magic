@@ -116,6 +116,11 @@ async function generateVeoClip(
     const pollRes = await fetch(
       `${BASE}/${operationName}?key=${API_KEY}`
     );
+    if (!pollRes.ok) {
+      console.warn(`    Poll returned ${pollRes.status}, retrying...`);
+      delay = Math.min(delay * 1.5, maxDelay);
+      continue;
+    }
     const pollData = await pollRes.json();
 
     if (pollData.done) {
