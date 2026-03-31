@@ -372,7 +372,7 @@ export async function POST(request: NextRequest) {
             .from('bbm_comparison_log')
             .insert({
               id: logId,
-              user_id: user.id,
+              user_email: cookiePayload.email,
               reference_type: referenceData.type,
               reference_section: referenceData.section || null,
               reference_items_count: referenceItems.length,
