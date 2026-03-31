@@ -3,18 +3,19 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useEmailGate } from '@/hooks/useEmailGate';
-import type { ComparisonResult, ComparisonMetrics, ReferenceType } from '@/types/comparison';
+import { GateScreen } from '@/app/demo/gate';
+import type { ComparisonResult, ReferenceType } from '@/types/comparison';
 
 /* ── Constants ──────────────────────────────────────────────── */
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_SIZE = 5 * 1024 * 1024;
 
 const REFERENCE_OPTIONS: { value: ReferenceType; label: string }[] = [
   { value: 'planogram', label: 'Planograma de productos' },
   { value: 'brand_manual', label: 'Manual de marca' },
   { value: 'checklist', label: 'Checklist normativo' },
-  { value: 'blueprint', label: 'Plano o especificaci\u00f3n' },
+  { value: 'blueprint', label: 'Plano o especificación' },
 ];
 
 type PageState = 'idle' | 'uploading' | 'ready' | 'analyzing' | 'done' | 'error';
@@ -35,16 +36,16 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function scoreColor(score: number): string {
-  if (score >= 80) return 'text-green-400';
-  if (score >= 60) return 'text-yellow-400';
-  return 'text-red-400';
+function scoreColorVar(score: number): string {
+  if (score >= 80) return 'var(--accent-green)';
+  if (score >= 60) return 'var(--accent-yellow)';
+  return 'var(--accent-red)';
 }
 
-function scoreBg(score: number): string {
-  if (score >= 80) return 'bg-green-900/30 border-green-800';
-  if (score >= 60) return 'bg-yellow-900/30 border-yellow-800';
-  return 'bg-red-900/30 border-red-800';
+function scoreBadge(score: number): string {
+  if (score >= 80) return 'badge--green';
+  if (score >= 60) return 'badge--yellow';
+  return 'badge--red';
 }
 
 /* ── Toast ──────────────────────────────────────────────────── */
@@ -56,7 +57,12 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   }, [onClose]);
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-800 border border-gray-700 text-gray-200 px-5 py-3 rounded-lg shadow-xl text-sm font-medium">
+    <div style={{
+      position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)',
+      zIndex: 50, background: 'var(--text)', color: 'var(--bg-white)',
+      padding: '0.75rem 1.25rem', border: '2px solid var(--border)',
+      fontSize: '0.8rem', fontWeight: 700,
+    }}>
       {message}
     </div>
   );
@@ -64,64 +70,50 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 
 /* ── Upload Zone ────────────────────────────────────────────── */
 
-function UploadZone({
-  label,
-  hint,
-  slot,
-  onSelect,
-  onClear,
-}: {
-  label: string;
-  hint: string;
-  slot: ImageSlot;
-  onSelect: (file: File) => void;
-  onClear: () => void;
+function UploadZone({ label, hint, slot, onSelect, onClear }: {
+  label: string; hint: string; slot: ImageSlot;
+  onSelect: (file: File) => void; onClear: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
-  const handleFiles = useCallback(
-    (files: FileList | null) => {
-      if (!files || files.length === 0) return;
-      const f = files[0];
-      if (!ACCEPTED_TYPES.includes(f.type)) return;
-      if (f.size > MAX_SIZE) return;
-      onSelect(f);
-    },
-    [onSelect],
-  );
+  const handleFiles = useCallback((files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const f = files[0];
+    if (!ACCEPTED_TYPES.includes(f.type) || f.size > MAX_SIZE) return;
+    onSelect(f);
+  }, [onSelect]);
 
   if (slot.previewUrl) {
     return (
-      <div className="relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden group">
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <img
           src={slot.previewUrl}
           alt={slot.file?.name || label}
-          className="w-full h-56 md:h-64 object-contain bg-gray-950"
+          style={{ width: '100%', height: 200, objectFit: 'contain', background: 'var(--bg)', display: 'block' }}
         />
-        <div className="px-4 py-3 border-t border-gray-800 flex items-center justify-between">
-          <div className="min-w-0">
-            <p className="text-sm text-gray-300 truncate">{slot.file?.name}</p>
-            <p className="text-xs text-gray-500">{slot.file ? formatBytes(slot.file.size) : ''}</p>
+        <div style={{
+          padding: '0.75rem 1rem', borderTop: '1px solid var(--border-light)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {slot.file?.name}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              {slot.file ? formatBytes(slot.file.size) : ''}
+            </div>
           </div>
           <button
-            onClick={onClear}
-            className="ml-3 shrink-0 text-xs text-gray-500 hover:text-red-400 transition-colors"
+            className="btn btn--secondary btn--small"
+            onClick={() => { onClear(); inputRef.current?.click(); }}
           >
             Cambiar
           </button>
         </div>
-        {/* Invisible click to replace */}
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="absolute inset-0 opacity-0 cursor-pointer"
-          aria-label={`Reemplazar ${label}`}
-        />
         <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
+          ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp"
+          style={{ display: 'none' }}
           onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}
         />
       </div>
@@ -130,99 +122,41 @@ function UploadZone({
 
   return (
     <div
-      className={`bg-gray-900 border-2 border-dashed rounded-xl cursor-pointer transition-colors h-56 md:h-64 flex flex-col items-center justify-center gap-2 ${
-        dragActive ? 'border-blue-500 bg-blue-950/20' : 'border-gray-700 hover:border-gray-600'
-      }`}
+      className={`drop-zone${dragActive ? ' drop-zone--active' : ''}`}
+      style={{ minHeight: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
       onClick={() => inputRef.current?.click()}
       onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
       onDragLeave={() => setDragActive(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragActive(false);
-        handleFiles(e.dataTransfer.files);
-      }}
+      onDrop={(e) => { e.preventDefault(); setDragActive(false); handleFiles(e.dataTransfer.files); }}
     >
-      <div className="text-3xl text-gray-600">{label === 'Referencia' ? '\uD83D\uDCCB' : '\uD83D\uDCF7'}</div>
-      <p className="text-sm font-semibold text-gray-300">{label}</p>
-      <p className="text-xs text-gray-500 text-center px-4">{hint}</p>
-      <p className="text-xs text-gray-600 mt-1">JPG, PNG, WebP &mdash; m\u00e1x 5 MB</p>
+      <div style={{ fontSize: '2rem' }}>{label === 'Referencia' ? '📋' : '📷'}</div>
+      <div style={{ fontWeight: 700, fontSize: '0.875rem' }}>{label}</div>
+      <div className="text-sm muted" style={{ textAlign: 'center', padding: '0 1rem' }}>{hint}</div>
+      <div className="text-xs muted" style={{ marginTop: '0.25rem' }}>JPG, PNG, WebP &mdash; máx 5 MB</div>
       <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
+        ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp"
+        style={{ display: 'none' }}
         onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}
       />
     </div>
   );
 }
 
-/* ── Accordion Section ──────────────────────────────────────── */
+/* ── Collapsible Section ──────────────────────────────────── */
 
-function Accordion({ title, count, children, defaultOpen = false }: {
-  title: string;
-  count: number;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
+function CollapsibleSection({ title, count, children, defaultOpen = false }: {
+  title: string; count: number; children: React.ReactNode; defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   if (count === 0) return null;
 
   return (
-    <div className="border border-gray-800 rounded-lg overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gray-900/50 hover:bg-gray-900 transition-colors text-left"
-      >
-        <span className="text-sm font-medium text-gray-300">{title}</span>
-        <span className="flex items-center gap-2">
-          <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full">{count}</span>
-          <span className={`text-gray-500 text-xs transition-transform ${open ? 'rotate-180' : ''}`}>&#9660;</span>
-        </span>
-      </button>
-      {open && <div className="px-4 py-3 bg-gray-950/50 space-y-1.5">{children}</div>}
-    </div>
-  );
-}
-
-/* ── Gate Screen (lightweight) ──────────────────────────────── */
-
-function GateScreen({ onSubmit, error, loading }: {
-  onSubmit: (email: string) => Promise<void> | void;
-  error: string | null;
-  loading: boolean;
-}) {
-  const [email, setEmail] = useState('');
-
-  return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 w-full max-w-sm text-center">
-        <h1 className="text-lg font-bold text-white mb-1">Black Box Magic</h1>
-        <p className="text-sm text-gray-400 mb-6">Comparaci\u00f3n de referencias</p>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (email.trim()) onSubmit(email.trim());
-          }}
-        >
-          <input
-            type="email"
-            required
-            placeholder="tu@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-3"
-          />
-          <button
-            type="submit"
-            disabled={loading || !email.trim()}
-            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg text-sm transition-colors"
-          >
-            {loading ? 'Verificando...' : 'Continuar'}
-          </button>
-          {error && <p className="text-red-400 text-xs mt-3">{error}</p>}
-        </form>
+    <div className="collapsible">
+      <div className="collapsible-header" onClick={() => setOpen(!open)}>
+        <span>{title} <span className="badge badge--neutral" style={{ marginLeft: '0.5rem' }}>{count}</span></span>
+        <span style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0)' }}>&#9660;</span>
       </div>
+      {open && <div className="collapsible-content">{children}</div>}
     </div>
   );
 }
@@ -240,7 +174,7 @@ export default function ComparePage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [toast, setToast] = useState('');
 
-  /* Token bypass: ?token= in URL skips auth */
+  /* Token bypass */
   const [hasToken, setHasToken] = useState(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -257,39 +191,27 @@ export default function ComparePage() {
     }
   }, [reference, field, bothReady, pageState]);
 
-  /* File selection handlers */
+  /* File selection */
   const selectFile = useCallback((slot: 'reference' | 'field', file: File) => {
     const previewUrl = URL.createObjectURL(file);
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      if (slot === 'reference') {
-        setReference((prev) => {
-          if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-          return { file, previewUrl, dataUrl };
-        });
-      } else {
-        setField((prev) => {
-          if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-          return { file, previewUrl, dataUrl };
-        });
-      }
+      const setter = slot === 'reference' ? setReference : setField;
+      setter((prev) => {
+        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+        return { file, previewUrl, dataUrl };
+      });
     };
     reader.readAsDataURL(file);
   }, []);
 
   const clearSlot = useCallback((slot: 'reference' | 'field') => {
-    if (slot === 'reference') {
-      setReference((prev) => {
-        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-        return emptySlot;
-      });
-    } else {
-      setField((prev) => {
-        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-        return emptySlot;
-      });
-    }
+    const setter = slot === 'reference' ? setReference : setField;
+    setter((prev) => {
+      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return emptySlot;
+    });
     setPageState('idle');
     setResult(null);
     setErrorMsg('');
@@ -338,16 +260,16 @@ export default function ComparePage() {
     if (!result) return;
     const m = result.metrics;
     const lines = [
-      `COMPARACI\u00d3N DE REFERENCIA \u2014 Black Box Magic`,
+      `COMPARACIÓN DE REFERENCIA — Black Box Magic`,
       `${'='.repeat(45)}`,
       ``,
       `Cumplimiento general: ${result.complianceScore}%`,
       ``,
-      `M\u00e9tricas:`,
+      `Métricas:`,
       `  Surtido:   ${m.assortment}% (${m.totalFound}/${m.totalExpected} encontrados)`,
-      `  Posici\u00f3n:  ${m.positioning}% (${m.totalCorrectPosition}/${m.totalFound} correctos)`,
+      `  Posición:  ${m.positioning}% (${m.totalCorrectPosition}/${m.totalFound} correctos)`,
       `  Precios:   ${m.pricing}% (${m.totalPriceMatch}/${m.totalPriceVisible} coinciden)`,
-      `  Huecos:    ${m.gaps} posiciones vac\u00edas`,
+      `  Huecos:    ${m.gaps} posiciones vacías`,
       ``,
       `Resumen: ${result.summary}`,
       ``,
@@ -362,15 +284,15 @@ export default function ComparePage() {
   }, [result]);
 
   const showComingSoon = useCallback((feature: string) => {
-    setToast(`${feature} \u2014 Pr\u00f3ximamente`);
+    setToast(`${feature} — Próximamente`);
   }, []);
 
   /* ── Auth Gate ──────────────────────────────────────────── */
 
   if (!hasToken && gate.loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div className="spinner" />
       </div>
     );
   }
@@ -382,319 +304,265 @@ export default function ComparePage() {
   /* ── Render ─────────────────────────────────────────────── */
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <div style={{ minHeight: '100vh', padding: '1.5rem', maxWidth: '960px', margin: '0 auto' }}>
       {toast && <Toast message={toast} onClose={() => setToast('')} />}
 
       {/* Header */}
-      <header className="border-b border-gray-800 px-4 py-4 md:px-6">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-sm font-black tracking-widest text-white no-underline hover:text-blue-400 transition-colors"
-          >
-            BLACK BOX MAGIC
-          </Link>
-          <div className="flex items-center gap-3">
-            {gate.email && (
-              <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500">
-                <span>{gate.email}</span>
-                <button onClick={gate.clearSession} className="text-gray-600 hover:text-gray-400 transition-colors">
-                  salir
-                </button>
-              </div>
-            )}
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-900/40 text-blue-400 border border-blue-800">
-              COMPARAR
-            </span>
-          </div>
+      <header style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border)',
+      }}>
+        <Link href="/" style={{ fontSize: '0.875rem', fontWeight: 900, textDecoration: 'none', color: 'var(--text)', letterSpacing: '0.05em' }}>
+          BLACK BOX MAGIC
+        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {gate.email && (
+            <div className="user-bar">
+              <span className="user-bar__email">{gate.email}</span>
+              <button className="user-bar__logout" onClick={gate.clearSession}>salir</button>
+            </div>
+          )}
+          <span className="badge badge--blue">COMPARAR</span>
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-8 space-y-6">
-        {/* Title */}
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-white">Comparaci\u00f3n de referencia</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Sube una referencia y una foto de campo para evaluar el cumplimiento
-          </p>
-        </div>
+      {/* Title */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '0.02em' }}>Comparación de referencia</h1>
+        <p className="text-sm muted" style={{ marginTop: '0.25rem' }}>
+          Sube una referencia y una foto de campo para evaluar el cumplimiento
+        </p>
+      </div>
 
-        {/* Upload grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Reference */}
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              Referencia
-            </label>
-            <UploadZone
-              label="Referencia"
-              hint="Planograma, manual de marca, checklist o plano"
-              slot={reference}
-              onSelect={(f) => selectFile('reference', f)}
-              onClear={() => clearSlot('reference')}
-            />
-            {/* Reference type selector */}
-            <select
-              value={refType}
-              onChange={(e) => setRefType(e.target.value as ReferenceType)}
-              className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5 text-sm text-gray-300 focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
-            >
-              {REFERENCE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Field photo */}
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              Foto de campo
-            </label>
-            <UploadZone
-              label="Foto de campo"
-              hint="Foto real del anaquel, exhibici\u00f3n o punto de venta"
-              slot={field}
-              onSelect={(f) => selectFile('field', f)}
-              onClear={() => clearSlot('field')}
-            />
-          </div>
-        </div>
-
-        {/* Action bar */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={runComparison}
-            disabled={!bothReady || pageState === 'analyzing'}
-            className={`flex-1 py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${
-              bothReady && pageState !== 'analyzing'
-                ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/30'
-                : 'bg-gray-800 text-gray-600 cursor-not-allowed'
-            }`}
+      {/* Upload grid */}
+      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+        {/* Reference */}
+        <div style={{ flex: '1 1 280px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+            Referencia
+          </label>
+          <UploadZone
+            label="Referencia"
+            hint="Planograma, manual de marca, checklist o plano"
+            slot={reference}
+            onSelect={(f) => selectFile('reference', f)}
+            onClear={() => clearSlot('reference')}
+          />
+          <select
+            value={refType}
+            onChange={(e) => setRefType(e.target.value as ReferenceType)}
+            style={{
+              width: '100%', padding: '0.6rem 0.75rem', fontSize: '0.8rem',
+              border: '2px solid var(--border)', background: 'var(--bg-white)',
+              fontFamily: 'var(--font)', cursor: 'pointer',
+            }}
           >
-            {pageState === 'analyzing' ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Analizando...
-              </span>
-            ) : (
-              'COMPARAR'
-            )}
-          </button>
-          {(pageState !== 'idle') && (
-            <button
-              onClick={resetAll}
-              disabled={pageState === 'analyzing'}
-              className="px-6 py-3.5 rounded-xl text-sm font-medium bg-gray-900 border border-gray-800 text-gray-400 hover:text-gray-200 hover:border-gray-700 transition-colors disabled:opacity-50"
-            >
-              Limpiar
-            </button>
-          )}
+            {REFERENCE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
         </div>
 
-        {/* Error */}
-        {pageState === 'error' && (
-          <div className="bg-red-900/20 border border-red-800 rounded-xl px-5 py-4 flex items-start gap-3">
-            <span className="text-red-400 text-lg shrink-0 mt-0.5">&#9888;</span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-red-400">Error en la comparaci\u00f3n</p>
-              <p className="text-xs text-red-400/80 mt-1">{errorMsg}</p>
-              <button
-                onClick={runComparison}
-                className="mt-3 text-xs font-medium text-red-400 hover:text-red-300 underline underline-offset-2 transition-colors"
-              >
+        {/* Field photo */}
+        <div style={{ flex: '1 1 280px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+            Foto de campo
+          </label>
+          <UploadZone
+            label="Foto de campo"
+            hint="Foto real del anaquel, exhibición o punto de venta"
+            slot={field}
+            onSelect={(f) => selectFile('field', f)}
+            onClear={() => clearSlot('field')}
+          />
+        </div>
+      </div>
+
+      {/* Action bar */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <button
+          className="btn btn--primary"
+          onClick={runComparison}
+          disabled={!bothReady || pageState === 'analyzing'}
+          style={{ flex: 1, padding: '1rem', fontSize: '1rem' }}
+        >
+          {pageState === 'analyzing' ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+              Analizando...
+            </span>
+          ) : 'COMPARAR'}
+        </button>
+        {pageState !== 'idle' && (
+          <button
+            className="btn btn--secondary"
+            onClick={resetAll}
+            disabled={pageState === 'analyzing'}
+            style={{ padding: '1rem', fontSize: '0.8rem' }}
+          >
+            LIMPIAR
+          </button>
+        )}
+      </div>
+
+      {/* Error */}
+      {pageState === 'error' && (
+        <div className="card" style={{ borderColor: 'var(--accent-red)', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+            <span style={{ color: 'var(--accent-red)', fontSize: '1.25rem', flexShrink: 0 }}>&#9888;</span>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--accent-red)' }}>Error en la comparación</p>
+              <p className="text-sm muted" style={{ marginTop: '0.25rem' }}>{errorMsg}</p>
+              <button className="btn btn--secondary btn--small" onClick={runComparison} style={{ marginTop: '0.75rem' }}>
                 Reintentar
               </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Results */}
-        {pageState === 'done' && result && (
-          <div className="space-y-5">
-            {/* Compliance score hero */}
-            <div className={`border rounded-xl px-6 py-8 text-center ${scoreBg(result.complianceScore)}`}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                Cumplimiento general
+      {/* Results */}
+      {pageState === 'done' && result && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Compliance score */}
+          <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              Cumplimiento general
+            </p>
+            <p style={{ fontSize: '4rem', fontWeight: 900, color: scoreColorVar(result.complianceScore), lineHeight: 1 }}>
+              {result.complianceScore}<span style={{ fontSize: '2rem' }}>%</span>
+            </p>
+            {result.photoQuality === 'poor' && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--accent-yellow)', marginTop: '0.75rem' }}>
+                Calidad de foto baja &mdash; los resultados pueden ser imprecisos
               </p>
-              <p className={`text-6xl md:text-7xl font-black tabular-nums ${scoreColor(result.complianceScore)}`}>
-                {result.complianceScore}
-                <span className="text-3xl md:text-4xl">%</span>
+            )}
+            {result.coverage === 'partial' && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--accent-yellow)', marginTop: '0.25rem' }}>
+                Cobertura parcial &mdash; no toda la referencia es visible en la foto
               </p>
-              {result.photoQuality === 'poor' && (
-                <p className="text-xs text-yellow-400 mt-3">
-                  Calidad de foto baja &mdash; los resultados pueden ser imprecisos
-                </p>
-              )}
-              {result.coverage === 'partial' && (
-                <p className="text-xs text-yellow-400 mt-1">
-                  Cobertura parcial &mdash; no toda la referencia es visible en la foto
-                </p>
-              )}
-            </div>
-
-            {/* Metrics grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <MetricCard
-                label="Surtido"
-                value={result.metrics.assortment}
-                detail={`${result.metrics.totalFound}/${result.metrics.totalExpected} encontrados`}
-              />
-              <MetricCard
-                label="Posici\u00f3n"
-                value={result.metrics.positioning}
-                detail={`${result.metrics.totalCorrectPosition}/${result.metrics.totalFound} correctos`}
-              />
-              <MetricCard
-                label="Precios"
-                value={result.metrics.pricing}
-                detail={`${result.metrics.totalPriceMatch}/${result.metrics.totalPriceVisible} coinciden`}
-              />
-              <MetricCard
-                label="Huecos"
-                value={result.metrics.gaps}
-                isCount
-                detail="posiciones vac\u00edas"
-              />
-            </div>
-
-            {/* Summary */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Resumen</p>
-              <p className="text-sm text-gray-300 leading-relaxed">{result.summary}</p>
-            </div>
-
-            {/* Detail accordions */}
-            <div className="space-y-2">
-              <Accordion title="Productos encontrados" count={result.matches.length} defaultOpen>
-                {result.matches.map((item, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm">
-                    <span className={`shrink-0 mt-0.5 ${item.correctPosition ? 'text-green-400' : 'text-yellow-400'}`}>
-                      {item.correctPosition ? '\u2713' : '\u25CB'}
-                    </span>
-                    <div className="min-w-0">
-                      <span className="text-gray-300">{item.name}</span>
-                      {item.observation && (
-                        <span className="text-gray-500 text-xs ml-2">&mdash; {item.observation}</span>
-                      )}
-                      {!item.correctPosition && (
-                        <span className="text-yellow-500 text-xs ml-2">(posici\u00f3n incorrecta)</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </Accordion>
-
-              <Accordion title="Productos faltantes" count={result.missing.length}>
-                {result.missing.map((item, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm">
-                    <span className="text-red-400 shrink-0 mt-0.5">\u2717</span>
-                    <div className="min-w-0">
-                      <span className="text-gray-300">{item.name}</span>
-                      {item.expectedPosition && (
-                        <span className="text-gray-500 text-xs ml-2">&mdash; esperado en {item.expectedPosition}</span>
-                      )}
-                      {item.reason && (
-                        <span className="text-gray-600 text-xs ml-2">({item.reason})</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </Accordion>
-
-              <Accordion title="Discrepancias de precio" count={result.priceDiscrepancies.length}>
-                {result.priceDiscrepancies.map((item, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm">
-                    <span className="text-yellow-400 shrink-0 mt-0.5">$</span>
-                    <div className="min-w-0">
-                      <span className="text-gray-300">{item.name}</span>
-                      <span className="text-gray-500 text-xs ml-2">
-                        esperado ${item.expectedPrice.toFixed(2)} &rarr; visto ${item.observedPrice.toFixed(2)}
-                      </span>
-                      <span className={`text-xs ml-2 ${item.difference > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                        ({item.difference > 0 ? '+' : ''}{item.difference.toFixed(2)})
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </Accordion>
-
-              <Accordion title="Productos inesperados" count={result.unexpected.length}>
-                {result.unexpected.map((item, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm">
-                    <span className="text-blue-400 shrink-0 mt-0.5">?</span>
-                    <div className="min-w-0">
-                      <span className="text-gray-300">{item.name}</span>
-                      {item.position && (
-                        <span className="text-gray-500 text-xs ml-2">&mdash; en {item.position}</span>
-                      )}
-                      {item.observation && (
-                        <span className="text-gray-600 text-xs ml-2">({item.observation})</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </Accordion>
-            </div>
-
-            {/* Export buttons */}
-            <div className="flex flex-wrap gap-2">
-              <ExportButton label="Copiar" icon="\uD83D\uDCCB" onClick={copyToClipboard} />
-              <ExportButton label="PDF" icon="\uD83D\uDCC4" onClick={() => showComingSoon('Exportar PDF')} />
-              <ExportButton label="Excel" icon="\uD83D\uDCCA" onClick={() => showComingSoon('Exportar Excel')} />
-              <ExportButton label="WhatsApp" icon="\uD83D\uDCF1" onClick={() => showComingSoon('Compartir por WhatsApp')} />
-            </div>
-
-            {/* New comparison */}
-            <div className="text-center pt-2">
-              <button
-                onClick={resetAll}
-                className="text-sm text-blue-400 hover:text-blue-300 underline underline-offset-4 transition-colors"
-              >
-                Nueva comparaci\u00f3n
-              </button>
-            </div>
+            )}
           </div>
-        )}
-      </main>
+
+          {/* Metrics row */}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <MetricCard label="Surtido" value={result.metrics.assortment} detail={`${result.metrics.totalFound}/${result.metrics.totalExpected} encontrados`} />
+            <MetricCard label="Posición" value={result.metrics.positioning} detail={`${result.metrics.totalCorrectPosition}/${result.metrics.totalFound} correctos`} />
+            <MetricCard label="Precios" value={result.metrics.pricing} detail={`${result.metrics.totalPriceMatch}/${result.metrics.totalPriceVisible} coinciden`} />
+            <MetricCard label="Huecos" value={result.metrics.gaps} isCount detail="posiciones vacías" />
+          </div>
+
+          {/* Summary */}
+          <div className="card">
+            <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              Resumen
+            </p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{result.summary}</p>
+          </div>
+
+          {/* Detail sections */}
+          <div className="card" style={{ padding: '0 1.5rem' }}>
+            <CollapsibleSection title="Productos encontrados" count={result.matches.length} defaultOpen>
+              {result.matches.map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '0.35rem' }}>
+                  <span style={{ color: item.correctPosition ? 'var(--accent-green)' : 'var(--accent-yellow)', flexShrink: 0 }}>
+                    {item.correctPosition ? '✓' : '○'}
+                  </span>
+                  <span>
+                    {item.name}
+                    {item.observation && <span className="muted"> &mdash; {item.observation}</span>}
+                    {!item.correctPosition && <span style={{ color: 'var(--accent-yellow)' }}> (posición incorrecta)</span>}
+                  </span>
+                </div>
+              ))}
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Productos faltantes" count={result.missing.length}>
+              {result.missing.map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '0.35rem' }}>
+                  <span style={{ color: 'var(--accent-red)', flexShrink: 0 }}>✗</span>
+                  <span>
+                    {item.name}
+                    {item.expectedPosition && <span className="muted"> &mdash; esperado en {item.expectedPosition}</span>}
+                    {item.reason && <span className="muted"> ({item.reason})</span>}
+                  </span>
+                </div>
+              ))}
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Discrepancias de precio" count={result.priceDiscrepancies.length}>
+              {result.priceDiscrepancies.map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '0.35rem' }}>
+                  <span style={{ color: 'var(--accent-yellow)', flexShrink: 0 }}>$</span>
+                  <span>
+                    {item.name}
+                    <span className="muted"> esperado ${item.expectedPrice.toFixed(2)} &rarr; visto ${item.observedPrice.toFixed(2)}</span>
+                    <span style={{ color: item.difference > 0 ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+                      {' '}({item.difference > 0 ? '+' : ''}{item.difference.toFixed(2)})
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Productos inesperados" count={result.unexpected.length}>
+              {result.unexpected.map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '0.35rem' }}>
+                  <span style={{ color: 'var(--accent-blue)', flexShrink: 0 }}>?</span>
+                  <span>
+                    {item.name}
+                    {item.position && <span className="muted"> &mdash; en {item.position}</span>}
+                    {item.observation && <span className="muted"> ({item.observation})</span>}
+                  </span>
+                </div>
+              ))}
+            </CollapsibleSection>
+          </div>
+
+          {/* Export buttons */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <button className="btn btn--secondary btn--small" onClick={copyToClipboard}>📋 Copiar</button>
+            <button className="btn btn--secondary btn--small" onClick={() => showComingSoon('Exportar PDF')}>📄 PDF</button>
+            <button className="btn btn--secondary btn--small" onClick={() => showComingSoon('Exportar Excel')}>📊 Excel</button>
+            <button className="btn btn--secondary btn--small" onClick={() => showComingSoon('Compartir por WhatsApp')}>📱 WhatsApp</button>
+          </div>
+
+          {/* New comparison */}
+          <div style={{ textAlign: 'center', paddingTop: '0.5rem' }}>
+            <button
+              onClick={resetAll}
+              style={{
+                background: 'none', border: 'none', fontSize: '0.8rem', fontFamily: 'var(--font)',
+                color: 'var(--accent-blue)', cursor: 'pointer', textDecoration: 'underline',
+              }}
+            >
+              Nueva comparación
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ── Sub-components ─────────────────────────────────────────── */
 
-function MetricCard({
-  label,
-  value,
-  detail,
-  isCount = false,
-}: {
-  label: string;
-  value: number;
-  detail: string;
-  isCount?: boolean;
+function MetricCard({ label, value, detail, isCount = false }: {
+  label: string; value: number; detail: string; isCount?: boolean;
 }) {
-  return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-4 text-center">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className={`text-3xl font-black tabular-nums ${isCount ? (value > 0 ? 'text-red-400' : 'text-green-400') : scoreColor(value)}`}>
-        {value}{!isCount && <span className="text-lg">%</span>}
-      </p>
-      <p className="text-xs text-gray-600 mt-1">{detail}</p>
-    </div>
-  );
-}
+  const color = isCount
+    ? (value > 0 ? 'var(--accent-red)' : 'var(--accent-green)')
+    : scoreColorVar(value);
 
-function ExportButton({ label, icon, onClick }: { label: string; icon: string; onClick: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 border border-gray-800 rounded-lg text-sm text-gray-300 hover:border-gray-700 hover:text-white transition-colors"
-    >
-      <span>{icon}</span>
-      <span>{label}</span>
-    </button>
+    <div className="card" style={{ flex: '1 1 120px', textAlign: 'center', padding: '1rem' }}>
+      <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+        {label}
+      </p>
+      <p style={{ fontSize: '2rem', fontWeight: 900, color, lineHeight: 1.1 }}>
+        {value}{!isCount && <span style={{ fontSize: '1rem' }}>%</span>}
+      </p>
+      <p className="text-xs muted" style={{ marginTop: '0.25rem' }}>{detail}</p>
+    </div>
   );
 }
