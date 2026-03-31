@@ -7,6 +7,7 @@ import {
 } from "remotion";
 import { FONT, COLORS, TIMING } from "../theme";
 import { FadeWrapper } from "../components/FadeWrapper";
+import { MediaBackground } from "../components/MediaBackground";
 import { AnimatedText } from "../components/AnimatedText";
 
 // Duration: 360 frames (12s at 30fps)
@@ -24,11 +25,12 @@ export const SceneHook: React.FC = () => {
 
   return (
     <FadeWrapper>
+      <MediaBackground type="video" src="clips/scene-1.mp4" playbackRate={0.5} overlayOpacity={0.75} />
       <AbsoluteFill
         style={{
           justifyContent: "center",
           alignItems: "center",
-          background: `radial-gradient(ellipse ${gradientSize}% ${gradientSize}% at 50% 50%, rgba(20, 20, 40, 1) 0%, ${COLORS.bgDark} 100%)`,
+          background: "transparent",
           padding: 120,
         }}
       >

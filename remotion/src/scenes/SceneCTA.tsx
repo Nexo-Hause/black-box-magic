@@ -8,6 +8,7 @@ import {
 } from "remotion";
 import { FONT, COLORS } from "../theme";
 import { FadeWrapper } from "../components/FadeWrapper";
+import { MediaBackground } from "../components/MediaBackground";
 
 // Duration: 450 frames (15s at 30fps)
 // "Black Box Magic" spring entrance with bounce: damping 12
@@ -67,18 +68,14 @@ export const SceneCTA: React.FC = () => {
     extrapolateRight: "clamp",
   });
 
-  // Subtle radial gradient pulse matching SceneHook for visual bookending
-  const gradientSize = interpolate(frame, [0, 450], [40, 55], {
-    extrapolateRight: "clamp",
-  });
-
   return (
     <FadeWrapper>
+      <MediaBackground type="video" src="clips/scene-8.mp4" playbackRate={0.35} overlayOpacity={0.65} />
       <AbsoluteFill
         style={{
           justifyContent: "center",
           alignItems: "center",
-          background: `radial-gradient(ellipse ${gradientSize}% ${gradientSize}% at 50% 50%, rgba(20, 20, 40, 1) 0%, ${COLORS.bgDark} 100%)`,
+          backgroundColor: "transparent",
           padding: 80,
         }}
       >
