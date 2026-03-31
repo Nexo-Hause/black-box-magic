@@ -72,9 +72,9 @@ export async function GET(request: NextRequest) {
     // 5. Query last completed timestamp
     const { data: lastCompletedRow, error: lastErr } = await supabase
       .from('bbm_incidences')
-      .select('completed_at')
+      .select('processed_at')
       .eq('status', 'completed')
-      .order('completed_at', { ascending: false })
+      .order('processed_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
       console.error('Error al consultar última incidencia completada:', lastErr.message);
     }
 
-    const lastCompleted = lastCompletedRow?.completed_at || null;
+    const lastCompleted = lastCompletedRow?.processed_at || null;
 
     // 6. Query active planogram count
     const { count: activePlanograms, error: planogramErr } = await supabase

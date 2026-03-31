@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS bbm_planograms (
   client_key TEXT NOT NULL,           -- 'fotl_caballeros', 'fotl_damas'
   name TEXT NOT NULL,                 -- Human-readable name
   storage_path TEXT NOT NULL,         -- Path in Supabase Storage bucket
+  storage_bucket TEXT NOT NULL DEFAULT 'planograms',
   mime_type TEXT NOT NULL,
   reference_items JSONB NOT NULL DEFAULT '[]',  -- Optional structured items
   reference_type TEXT NOT NULL DEFAULT 'planogram',
