@@ -111,8 +111,8 @@ export async function validateShareToken(tokenString: string): Promise<string | 
       .digest('hex')
       .slice(0, 16);
 
-    const hmacBuf = Buffer.from(hmac, 'utf8');
-    const expectedBuf = Buffer.from(expectedHmac, 'utf8');
+    const hmacBuf = Buffer.from(hmac, 'hex');
+    const expectedBuf = Buffer.from(expectedHmac, 'hex');
     if (hmacBuf.length !== expectedBuf.length || !timingSafeEqual(hmacBuf, expectedBuf)) {
       return null;
     }

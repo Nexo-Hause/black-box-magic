@@ -2,16 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyCookie, COOKIE_NAME } from '@/lib/cookie';
 import { generateShareToken } from '@/lib/share-token';
 
+function isAllowedEmail(email: string): boolean {
+  const allowlist = process.env.DASHBOARD_ALLOWED_EMAILS || '';
+  if (!allowlist) return true;
+  return allowlist.split(',').map(e => e.trim().toLowerCase()).includes(email.toLowerCase());
+}
+
 /**
  * POST /api/demo/share
  *
  * Genera un link compartible para que prospectos accedan sin pasar por el email gate.
- * Solo usuarios autenticados (con cookie válida) pueden generar links.
+ * Solo usuarios autenticados y autorizados pueden generar links.
  *
  * Response: { token, url, expiresInHours }
  */
 export async function POST(req: NextRequest) {
-  // Solo usuarios autenticados pueden generar share links
   const cookieValue = req.cookies.get(COOKIE_NAME)?.value;
   const payload = cookieValue ? verifyCookie(cookieValue) : null;
 
@@ -19,6 +24,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: 'No autenticado — inicia sesión primero' },
       { status: 401 }
+    );
+  }
+
+  if (!isAllowedEmail(payload.email)) {
+    return NextResponse.json(
+      { error: 'No autorizado para generar links compartibles' },
+      { status: 403 }
     );
   }
 

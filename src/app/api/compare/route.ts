@@ -206,6 +206,24 @@ function mapToComparisonResult(
   };
 }
 
+// ─── Rate limiting (in-memory, resets on deploy) ───
+
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX = 10;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(email: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(email);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(email, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
 // ─── Route handler ───
 
 export async function POST(request: NextRequest) {
@@ -216,6 +234,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: 'Se requiere email. Ingresa tu email primero.', status: 401 },
       { status: 401 },
+    );
+  }
+
+  // 1b. Rate limit
+  if (!checkRateLimit(cookiePayload.email)) {
+    return NextResponse.json(
+      { error: 'Demasiadas solicitudes. Intenta de nuevo en un momento.', status: 429 },
+      { status: 429 },
     );
   }
 

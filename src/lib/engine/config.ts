@@ -59,13 +59,35 @@ const escalationRuleSchema = z.object({
   description: z.string().min(1),
 });
 
-const PRIVATE_IP_PATTERN = /\/\/(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/i;
+function isPrivateUrl(urlString: string): boolean {
+  try {
+    const parsed = new URL(urlString);
+    const hostname = parsed.hostname.toLowerCase();
+    // Block IPv6 literals
+    if (hostname.startsWith('[')) return true;
+    // Block known localhost variants
+    if (['localhost', 'localhost.localdomain', 'ip6-localhost', 'ip6-loopback'].includes(hostname)) return true;
+    // Block IPv4 private ranges
+    const ipv4Match = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+    if (ipv4Match) {
+      const [, a, b] = ipv4Match.map(Number);
+      if (a === 10 || a === 127 || a === 0 || (a === 169 && b === 254)) return true;
+      if (a === 172 && b >= 16 && b <= 31) return true;
+      if (a === 192 && b === 168) return true;
+    }
+    // Block encoded characters (bypass attempts)
+    if (/[%\x00-\x1f]/.test(urlString)) return true;
+    return false;
+  } catch {
+    return true;
+  }
+}
 
 const referenceImageSchema = z.object({
   url: z.string()
     .url()
     .refine((u) => u.startsWith('https://'), { message: 'Only HTTPS URLs allowed for reference images' })
-    .refine((u) => !PRIVATE_IP_PATTERN.test(u), { message: 'Private network URLs not allowed' }),
+    .refine((u) => !isPrivateUrl(u), { message: 'Private network URLs not allowed' }),
   label: z.enum(['correct', 'incorrect']),
   area: z.string().min(1),
   description: z.string().min(1),
