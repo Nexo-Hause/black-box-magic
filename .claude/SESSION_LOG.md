@@ -8,6 +8,7 @@
 | 4 | 2026-03-28 | session/engine-v3-fase0-1 | Engine v3 Fases 0-3 implementadas, 4 rondas review | #5 (mergeado) |
 | 5 | 2026-03-28 | feat/remotion-video | Video Remotion BBM+Evidence con voiceover TTS y música Lyria 3 | pendiente |
 | 6 | 2026-03-28 | session/engine-v3-fase4-voice | Completar engine v3: Fase 4 voz + reviews ronda 4 + Fase 3 | #6 |
+| 7 | 2026-03-31 | feat/reference-comparison | E2E fixes (modelos, TTL, CSS, migraciones) + spec 02 planogram comparison Fases 0-1 | #9 |
 
 ### Sesión 3 (2026-03-28)
 Diseño completo del motor multi-industria (engine v3) con onboarding conversacional.
@@ -25,6 +26,13 @@ HKDF derivation, rawValue coercion, expanded injection patterns).
 Continuación: Fase 3 (test-runner + deploy endpoints + UI testing) y Fase 4 (voz con Gemini Live API).
 Ephemeral tokens de Google eliminan necesidad de proxy WebSocket. Browser conecta directo a Gemini.
 107 tests, 5 rondas de AI review procesadas entre PR #5 y #6. Migración SQL creada. Spec 01 completo.
+
+### Sesión 7 (2026-03-31)
+Sesión larga: E2E testing del onboarding (fixes de modelos deprecados gemini-2.0→2.5, TTL código 5min→7d,
+UI reescrita con CSS del proyecto en vez de Tailwind, migraciones Supabase aplicadas, admin endpoint,
+ephemeral token API corregida). Spec 02 planogram comparison creado y auditado, Fases 0-1 implementadas
+(comparación referencia vs campo con Gemini multi-imagen, UI /demo/compare, scoring server-side).
+PR #9 con 2 rondas de AI review procesadas.
 
 ### Sesión 5 (2026-03-28)
 Video Remotion BBM+Evidence para prospectos. Skill oficial de Remotion instalado.
