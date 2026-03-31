@@ -13,6 +13,7 @@ import type {
   MissingItem,
   UnexpectedItem,
   PriceDiscrepancy,
+  GapDetail,
   ReferenceType,
 } from '@/types/comparison';
 
@@ -91,9 +92,10 @@ function buildMetrics(
   const pricing =
     totalPriceVisible > 0 ? (totalPriceMatch / totalPriceVisible) * 100 : 100;
 
-  const gaps = rawResponse.gaps;
+  const gaps = Array.isArray(rawResponse.gaps) ? rawResponse.gaps.length : (typeof rawResponse.gaps === 'number' ? rawResponse.gaps : 0);
 
-  // Weighted average: assortment 40%, positioning 30%, pricing 30%
+  // Score compuesto PROVISIONAL — pesos arbitrarios solo para demo.
+  // En producción, los pesos los define el cliente o no se usa score compuesto.
   const complianceScore =
     assortment * 0.4 + positioning * 0.3 + pricing * 0.3;
 
@@ -127,8 +129,10 @@ function mapToComparisonResult(
     .map((i) => ({
       referenceItemId: i.referenceItemId || '',
       name: i.name,
+      category: i.category,
       correctPosition: i.correctPosition,
-      observation: i.observation,
+      observedPosition: i.observedPosition,
+      observedPrice: i.observedPrice,
     }));
 
   // Build missing items (found = false)
@@ -139,8 +143,8 @@ function mapToComparisonResult(
       return {
         referenceItemId: i.referenceItemId || '',
         name: i.name,
-        expectedPosition: ref?.expectedPosition,
-        reason: i.observation,
+        expectedPosition: ref?.expectedPosition || i.observedPosition,
+        reason: i.observedPosition ? `Esperado en: ${i.observedPosition}` : undefined,
       };
     });
 
@@ -148,10 +152,18 @@ function mapToComparisonResult(
   const unexpected: UnexpectedItem[] = (rawResponse.unexpectedItems || []).map(
     (u) => ({
       name: u.name,
-      position: u.position,
-      observation: u.observation,
+      observedPosition: u.observedPosition,
+      observedPrice: u.observedPrice,
     }),
   );
+
+  // Gap details
+  const gapDetails: GapDetail[] = Array.isArray(rawResponse.gaps)
+    ? rawResponse.gaps.map((g) => ({
+        location: g.location,
+        expectedProduct: g.expectedProduct,
+      }))
+    : [];
 
   // Price discrepancies
   const priceDiscrepancies: PriceDiscrepancy[] = rawResponse.items
@@ -182,6 +194,7 @@ function mapToComparisonResult(
     missing,
     unexpected,
     priceDiscrepancies,
+    gapDetails,
     summary: rawResponse.summary,
     referenceType: referenceData.type,
     referenceSection: referenceData.section,

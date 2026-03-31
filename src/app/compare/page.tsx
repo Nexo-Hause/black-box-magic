@@ -238,7 +238,7 @@ export default function ComparePage() {
       if (!res.ok || !data.success) {
         throw new Error(data.error || `Error HTTP ${res.status}`);
       }
-      setResult(data.result as ComparisonResult);
+      setResult((data.comparison || data.result) as ComparisonResult);
       setPageState('done');
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Error desconocido');
@@ -442,6 +442,10 @@ export default function ComparePage() {
                 Cobertura parcial &mdash; no toda la referencia es visible en la foto
               </p>
             )}
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.75rem', fontStyle: 'italic' }}>
+              Score provisional (surtido 40% + posici&oacute;n 30% + precios 30%) &mdash; pesos arbitrarios solo para demo.
+              En producci&oacute;n, las m&eacute;tricas individuales se muestran sin combinar.
+            </p>
           </div>
 
           {/* Metrics row */}
@@ -464,15 +468,22 @@ export default function ComparePage() {
           <div className="card" style={{ padding: '0 1.5rem' }}>
             <CollapsibleSection title="Productos encontrados" count={result.matches.length} defaultOpen>
               {result.matches.map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '0.35rem' }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
                   <span style={{ color: item.correctPosition ? 'var(--accent-green)' : 'var(--accent-yellow)', flexShrink: 0 }}>
                     {item.correctPosition ? '✓' : '○'}
                   </span>
-                  <span>
-                    {item.name}
-                    {item.observation && <span className="muted"> &mdash; {item.observation}</span>}
-                    {!item.correctPosition && <span style={{ color: 'var(--accent-yellow)' }}> (posición incorrecta)</span>}
-                  </span>
+                  <div>
+                    <strong>{item.name}</strong>
+                    {item.category && <span className="muted"> ({item.category})</span>}
+                    {!item.correctPosition && <span style={{ color: 'var(--accent-yellow)' }}> — posición incorrecta</span>}
+                    {(item.observedPosition || item.observedPrice != null) && (
+                      <div className="muted" style={{ fontSize: '0.7rem', marginTop: '0.15rem' }}>
+                        {item.observedPosition && <>Ubicación: {item.observedPosition}</>}
+                        {item.observedPosition && item.observedPrice != null && ' · '}
+                        {item.observedPrice != null && <>Precio: ${item.observedPrice}</>}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </CollapsibleSection>
@@ -511,11 +522,27 @@ export default function ComparePage() {
                   <span style={{ color: 'var(--accent-blue)', flexShrink: 0 }}>?</span>
                   <span>
                     {item.name}
-                    {item.position && <span className="muted"> &mdash; en {item.position}</span>}
-                    {item.observation && <span className="muted"> ({item.observation})</span>}
+                    {item.observedPosition && <span className="muted"> &mdash; en {item.observedPosition}</span>}
+                    {item.observedPrice != null && <span className="muted"> (${item.observedPrice})</span>}
                   </span>
                 </div>
               ))}
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Huecos detectados" count={result.gapDetails?.length || result.metrics.gaps}>
+              {result.gapDetails && result.gapDetails.length > 0 ? (
+                result.gapDetails.map((gap, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '0.35rem' }}>
+                    <span style={{ color: 'var(--accent-red)', flexShrink: 0 }}>◻</span>
+                    <span>
+                      {gap.location}
+                      {gap.expectedProduct && <span className="muted"> &mdash; debería estar: {gap.expectedProduct}</span>}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="muted text-sm">{result.metrics.gaps} posiciones vacías detectadas (sin detalle de ubicación)</p>
+              )}
             </CollapsibleSection>
           </div>
 

@@ -39,6 +39,7 @@ export interface ComparisonResult {
   missing: MissingItem[];
   unexpected: UnexpectedItem[];
   priceDiscrepancies: PriceDiscrepancy[];
+  gapDetails: GapDetail[];
 
   // Summary
   summary: string;
@@ -66,10 +67,18 @@ export interface ComparisonMetrics {
   totalPriceVisible: number;
 }
 
+export interface GapDetail {
+  location: string;
+  expectedProduct?: string;
+}
+
 export interface MatchedItem {
   referenceItemId: string;
   name: string;
+  category?: string;
   correctPosition: boolean;
+  observedPosition?: string;
+  observedPrice?: number;
   observation?: string;
 }
 
@@ -82,7 +91,8 @@ export interface MissingItem {
 
 export interface UnexpectedItem {
   name: string;
-  position?: string;
+  observedPosition?: string;
+  observedPrice?: number;
   observation?: string;
 }
 
@@ -102,15 +112,19 @@ export interface RawComparisonResponse {
   items: Array<{
     referenceItemId?: string;
     name: string;
+    category?: string;
     found: boolean;
     correctPosition: boolean;
+    observedPosition?: string;
     observedPrice?: number;
-    observation?: string;
   }>;
   unexpectedItems?: Array<{
     name: string;
-    position?: string;
-    observation?: string;
+    observedPosition?: string;
+    observedPrice?: number;
   }>;
-  gaps: number;
+  gaps: Array<{
+    location: string;
+    expectedProduct?: string;
+  }>;
 }
