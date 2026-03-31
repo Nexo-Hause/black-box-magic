@@ -10,6 +10,7 @@
 | 6 | 2026-03-28 | session/engine-v3-fase4-voice | Completar engine v3: Fase 4 voz + reviews ronda 4 + Fase 3 | #6 |
 | 7 | 2026-03-31 | feat/reference-comparison | E2E fixes + spec 02 planogram comparison Demo Mode | #9 |
 | 8 | 2026-03-31 | feat/reference-comparison | Reunión retail FOTL + análisis implicaciones + spec 02 auditado + Fase 0 producción | #8, #9 |
+| 9 | 2026-03-31 | feat/remotion-video | Validar commits worktree anterior + media Veo/Imagen + render v2 | — |
 
 ### Sesión 3 (2026-03-28)
 Diseño completo del motor multi-industria (engine v3) con onboarding conversacional.
@@ -43,3 +44,10 @@ assignments), tipos incidence.ts, storage module (Supabase private bucket + sign
 incidence prompt ("find what's wrong"), parser, endpoints upload/list/status. Demo mode probado
 con fotos reales FOTL. 2 rondas de AI review procesadas (HMAC hex encoding, SSRF IPv6, rate
 limiting, missing columns). Deploy a Vercel verificado.
+
+### Sesión 9 (2026-03-31)
+Rescate de sesión interrumpida en worktree. Validamos que el worktree `tender-williamson` no
+tenía trabajo relevante. Recuperamos cambios sin commitear: 8 escenas con MediaBackground
+(reemplazo de gradients por media reales), componente MediaBackground (Ken Burns + video overlay),
+script generate-media.ts (Veo 3.1 + Imagen 4). Media generada: 3 clips Veo (29MB) + 5 imágenes
+Imagen 4 (7MB). Commit a feat/remotion-video. Render v2: out/bbm-evidence-v2.mp4 (93MB, 1920x1080, 2:10).
