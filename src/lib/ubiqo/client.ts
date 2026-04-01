@@ -11,6 +11,8 @@ import type { UbiqoCaptura, UbiqoFotografia, UbiqoPhoto } from './types';
 
 const DEFAULT_BASE = 'https://bi.ubiqo.net';
 const FETCH_TIMEOUT_MS = 30_000;
+const MAX_API_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 1_000;
 
 function getApiToken(): string {
   const token = process.env.UBIQO_API_TOKEN;
@@ -22,6 +24,35 @@ function getApiToken(): string {
 
 function getApiBase(): string {
   return process.env.UBIQO_API_BASE || DEFAULT_BASE;
+}
+
+/**
+ * Fetch with automatic retry on HTTP 429 (rate limit) or 503 (service unavailable).
+ * Respects Retry-After header when present; otherwise uses exponential backoff.
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = MAX_API_RETRIES,
+): Promise<Response> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const response = await fetch(url, options);
+
+    if ((response.status === 429 || response.status === 503) && attempt < retries) {
+      const retryAfterRaw = response.headers.get('Retry-After');
+      const delayMs = retryAfterRaw
+        ? parseInt(retryAfterRaw, 10) * 1000
+        : RETRY_BASE_DELAY_MS * Math.pow(2, attempt); // exponential backoff
+
+      await new Promise(r => setTimeout(r, delayMs));
+      continue;
+    }
+
+    return response;
+  }
+
+  // Unreachable, but satisfies TypeScript
+  throw new Error(`Ubiqo API fetch failed after ${retries} retries`);
 }
 
 // ─── fetchCaptures ──────────────────────────────────────────────────────────
@@ -53,7 +84,7 @@ export async function fetchCaptures(
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url.toString(), {
+    const response = await fetchWithRetry(url.toString(), {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,

@@ -66,6 +66,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (alias) {
+      if (alias.length > 200) {
+        return NextResponse.json(
+          { error: 'Alias filter too long (max 200 chars)', status: 400 },
+          { status: 400 }
+        );
+      }
       query = query.ilike('ubiqo_alias', `%${alias}%`);
     }
 

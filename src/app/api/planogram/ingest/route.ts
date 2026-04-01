@@ -107,7 +107,11 @@ export async function POST(request: NextRequest) {
         )
       );
 
-      // 8. INSERT into bbm_incidences with dedup on ubiqo_capture_id
+      // 8. INSERT into bbm_incidences with dedup on ubiqo_capture_id.
+      // NOTE: The assignment lookup (step 5) and these inserts are NOT atomic.
+      // A concurrent re-assignment of form_id could cause inserts with a stale
+      // planogram_id. Acceptable for Phase 1 POC (single cron worker, no mid-run
+      // re-assignments expected). Re-ingest is idempotent via UNIQUE(ubiqo_capture_id).
       const { error: insertErr } = await supabase
         .from('bbm_incidences')
         .upsert(

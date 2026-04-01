@@ -66,6 +66,10 @@ export async function POST(request: NextRequest) {
     // Snapshot total rows for this form before upsert to compute already_processed.
     // ON CONFLICT DO NOTHING means upsert returns nothing for existing rows;
     // we derive duplicates as: discovered - (countAfter - countBefore).
+    // NOTE: This count is approximate under concurrent ingests for the same form_id
+    // (two simultaneous ingests will both read the same countBefore, slightly skewing
+    // the math). The actual dedup is always correct — it's enforced by the DB
+    // UNIQUE(ubiqo_grupo, photo_path) constraint. already_processed is informational only.
     const { count: countBefore } = await supabase
       .from('bbm_ubiqo_captures')
       .select('*', { count: 'exact', head: true })
