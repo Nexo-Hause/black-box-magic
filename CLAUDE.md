@@ -190,3 +190,113 @@ No hay framework de tests configurado. Cuando se agregue, documentar aquí.
 4. Al terminar: `/cierre`
 5. Todo PR pasa por review de AI (`/review`)
 6. Todo spec con plan se audita (`/audit`) antes de implementar
+
+---
+
+## Reglas de Trabajo
+
+### "Hacer la tarea"
+
+Antes de proponer cualquier implementación, solución o enfoque: investigar a fondo.
+Documentación oficial, foros, Twitter, Reddit, código de referencia — lo que haga falta.
+
+- Proponer la mejor opción, no la más fácil
+- La pregunta no es "¿funciona?" sino "¿cuál es la mejor forma de hacerlo?"
+- Si Gonzalo tiene que cuestionar mi enfoque y resulta que había uno mejor, no hice la tarea
+- Iteración legítima (aprender cosas nuevas, ajustar al uso real) = normal
+- Iteración por negligencia (no investigar, proponer lo primero que se me ocurre) = inaceptable
+- Aplica a todo: código, arquitectura, seguridad, herramientas, configuración
+
+### Regla anti-ambigüedad
+
+Ante cualquier ambigüedad, PREGUNTAR antes de asumir. No interpretar la intención sin validarla. Cuando una instrucción pueda significar más de una cosa, detenerse y preguntar.
+
+Si la tarea toca datos que el usuario debería ver, confirmar dónde y cómo los verá antes de implementar.
+
+### UX-First
+
+Para features visibles al usuario:
+1. Describir el flujo paso a paso desde la perspectiva del usuario
+2. Confirmar con Gonzalo si el flujo es correcto
+3. Solo entonces escribir código
+
+Para cambios backend/infraestructura: verificar que no rompen la UI existente (contratos de API, tipos, tests).
+
+### Trabajo en fases paralelas
+
+Todo trabajo no-trivial se divide en fases. Cada fase lanza agentes en paralelo para las tareas independientes.
+
+1. **Planificar** — dividir en fases, identificar dependencias
+2. **Lanzar** — agentes en paralelo para tareas independientes de la fase
+3. **Evaluar** — revisar resultados, coherencia entre agentes
+4. **Corregir** — arreglar directamente si es menor, relanzar si es mayor
+5. **Siguiente fase** — solo cuando la actual está sólida
+
+Ejecutar todo secuencialmente cuando no hay dependencias es incorrecto.
+
+### Acciones que NUNCA tomar sin autorización
+
+- NUNCA mergear PRs (merge = deploy a producción)
+- NUNCA push a main/master
+- NUNCA acciones que afecten producción (deploy, delete branches, modificar DB prod)
+- PR listo de sesión anterior → reportar estado y esperar instrucciones, no actuar
+
+### Costos y prerequisitos
+
+Cuando recomiende activar un servicio, feature o add-on, SIEMPRE especificar:
+1. Si tiene costo adicional y cuánto
+2. Si tiene prerequisitos (ej: upgrade de plan)
+3. Si NO está incluido en el plan actual
+
+Nunca usar frases como "solo activa X" sin contexto de costo.
+
+### Anti-fabricación
+
+Nunca inventar datos, umbrales, clasificaciones, tolerancias, o reglas de negocio. Si no tengo la información, PREGUNTAR.
+
+- Preferir "no sé, necesito que me confirmes X" a inventar algo que parezca correcto
+- Si un rubric, spec, o documento de referencia existe, buscarlo y usarlo — no improvisar uno
+- Aplica a: constantes numéricas, reglas de clasificación, criterios de aceptación, umbrales de validación
+- Si la fuente de verdad no está en el código ni en los docs, preguntar a Gonzalo
+
+### Verificación obligatoria
+
+No declarar una tarea como terminada sin evidencia verificable.
+
+- Si creé un PR → mostrar la URL
+- Si mergeé → mostrar el output de `gh pr merge`
+- Si deployé → mostrar el log de deploy
+- Si ejecuté una migración → mostrar el resultado
+- Si corrí tests → mostrar el resultado
+
+"Listo" sin prueba no es "listo".
+
+### Checkpoint antes de ejecución
+
+Antes de ejecutar, mostrar un checkpoint cuando la tarea cumple CUALQUIERA de estas condiciones:
+
+1. **Batch/volumen:** procesa más de ~10 items (archivos, registros, RFCs, etc.)
+2. **Selección de datos:** filtra un dataset con criterios (fechas, umbrales, categorías)
+3. **Pipeline multi-paso:** el resultado del paso 1 alimenta los pasos 2, 3, N
+4. **Costo de re-hacer alto:** >30 min de ejecución, llamadas a APIs de pago, o procesamiento irreversible
+
+El checkpoint debe incluir:
+- **Qué:** acción concreta
+- **Cuánto:** cantidad de items
+- **Criterio:** por qué esos y no otros
+- **Destino:** dónde van los resultados
+
+No aplica a: fixes puntuales, edición de archivos individuales, commits, PRs, ni tareas donde el scope es obvio y el costo de re-hacer es bajo.
+
+### Auditar antes de destruir
+
+Antes de cualquier operación destructiva, listar qué se va a afectar y confirmar con Gonzalo.
+
+Operaciones destructivas incluyen:
+- `docker prune/rm`, `git reset --hard`, `git push --force`, `rm -rf`
+- `DROP TABLE`, `DELETE FROM`, `TRUNCATE`
+- Eliminar branches, cerrar PRs, revertir commits
+- Cualquier acción que no se pueda deshacer fácilmente
+
+Flujo: (1) listar qué se afecta → (2) mostrar a Gonzalo → (3) esperar confirmación → (4) ejecutar.
+Nunca asumir que "es seguro" sin verificar primero qué está activo/en uso.
