@@ -25,17 +25,27 @@ src/
 │   │   │   ├── test/         # Test de fotos con config candidato
 │   │   │   ├── deploy/       # Activar config (testing → active)
 │   │   │   └── voice/        # Token efímero para Live API (voz)
+│   │   ├── ubiqo/            # Pipeline Ubiqo Evidence (Bearer auth, cron-driven)
+│   │   │   ├── ingest/       # Discover capturas → registrar fotos pending
+│   │   │   ├── process/      # Procesar 1 foto (download → analyze → store)
+│   │   │   ├── results/      # Query resultados con filtros
+│   │   │   └── status/       # Observabilidad (conteos, alertas)
 │   │   └── health/           # Status + documentación
 │   ├── admin/                # UI admin (generar links de onboarding)
 │   ├── demo/                 # UI demo (upload, batch, exports)
 │   ├── onboarding/           # UI onboarding (chat, review, test, voz)
 │   └── page.tsx              # Landing page
 ├── lib/
-│   ├── auth.ts               # Bearer token auth (producción)
+│   ├── analyze.ts            # Función reutilizable de análisis 2-pasadas (extraída de /api/analyze)
+│   ├── auth.ts               # Bearer token auth (producción, timing-safe)
 │   ├── cookie.ts             # HMAC-signed email cookie (demo)
 │   ├── gemini.ts             # Cliente Gemini Vision (2 modelos, fallback)
 │   ├── gemini-chat.ts        # Cliente Gemini texto + function calling
 │   ├── prompts.ts            # Motor de prompt híbrido v2 (legacy, 2 pasadas)
+│   ├── ubiqo/                # Integración Ubiqo Evidence
+│   │   ├── client.ts         # API client (fetchCaptures, buildPhotoUrl, extractPhotos)
+│   │   ├── types.ts          # Interfaces TS + Zod schemas del API real
+│   │   └── ssrf.ts           # Descarga de fotos con protección SSRF
 │   ├── supabase.ts           # Cliente Supabase (logging)
 │   ├── email.ts              # Composición y envío de emails
 │   ├── exports/              # PDF, Excel, JSON, clipboard, WhatsApp, imagen anotada
@@ -121,6 +131,18 @@ src/
 | `src/types/engine.ts` | Tipos del engine v3 (ClientConfig, EngineV3Result) |
 | `src/hooks/useOnboardingChat.ts` | State machine del onboarding (7 fases) |
 | `supabase/migrations/001_create_bbm_client_configs.sql` | Migración SQL (pendiente) |
+| `src/lib/analyze.ts` | Función reutilizable de análisis 2-pasadas |
+| `src/lib/ubiqo/client.ts` | Cliente API Ubiqo Evidence (fetch, URL build, photo extract) |
+| `src/lib/ubiqo/types.ts` | Interfaces + Zod schemas del API real de Ubiqo |
+| `src/lib/ubiqo/ssrf.ts` | Descarga de fotos con protección SSRF |
+| `src/app/api/ubiqo/ingest/route.ts` | Discover capturas Ubiqo → registrar pending |
+| `src/app/api/ubiqo/process/route.ts` | Procesar 1 foto pending (download → analyze → store) |
+| `src/app/api/ubiqo/results/route.ts` | Query resultados con filtros |
+| `src/app/api/ubiqo/status/route.ts` | Observabilidad pipeline Ubiqo |
+| `src/app/api/planogram/ingest/route.ts` | Discover capturas → crear incidencias pending |
+| `src/app/api/planogram/process/route.ts` | Procesar 1 incidencia (compare vs planograma) |
+| `src/app/api/planogram/webhook/route.ts` | Webhook Ubiqo (esqueleto, HMAC validation) |
+| `supabase/migrations/008_create_bbm_ubiqo_captures.sql` | Tabla + stored procedures para pipeline Ubiqo |
 
 ---
 
@@ -143,6 +165,10 @@ Definidas en `.env.local` (no versionado). Template en `.env.example`:
 - `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` — Logging
 - `BBM_COOKIE_SECRET` — Secreto HMAC para cookies del demo gate
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` — Gmail SMTP
+- `UBIQO_API_TOKEN` — Bearer token para API Evidence (bi.ubiqo.net)
+- `UBIQO_API_BASE` — Base URL del API (default: `https://bi.ubiqo.net`)
+- `UBIQO_PHOTO_DOMAINS` — Allowlist de dominios para descarga de fotos (CloudFront)
+- `UBIQO_QSR_CUSTOM_RULES` — Reglas custom para caso QSR (opcional)
 
 ---
 
