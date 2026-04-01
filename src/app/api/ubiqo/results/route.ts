@@ -72,7 +72,11 @@ export async function GET(request: NextRequest) {
           { status: 400 }
         );
       }
-      query = query.ilike('ubiqo_alias', `%${alias}%`);
+      // Escape LIKE wildcards so user input is treated as literal text.
+      // Supabase uses parameterized queries (no SQL injection), but unescaped
+      // '%' or '_' would act as LIKE wildcards and match more rows than intended.
+      const escapedAlias = alias.replace(/[%_]/g, '\\$&');
+      query = query.ilike('ubiqo_alias', `%${escapedAlias}%`);
     }
 
     if (minScore) {
