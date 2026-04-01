@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   const email = body.email?.trim().toLowerCase();
-  if (!email || !EMAIL_REGEX.test(email) || email !== ADMIN_EMAIL) {
+  if (!email || email.length > 254 || !EMAIL_REGEX.test(email) || email !== ADMIN_EMAIL) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   response.cookies.set(ADMIN_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
     path: '/',
     maxAge: MAX_AGE,
   });
