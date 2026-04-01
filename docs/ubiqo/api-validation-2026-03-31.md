@@ -18,12 +18,12 @@ URL = urlBase + fotografias[].url + firma
 
 Ejemplo real:
 ```
-https://d1g2sa7lgddaom.cloudfront.net/Capsulas/6376-57325-1774042254169.jpg?Policy=...&Signature=...&Key-Pair-Id=...
+{urlBase}Capsulas/6376-57325-1774042254169.jpg?Policy=...&Signature=...&Key-Pair-Id=...
 ```
 
 | Campo | Valor | Notas |
 |-------|-------|-------|
-| `urlBase` | `https://d1g2sa7lgddaom.cloudfront.net/` | CloudFront CDN (AWS). Mismo para todas las capturas. |
+| `urlBase` | CloudFront CDN (ver `.env.local`) | CDN (AWS). Mismo para todas las capturas. |
 | `fotografias[].url` | `Capsulas/{empresaId}-{movilId}-{timestamp}.jpg` | Path relativo. Patrón: `{IdEmpresa}-{idMovil}-{unixMs}.jpg` |
 | `firma` | `?Policy=...&Signature=...&Key-Pair-Id=...` | CloudFront signed URL. Campo a nivel de captura, NO de foto. |
 
@@ -55,7 +55,7 @@ interface UbiqoCaptura {
   fechaValido: string | null;
   nombreUsuarioValido: string | null;
   usernameValido: string | null;
-  urlBase: string;                  // "https://d1g2sa7lgddaom.cloudfront.net/"
+  urlBase: string;                  // CloudFront CDN URL
   firma: string;                    // "?Policy=...&Signature=...&Key-Pair-Id=..."
   folioEvidence: string;            // "260320111540-30143-57325"
   catalogosMetaData: object | null;
@@ -143,14 +143,14 @@ Formulario 30143 (EVIDENCIA FOL 2024), semana 17-23 marzo 2026:
 | `idTipo` fotos | 2 (foto) y 7 (galería) | Solo 7 en datos reales |
 | `latitud`/`longitud` | number | string (necesita parsear) |
 | `folioEvidence` | Existía | Confirmado: formato `{fecha}-{formId}-{movilId}` |
-| `urlBase` fijo | "POR CONFIRMAR" | CloudFront: `https://d1g2sa7lgddaom.cloudfront.net/` |
+| `urlBase` fijo | "POR CONFIRMAR" | CloudFront CDN (ver `.env.local`) |
 | Foto auth | "POR CONFIRMAR" | Signed URL (Policy + Signature + Key-Pair-Id) |
 
 ---
 
 ## Implicaciones para Implementación
 
-1. **SSRF simplificado:** Solo necesitamos allowlist para `d1g2sa7lgddaom.cloudfront.net`. No hay redirects.
+1. **SSRF simplificado:** Solo necesitamos allowlist para el dominio CloudFront de Ubiqo (ver `UBIQO_PHOTO_DOMAINS` en `.env.local`). No hay redirects.
 2. **No necesitamos pasar Bearer para fotos.** La firma CloudFront es suficiente.
 3. **Firma caduca ~24h.** El pipeline debe descargar fotos pronto después de ingest. Si re-procesamos, necesitamos re-llamar al API para obtener firma fresca.
 4. **Latitud/longitud son strings.** Parsear con `parseFloat()`, validar que no sea "0".
@@ -168,7 +168,7 @@ Formulario 30143 (EVIDENCIA FOL 2024), semana 17-23 marzo 2026:
 | 3 | `urlBase` de fotos | **Resuelto** — CloudFront CDN |
 | 4 | Auth de foto URLs | **Resuelto** — Signed URLs via campo `firma` |
 | 5 | Expiración del token | **Resuelto** — expira ~2036 |
-| 6 | Rate limits | Pendiente — no observados, probar con volumen |
+| 6 | Rate limits | Pendiente — probar con 50 req/min, luego 200 req/min. Monitorear HTTP 429/503. |
 | 7 | Formato webhook | Pendiente — para Fase 2 |
 
 **Gate de Fase 0: COMPLETADO.** Podemos proceder a Fase 1.
