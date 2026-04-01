@@ -334,9 +334,15 @@ export function useOnboardingChat() {
             isComplete: chatData.isComplete ?? false,
             turnCount: chatData.turnCount ?? 1,
           });
+        } else {
+          throw new Error(chatData.error || 'Auto-start failed');
         }
       } catch {
-        // Non-fatal — user can still type manually
+        // Auto-start failed — let user know they can type manually
+        dispatch({
+          type: 'CHAT_ERROR',
+          error: 'No se pudo iniciar la conversación automáticamente. Escribe tu primer mensaje.',
+        });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al iniciar sesión';

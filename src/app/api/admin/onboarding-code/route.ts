@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
 
   const { clientId, clientName, email } = parsed.data;
 
-  // Rate limit per clientId
-  if (!checkRateLimit(clientId)) {
+  // Rate limit per API key (auth.client), not per clientId
+  if (!checkRateLimit(auth.client ?? 'unknown')) {
     return NextResponse.json(
       { error: 'Rate limit exceeded. Try again later.', status: 429 },
       { status: 429 },
@@ -89,7 +89,17 @@ export async function POST(request: NextRequest) {
   }
 
   // Generate code
-  const code = await generateOnboardingCode(clientId, clientName, email);
+  let code: string;
+  try {
+    code = await generateOnboardingCode(clientId, clientName, email);
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[admin/onboarding-code] Failed to generate code:', errMsg);
+    return NextResponse.json(
+      { error: 'Failed to generate onboarding code', status: 500 },
+      { status: 500 },
+    );
+  }
 
   const baseUrl = getBaseUrl(request);
   const url = `${baseUrl}/onboarding?code=${code}`;
