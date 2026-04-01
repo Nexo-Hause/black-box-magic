@@ -11,6 +11,7 @@
 | 7 | 2026-03-31 | feat/reference-comparison | E2E fixes + spec 02 planogram comparison Demo Mode | #9 |
 | 8 | 2026-03-31 | feat/reference-comparison | Reunión retail FOTL + análisis implicaciones + spec 02 auditado + Fase 0 producción | #8, #9 |
 | 9 | 2026-03-31 | feat/remotion-video | Validar commits worktree anterior + media Veo/Imagen + render v2 | — |
+| 10 | 2026-03-31 | session/rescue-unmerged-code | Auditoría sesiones 6-10, rescue código perdido, 3 rondas review | #11 (mergeado) |
 
 ### Sesión 3 (2026-03-28)
 Diseño completo del motor multi-industria (engine v3) con onboarding conversacional.
@@ -44,6 +45,16 @@ assignments), tipos incidence.ts, storage module (Supabase private bucket + sign
 incidence prompt ("find what's wrong"), parser, endpoints upload/list/status. Demo mode probado
 con fotos reales FOTL. 2 rondas de AI review procesadas (HMAC hex encoding, SSRF IPv6, rate
 limiting, missing columns). Deploy a Vercel verificado.
+
+### Sesión 10 (2026-03-31)
+Auditoría completa de sesiones 6-10 (corridas en paralelo). Identificado código perdido en
+branch `session/engine-v3-fase4-voice` tras squash merges: admin endpoint para onboarding codes,
+auth rewrite (Supabase-backed 7d TTL), modelos Gemini actualizados (2.5-flash, 2.5-pro,
+3.1-flash-live), Live API format changes, onboarding UI rewrite (Tailwind→CSS vars), auto-start
+chat, error handling en chat route. Migración 007 (bbm_onboarding_codes) con RLS. 3 rondas de
+AI review: RLS, SSRF fix, rate limiting por API key, memory bounds, stale closure fix. PR #11
+mergeado. Deploy verificado en producción (health 200, onboarding 200, admin 401 sin auth).
+CLAUDE.md corregido (Tailwind→CSS vars). Descubierto: usar NEXO_GITHUB_PAT para PRs.
 
 ### Sesión 9 (2026-03-31)
 Rescate de sesión interrumpida en worktree. Validamos que el worktree `tender-williamson` no

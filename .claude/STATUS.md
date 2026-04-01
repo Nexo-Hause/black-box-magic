@@ -1,7 +1,7 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-03-31 (sesión 10: rescue código perdido de sesiones paralelas)
+> Última actualización: 2026-03-31 (sesión 10: auditoría sesiones paralelas + rescue código + review 3 rondas)
 
 ---
 
@@ -9,7 +9,7 @@
 
 **Activo:** Spec 02 — Comparación contra Planograma (Producción Beta)
 **Spec:** `spec/02-reference-comparison.md` (auditado, con auditoría pre-implementación)
-**PRs:** #8 (docs reunión retail), #9 (implementación Demo + Fase 0 producción)
+**PRs:** #8-#11 mergeados (docs retail, spec 02 Fase 0, Remotion media, rescue código)
 **Siguiente:** Implementar Fase 1 (process endpoint) + Fase 2 (dashboard)
 
 ---
@@ -74,7 +74,6 @@
 |---------|-----------|--------|
 | Tokens de Ubiqo (Bearer, Evidence account, urlBase) | Alberto (Ubiqo) | Spec 00 + spec 02 Fase 1 (ingest) |
 | Webhook payload format de Evidence | Ubiqo | Spec 02 Fase 1 (webhook) |
-| PAT de GitHub sin permisos de write | Gonzalo | Crear PRs desde CLI |
 
 ---
 
@@ -121,10 +120,10 @@
 
 ## Próximos Pasos
 
-1. **Mergear PRs #8 y #9** — docs retail + implementación spec 02
-2. **Implementar Fase 1** — endpoint `process` (sin bloqueo externo)
-3. **Implementar Fase 2** — dashboard para Carlos + gestión planogramas
-4. **Implementar Fase 3** — Excel export 4 hojas
-5. **Ejecutar migraciones** — 001-006 en Supabase SQL Editor
-6. **Test E2E con fotos reales FOTL** — validar precisión del prompt de incidencias
+1. **Implementar Fase 1** — endpoint `process` (sin bloqueo externo)
+2. **Implementar Fase 2** — dashboard para Carlos + gestión planogramas
+3. **Implementar Fase 3** — Excel export 4 hojas
+4. **Ejecutar migraciones** — 001-007 en Supabase SQL Editor
+5. **Test E2E con fotos reales FOTL** — validar precisión del prompt de incidencias
+6. **Limpiar branches** — 11 branches locales/remotos ya mergeados o legacy
 7. **Pendiente Ubiqo:** Tokens para ingest + formato webhook
