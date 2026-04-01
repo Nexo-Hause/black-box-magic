@@ -12,6 +12,7 @@
 | 8 | 2026-03-31 | feat/reference-comparison | Reunión retail FOTL + análisis implicaciones + spec 02 auditado + Fase 0 producción | #8, #9 |
 | 9 | 2026-03-31 | feat/remotion-video | Validar commits worktree anterior + media Veo/Imagen + render v2 | — |
 | 10 | 2026-03-31 | session/rescue-unmerged-code | Auditoría sesiones 6-10, rescue código perdido, 3 rondas review | #11 (mergeado) |
+| 11 | 2026-04-01 | feat/admin-page | Página /admin para generar links de onboarding, cookie separada, 3 rondas review | #13 |
 
 ### Sesión 3 (2026-03-28)
 Diseño completo del motor multi-industria (engine v3) con onboarding conversacional.
@@ -62,3 +63,12 @@ tenía trabajo relevante. Recuperamos cambios sin commitear: 8 escenas con Media
 (reemplazo de gradients por media reales), componente MediaBackground (Ken Burns + video overlay),
 script generate-media.ts (Veo 3.1 + Imagen 4). Media generada: 3 clips Veo (29MB) + 5 imágenes
 Imagen 4 (7MB). Commit a feat/remotion-video. Render v2: out/bbm-evidence-v2.mp4 (93MB, 1920x1080, 2:10).
+
+### Sesión 11 (2026-04-01)
+Página `/admin` para generar links de onboarding sin terminal. Cookie admin separada (`bbm_admin`,
+sameSite: strict) independiente del demo gate. Gate admin solo acepta `gonzalo@integrador.pro`
+(env var `BBM_ADMIN_EMAIL` con fallback). Endpoint `onboarding-code` acepta cookie auth como
+fallback (Bearer sigue funcionando). Formulario: nombre + email + clientId auto-kebab → URL
+copiable con badge 7 días. Historial en localStorage. Auditoría pre-implementación: hallazgo
+crítico (cookie compartida demo/admin) resuelto con cookie separada. 3 rondas de AI review:
+env var, email enumeration, localStorage, sameSite strict, email length.

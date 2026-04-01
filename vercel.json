@@ -60,6 +60,18 @@
     "src/app/api/admin/onboarding-code/route.ts": {
       "maxDuration": 10,
       "memory": 256
+    },
+    "src/app/api/admin/gate/route.ts": {
+      "maxDuration": 10,
+      "memory": 256
+    },
+    "src/app/api/admin/gate/check/route.ts": {
+      "maxDuration": 10,
+      "memory": 256
+    },
+    "src/app/api/admin/gate/logout/route.ts": {
+      "maxDuration": 10,
+      "memory": 256
     }
   }
 }

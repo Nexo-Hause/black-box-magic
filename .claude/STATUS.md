@@ -1,7 +1,7 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-03-31 (sesión 10: auditoría sesiones paralelas + rescue código + review 3 rondas)
+> Última actualización: 2026-04-01 (sesión 11: página admin para generar links de onboarding)
 
 ---
 
@@ -9,7 +9,7 @@
 
 **Activo:** Spec 02 — Comparación contra Planograma (Producción Beta)
 **Spec:** `spec/02-reference-comparison.md` (auditado, con auditoría pre-implementación)
-**PRs:** #8-#11 mergeados (docs retail, spec 02 Fase 0, Remotion media, rescue código)
+**PRs:** #8-#12 mergeados, #13 pendiente (admin page)
 **Siguiente:** Implementar Fase 1 (process endpoint) + Fase 2 (dashboard)
 
 ---
@@ -94,6 +94,8 @@
 | Ephemeral tokens para Live API | Browser conecta directo a Gemini via WebSocket | 6 |
 | Onboarding codes en Supabase | Códigos persistentes (7 días TTL), fallback in-memory | 10 |
 | Modelos Gemini actualizados | Chat: 2.5-flash, Synthesis: 2.5-pro, Live: 3.1-flash-live-preview | 10 |
+| Cookie admin separada (bbm_admin) | No compartir cookie demo (bbm_user) con admin. sameSite: strict | 11 |
+| Admin email via env var | BBM_ADMIN_EMAIL con fallback hardcoded para dev | 11 |
 | Remotion para video marketing | Video programático con React, TTS con Gemini, música con Lyria 3 | 5 |
 | Media con Veo 3.1 + Imagen 4 | Clips de video e imágenes AI para fondos de escenas Remotion | 9 |
 | Proteger IP en materiales públicos | Nunca exponer modelos, costos, arquitectura en videos/presentaciones | 5 |

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod/v4';
 import { authenticate } from '@/lib/auth';
+import { verifyCookie } from '@/lib/cookie';
 import { generateOnboardingCode } from '@/lib/onboarding/auth';
+
+const ADMIN_COOKIE = 'bbm_admin';
+const ADMIN_EMAIL = process.env.BBM_ADMIN_EMAIL || 'gonzalo@integrador.pro';
 
 export const maxDuration = 10;
 
@@ -49,13 +53,27 @@ function getBaseUrl(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest) {
-  // Auth
+  // Auth: try Bearer token first, then admin cookie
   const auth = authenticate(request);
+  let authClient = auth.client;
+
   if (!auth.authenticated) {
-    return NextResponse.json(
-      { error: auth.error, status: 401 },
-      { status: 401 },
-    );
+    // Fallback: admin cookie
+    const cookieValue = request.cookies.get(ADMIN_COOKIE)?.value;
+    if (!cookieValue) {
+      return NextResponse.json(
+        { error: 'Missing authentication', status: 401 },
+        { status: 401 },
+      );
+    }
+    const payload = verifyCookie(cookieValue);
+    if (!payload || payload.email !== ADMIN_EMAIL) {
+      return NextResponse.json(
+        { error: 'Unauthorized', status: 403 },
+        { status: 403 },
+      );
+    }
+    authClient = 'admin-ui';
   }
 
   // Parse body
@@ -80,8 +98,8 @@ export async function POST(request: NextRequest) {
 
   const { clientId, clientName, email } = parsed.data;
 
-  // Rate limit per API key (auth.client), not per clientId
-  if (!checkRateLimit(auth.client ?? 'unknown')) {
+  // Rate limit per auth identity
+  if (!checkRateLimit(authClient ?? 'unknown')) {
     return NextResponse.json(
       { error: 'Rate limit exceeded. Try again later.', status: 429 },
       { status: 429 },
