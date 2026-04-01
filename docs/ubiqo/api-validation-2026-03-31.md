@@ -1,7 +1,7 @@
 # Validación API Ubiqo — Fase 0
 
 **Fecha:** 2026-03-31
-**Token:** JWT empresa 6376, sin restricción de formularios, expira ~2036
+**Token:** JWT producción — sin restricción de formularios (ver `.env.local`)
 **Resultado:** API funcional, pipeline completo validado
 
 ---
@@ -156,6 +156,7 @@ Formulario 30143 (EVIDENCIA FOL 2024), semana 17-23 marzo 2026:
 4. **Latitud/longitud son strings.** Parsear con `parseFloat()`, validar que no sea "0".
 5. **Campo `firma` va a nivel de captura**, no de foto. Todas las fotos de una captura comparten la misma firma.
 6. **Volumen alto:** 10K+ fotos por semana en un solo formulario. El cron de 1 foto/min no alcanza — necesitamos batch o concurrencia.
+7. **Seguridad de URLs firmadas:** El campo `firma` es un bearer token temporal. No loggear URLs completas, no cachear en logs de aplicación, no exponer en mensajes de error. Tratar con mismo cuidado que credenciales.
 
 ---
 
@@ -163,11 +164,11 @@ Formulario 30143 (EVIDENCIA FOL 2024), semana 17-23 marzo 2026:
 
 | # | Item | Estado |
 |---|------|--------|
-| 1 | Bearer token | **Resuelto** — JWT empresa 6376 |
+| 1 | Bearer token | **Resuelto** — ver `UBIQO_API_TOKEN` en `.env.local` |
 | 2 | Cuenta Evidence de prueba | **Resuelto** — acceso a todos los formularios |
 | 3 | `urlBase` de fotos | **Resuelto** — CloudFront CDN |
 | 4 | Auth de foto URLs | **Resuelto** — Signed URLs via campo `firma` |
-| 5 | Expiración del token | **Resuelto** — expira ~2036 |
+| 5 | Expiración del token | **Resuelto** — larga duración, ver JWT claims |
 | 6 | Rate limits | Pendiente — probar con 50 req/min, luego 200 req/min. Monitorear HTTP 429/503. |
 | 7 | Formato webhook | Pendiente — para Fase 2 |
 
