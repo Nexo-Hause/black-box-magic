@@ -5,7 +5,7 @@ import { verifyCookie } from '@/lib/cookie';
 import { generateOnboardingCode } from '@/lib/onboarding/auth';
 
 const ADMIN_COOKIE = 'bbm_admin';
-const ADMIN_EMAIL = 'gonzalo@integrador.pro';
+const ADMIN_EMAIL = process.env.BBM_ADMIN_EMAIL || 'gonzalo@integrador.pro';
 
 export const maxDuration = 10;
 

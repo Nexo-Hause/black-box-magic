@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, useCallback } from 'react';
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { useAdminGate } from '@/hooks/useAdminGate';
 import { GateScreen } from '@/app/demo/gate';
 
@@ -39,8 +39,23 @@ export default function AdminPage() {
 
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [links, setLinks] = useState<GeneratedLink[]>([]);
+  const [links, setLinks] = useState<GeneratedLink[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem('bbm-admin-links');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Persist links to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('bbm-admin-links', JSON.stringify(links));
+    } catch { /* quota exceeded — ignore */ }
+  }, [links]);
 
   // Auto-generate clientId from name
   const handleNameChange = useCallback((value: string) => {
@@ -105,15 +120,7 @@ export default function AdminPage() {
       setCopied(id);
       setTimeout(() => setCopied(null), 2000);
     } catch {
-      // Fallback for non-HTTPS
-      const input = document.createElement('input');
-      input.value = url;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand('copy');
-      document.body.removeChild(input);
-      setCopied(id);
-      setTimeout(() => setCopied(null), 2000);
+      setError('No se pudo copiar. Selecciona el link manualmente.');
     }
   }, []);
 
@@ -302,6 +309,14 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+
+          <button
+            className="btn btn--secondary btn--small"
+            onClick={() => setLinks([])}
+            style={{ marginTop: '1rem', width: '100%' }}
+          >
+            LIMPIAR HISTORIAL
+          </button>
         </div>
       )}
     </div>
