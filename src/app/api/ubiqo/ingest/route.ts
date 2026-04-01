@@ -62,7 +62,14 @@ export async function POST(request: NextRequest) {
     const completedCaptures = captures.filter(c => c.estatus === 'Completa');
 
     let discovered = 0;
-    let alreadyProcessed = 0;
+
+    // Snapshot total rows for this form before upsert to compute already_processed.
+    // ON CONFLICT DO NOTHING means upsert returns nothing for existing rows;
+    // we derive duplicates as: discovered - (countAfter - countBefore).
+    const { count: countBefore } = await supabase
+      .from('bbm_ubiqo_captures')
+      .select('*', { count: 'exact', head: true })
+      .eq('ubiqo_form_id', String(form_id));
 
     for (const capture of completedCaptures) {
       const photos = extractPhotos(capture);
@@ -99,15 +106,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Count how many are already processed (existed before this ingest)
-    // The difference between discovered and actually inserted = already_processed
-    const { count: totalCount } = await supabase
+    // already_processed = photos in this batch that already existed in DB
+    const { count: countAfter } = await supabase
       .from('bbm_ubiqo_captures')
       .select('*', { count: 'exact', head: true })
-      .eq('ubiqo_form_id', String(form_id))
-      .in('status', ['completed', 'processing', 'failed']);
+      .eq('ubiqo_form_id', String(form_id));
 
-    alreadyProcessed = totalCount || 0;
+    const actuallyInserted = (countAfter || 0) - (countBefore || 0);
+    const alreadyProcessed = Math.max(0, discovered - actuallyInserted);
 
     const { count: pendingCount } = await supabase
       .from('bbm_ubiqo_captures')

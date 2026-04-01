@@ -24,6 +24,8 @@ const PRIVATE_IP_PATTERNS = [
   /^fe80:/i,           // IPv6 link-local
   /^fd[0-9a-f]{2}:/i,  // IPv6 ULA
   /^localhost$/i,
+  // IPv6-mapped IPv4 private addresses (e.g. ::ffff:127.0.0.1, ::ffff:192.168.1.1)
+  /^::ffff:(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|0\.|169\.254\.)/i,
 ];
 
 /**
@@ -86,12 +88,22 @@ export function validatePhotoUrl(url: string): { valid: boolean; error?: string 
     return { valid: false, error: 'Only HTTPS URLs are allowed' };
   }
 
-  if (isPrivateHost(parsed.hostname)) {
+  // Normalize hostname: decode percent-encoding and lower-case before checks.
+  // new URL() handles most normalization, but explicit decode guards against
+  // obfuscation techniques that could bypass private-IP pattern matching.
+  let hostname: string;
+  try {
+    hostname = decodeURIComponent(parsed.hostname).toLowerCase();
+  } catch {
+    return { valid: false, error: 'Invalid hostname encoding' };
+  }
+
+  if (isPrivateHost(hostname)) {
     return { valid: false, error: 'Private/internal addresses are not allowed' };
   }
 
-  if (!isHostnameAllowed(parsed.hostname)) {
-    return { valid: false, error: `Hostname not in allowlist: ${parsed.hostname}` };
+  if (!isHostnameAllowed(hostname)) {
+    return { valid: false, error: `Hostname not in allowlist: ${hostname}` };
   }
 
   return { valid: true };
