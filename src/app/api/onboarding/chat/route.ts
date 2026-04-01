@@ -117,13 +117,23 @@ export async function POST(request: NextRequest) {
   let currentConfig = storedPartialConfig;
   const tools = getOnboardingToolDeclarations();
 
-  let response = await callGeminiChatWithRetry(
-    CHAT_MODEL,
-    ONBOARDING_SYSTEM_PROMPT,
-    truncatedMessages,
-    apiKey,
-    [tools]
-  );
+  let response;
+  try {
+    response = await callGeminiChatWithRetry(
+      CHAT_MODEL,
+      ONBOARDING_SYSTEM_PROMPT,
+      truncatedMessages,
+      apiKey,
+      [tools]
+    );
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[onboarding/chat] Gemini call failed:', errMsg);
+    return NextResponse.json(
+      { error: 'Error al procesar tu mensaje. Intenta de nuevo.', status: 500 },
+      { status: 500 }
+    );
+  }
 
   // ─── Tool call loop ───────────────────────────────────────────────────────
   // Collect all tool calls across iterations for the response
@@ -162,13 +172,19 @@ export async function POST(request: NextRequest) {
     ];
 
     // Second Gemini call with function responses
-    response = await callGeminiChatWithRetry(
-      CHAT_MODEL,
-      ONBOARDING_SYSTEM_PROMPT,
-      workingMessages,
-      apiKey,
-      [tools]
-    );
+    try {
+      response = await callGeminiChatWithRetry(
+        CHAT_MODEL,
+        ONBOARDING_SYSTEM_PROMPT,
+        workingMessages,
+        apiKey,
+        [tools]
+      );
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[onboarding/chat] Gemini tool-loop call failed:', errMsg);
+      break; // Exit loop, return partial response
+    }
   }
 
   // Final text response

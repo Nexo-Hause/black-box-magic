@@ -51,22 +51,27 @@ async function getSecret(): Promise<Uint8Array> {
   return cachedSecret;
 }
 
-// ─── Code Store (in-memory, short-lived) ─────────────────────────────────────
+// ─── Code Store (Supabase-backed, falls back to in-memory) ───────────────────
 
-const TTL_MS = 5 * 60 * 1000; // 5 minutes
+import { supabase } from '@/lib/supabase';
 
-interface CodeEntry {
-  payload: OnboardingTokenPayload;
-  expiresAt: number;
-}
+const TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (matches JWT expiry)
 
-const codeStore = new Map<string, CodeEntry>();
+const memoryStore = new Map<string, { payload: OnboardingTokenPayload; expiresAt: number }>();
+const MEMORY_STORE_MAX_SIZE = 10_000;
 
-function pruneExpiredCodes(): void {
+function pruneMemoryStore(): void {
   const now = Date.now();
-  for (const [key, entry] of Array.from(codeStore.entries())) {
-    if (entry.expiresAt <= now) {
-      codeStore.delete(key);
+  const entries = Array.from(memoryStore.entries());
+  for (const [key, entry] of entries) {
+    if (entry.expiresAt <= now) memoryStore.delete(key);
+  }
+  // If still over limit after expiry cleanup, evict oldest
+  if (memoryStore.size >= MEMORY_STORE_MAX_SIZE) {
+    const toDelete = Math.ceil(MEMORY_STORE_MAX_SIZE * 0.1);
+    const keys = Array.from(memoryStore.keys());
+    for (let i = 0; i < toDelete && i < keys.length; i++) {
+      memoryStore.delete(keys[i]);
     }
   }
 }
@@ -101,35 +106,66 @@ export async function verifyOnboardingToken(
   }
 }
 
-// ─── Code Functions ───────────────────────────────────────────────────────────
+// ─── Code Functions (Supabase-backed with in-memory fallback) ────────────────
 
 export async function generateOnboardingCode(
   clientId: string,
   clientName: string,
   email: string,
 ): Promise<string> {
-  pruneExpiredCodes();
   const code = randomUUID();
-  codeStore.set(code, {
-    payload: { clientId, clientName, email },
-    expiresAt: Date.now() + TTL_MS,
-  });
+  const expiresAt = new Date(Date.now() + TTL_MS).toISOString();
+  const payload = { clientId, clientName, email };
+
+  if (supabase) {
+    const { error } = await supabase.from('bbm_onboarding_codes').insert({
+      code,
+      payload,
+      expires_at: expiresAt,
+    });
+    if (error) {
+      console.warn('[onboarding/auth] Failed to store code in Supabase, using memory:', error.message);
+      memoryStore.set(code, { payload, expiresAt: Date.now() + TTL_MS });
+    }
+  } else {
+    pruneMemoryStore();
+    memoryStore.set(code, { payload, expiresAt: Date.now() + TTL_MS });
+  }
+
   return code;
 }
 
 export async function exchangeCode(
   code: string,
 ): Promise<{ token: string; payload: OnboardingTokenPayload } | null> {
-  pruneExpiredCodes();
-  const entry = codeStore.get(code);
-  if (!entry) return null;
+  // Try Supabase first
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('bbm_onboarding_codes')
+      .select('payload, expires_at')
+      .eq('code', code)
+      .maybeSingle();
 
-  // Delete first (atomic single-use) then validate
-  codeStore.delete(code);
+    if (!error && data) {
+      // Delete immediately (single-use)
+      await supabase.from('bbm_onboarding_codes').delete().eq('code', code);
 
-  if (entry.expiresAt <= Date.now()) {
-    return null;
+      if (new Date(data.expires_at).getTime() <= Date.now()) {
+        return null;
+      }
+
+      const payload = data.payload as OnboardingTokenPayload;
+      const token = await generateOnboardingToken(payload);
+      return { token, payload };
+    }
   }
+
+  // Fallback to memory
+  const entry = memoryStore.get(code);
+  if (!entry) return null;
+  memoryStore.delete(code);
+  if (entry.expiresAt <= Date.now()) return null;
+
   const token = await generateOnboardingToken(entry.payload);
   return { token, payload: entry.payload };
 }

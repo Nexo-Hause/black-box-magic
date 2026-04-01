@@ -1,6 +1,6 @@
 'use client';
 
-import { useReducer, useCallback, useRef } from 'react';
+import { useReducer, useCallback, useRef, useEffect } from 'react';
 import type { ClientConfig, EngineV3Result } from '@/types/engine';
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -312,6 +312,38 @@ export function useOnboardingChat() {
         token: data.token,
         clientName: data.clientName,
       });
+
+      // Auto-send initial message so Gemini starts the conversation
+      try {
+        const chatRes = await fetch('/api/onboarding/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${data.token}`,
+          },
+          body: JSON.stringify({
+            sessionId: data.sessionId,
+            message: 'Hola, estoy listo para configurar mi análisis visual.',
+          }),
+        });
+        const chatData = await chatRes.json();
+        if (chatRes.ok) {
+          dispatch({
+            type: 'CHAT_RESPONSE',
+            response: chatData.response,
+            isComplete: chatData.isComplete ?? false,
+            turnCount: chatData.turnCount ?? 1,
+          });
+        } else {
+          throw new Error(chatData.error || 'Auto-start failed');
+        }
+      } catch {
+        // Auto-start failed — let user know they can type manually
+        dispatch({
+          type: 'CHAT_ERROR',
+          error: 'No se pudo iniciar la conversación automáticamente. Escribe tu primer mensaje.',
+        });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al iniciar sesión';
       dispatch({ type: 'CHAT_ERROR', error: message });
@@ -532,6 +564,17 @@ export function useOnboardingChat() {
   const endVoiceSession = useCallback(() => {
     dispatch({ type: 'VOICE_SESSION_ENDED' });
   }, []);
+
+  // Cleanup blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      stateRef.current.testPhotos.forEach(p => {
+        if (p.previewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(p.previewUrl);
+        }
+      });
+    };
+  }, []); // Cleanup on unmount only — stateRef gives latest state
 
   return {
     state,

@@ -215,11 +215,9 @@ export function useVoiceSession({
     ws.onopen = () => {
       // Send initial setup config
       ws.send(JSON.stringify({
-        setup: {
-          model: 'models/gemini-2.0-flash-live-001',
-          generationConfig: {
-            responseModalities: ['AUDIO', 'TEXT'],
-          },
+        config: {
+          model: 'models/gemini-3.1-flash-live-preview',
+          responseModalities: ['AUDIO', 'TEXT'],
           systemInstruction: {
             parts: [{ text: systemPrompt }],
           },

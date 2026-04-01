@@ -1,7 +1,7 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-03-31 (sesión 9: media Veo/Imagen para video Remotion + render v2)
+> Última actualización: 2026-03-31 (sesión 10: rescue código perdido de sesiones paralelas)
 
 ---
 
@@ -43,10 +43,11 @@
 | API producción (`/api/analyze`) | 60 | Funcional + engine v3 routing |
 | API comparación (`/api/compare`) | — | Nuevo — multi-imagen Gemini + retry/backoff |
 | Planogram API (`/api/planogram/*`) | — | Nuevo — upload, list, status |
+| Admin API (`/api/admin/onboarding-code`) | — | Nuevo — genera códigos de onboarding (Bearer auth) |
 | Demo (`/demo`) | 0 | Funcional (legacy, intacto) |
 | Compare (`/compare`) | — | Nuevo — UI responsive comparación |
 | Email (`/api/demo/email`) | 0 | Funcional |
-| Onboarding (`/onboarding`) | 40 | Funcional — chat + síntesis + test + deploy + voz |
+| Onboarding (`/onboarding`) | 40 | Funcional — chat + síntesis + test + deploy + voz + auto-start |
 | Engine v3 (`src/lib/engine/`) | 60 | Funcional — config, prompt-builder, analyzer, escalation |
 | Planogram lib (`src/lib/planogram/`) | — | Nuevo — storage, incidence-prompt, incidence-parser |
 | **Total** | **107+** | — |
@@ -63,6 +64,7 @@
 | 004 | `bbm_planograms` | Pendiente |
 | 005 | `bbm_incidences` | Pendiente |
 | 006 | `bbm_planogram_assignments` | Pendiente |
+| 007 | `bbm_onboarding_codes` | Pendiente |
 
 ---
 
@@ -91,6 +93,8 @@
 | Triggers de escalación estructurados | Gramática tipada evaluada server-side, no texto libre | 3 |
 | jose para JWT | Ligero, ESM-first, edge-compatible | 6 |
 | Ephemeral tokens para Live API | Browser conecta directo a Gemini via WebSocket | 6 |
+| Onboarding codes en Supabase | Códigos persistentes (7 días TTL), fallback in-memory | 10 |
+| Modelos Gemini actualizados | Chat: 2.5-flash, Synthesis: 2.5-pro, Live: 3.1-flash-live-preview | 10 |
 | Remotion para video marketing | Video programático con React, TTS con Gemini, música con Lyria 3 | 5 |
 | Media con Veo 3.1 + Imagen 4 | Clips de video e imágenes AI para fondos de escenas Remotion | 9 |
 | Proteger IP en materiales públicos | Nunca exponer modelos, costos, arquitectura en videos/presentaciones | 5 |
