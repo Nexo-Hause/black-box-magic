@@ -14,6 +14,8 @@ src/
 │   │   ├── demo/             # Endpoints demo (cookie-gated)
 │   │   │   ├── analyze/      # Análisis demo
 │   │   │   └── email/        # Envío de reportes por email
+│   │   ├── admin/            # Admin endpoints (Bearer auth)
+│   │   │   └── onboarding-code/ # Generar códigos de onboarding
 │   │   ├── gate/             # Email gate (registro + check + logout)
 │   │   ├── onboarding/       # Engine v3 onboarding endpoints
 │   │   │   ├── session/      # Crear sesión (code exchange → JWT)
@@ -88,7 +90,7 @@ src/
 | Email | Nodemailer + Gmail SMTP | SendGrid, Resend, SES |
 | PDF | jspdf + jspdf-autotable | Puppeteer, html-to-pdf |
 | Excel | xlsx (SheetJS) | ExcelJS |
-| Styling | Tailwind CSS (inline) | CSS modules, styled-components |
+| Styling | CSS vars + globals.css | Tailwind CSS, CSS modules, styled-components |
 | Auth (producción) | Bearer token (BBM_API_KEYS) | NextAuth, Clerk |
 | Auth (demo) | Cookie HMAC-signed | — |
 | Auth (onboarding) | JWT via jose + HKDF derivation | — |

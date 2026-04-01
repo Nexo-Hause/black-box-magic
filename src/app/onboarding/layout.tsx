@@ -1,7 +1,16 @@
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <div className="max-w-2xl mx-auto px-4 py-8">
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--bg)',
+      color: 'var(--text)',
+      fontFamily: 'var(--font)',
+    }}>
+      <div style={{
+        maxWidth: '640px',
+        margin: '0 auto',
+        padding: '1.5rem 1rem',
+      }}>
         {children}
       </div>
     </div>

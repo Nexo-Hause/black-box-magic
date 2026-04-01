@@ -56,6 +56,10 @@
     "src/app/api/demo/share/route.ts": {
       "maxDuration": 10,
       "memory": 256
+    },
+    "src/app/api/admin/onboarding-code/route.ts": {
+      "maxDuration": 10,
+      "memory": 256
     }
   }
 }
