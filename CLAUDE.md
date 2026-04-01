@@ -197,6 +197,8 @@ No hay framework de tests configurado. Cuando se agregue, documentar aquí.
 
 ## Reglas de Trabajo
 
+<!-- REGLAS-GLOBALES-START -->
+
 ### "Hacer la tarea"
 
 Antes de proponer cualquier implementación, solución o enfoque: investigar a fondo.
@@ -302,3 +304,5 @@ Operaciones destructivas incluyen:
 
 Flujo: (1) listar qué se afecta → (2) mostrar a Gonzalo → (3) esperar confirmación → (4) ejecutar.
 Nunca asumir que "es seguro" sin verificar primero qué está activo/en uso.
+
+<!-- REGLAS-GLOBALES-END -->
