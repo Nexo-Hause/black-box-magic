@@ -67,7 +67,10 @@ export async function POST(request: NextRequest) {
 
     try {
       // Reconstruct photo URL: url_base + photo_path + firma
-      const photoUrl = row.url_base + row.photo_path + row.firma;
+      // Normalize slashes defensively in case Ubiqo changes URL format.
+      const urlBase = row.url_base.endsWith('/') ? row.url_base : row.url_base + '/';
+      const photoPath = row.photo_path.startsWith('/') ? row.photo_path.slice(1) : row.photo_path;
+      const photoUrl = urlBase + photoPath + row.firma;
 
       // Download with SSRF protection
       const { buffer, contentType } = await downloadPhoto(photoUrl);
