@@ -55,6 +55,16 @@ export async function POST(request: NextRequest) {
 
     const row = rows[0];
 
+    // Defensive: pick_pending_ubiqo_capture() should always return a 'processing' row.
+    // Guard against unlikely race conditions (e.g. manual status change between pick and this check).
+    if (row.status !== 'processing') {
+      console.warn(`Picked row ${row.id} has unexpected status "${row.status}", skipping`);
+      return NextResponse.json({
+        success: false,
+        message: 'Unexpected row status after pick, skipped',
+      });
+    }
+
     try {
       // Reconstruct photo URL: url_base + photo_path + firma
       const photoUrl = row.url_base + row.photo_path + row.firma;
@@ -84,6 +94,7 @@ export async function POST(request: NextRequest) {
         .from('bbm_ubiqo_captures')
         .update({
           status: 'completed',
+          retry_count: 0, // Reset on success
           analysis_result: analysis,
           execution_score: executionScore,
           photo_type: photoType,

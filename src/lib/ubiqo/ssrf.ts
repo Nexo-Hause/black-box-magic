@@ -94,6 +94,10 @@ export function validatePhotoUrl(url: string): { valid: boolean; error?: string 
   let hostname: string;
   try {
     hostname = decodeURIComponent(parsed.hostname).toLowerCase();
+    // Reject if decoded hostname still contains '%' — double-encoding attack
+    if (hostname.includes('%')) {
+      return { valid: false, error: 'Invalid hostname encoding' };
+    }
   } catch {
     return { valid: false, error: 'Invalid hostname encoding' };
   }

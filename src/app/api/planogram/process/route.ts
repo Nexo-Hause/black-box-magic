@@ -68,6 +68,16 @@ export async function POST(request: NextRequest) {
 
     const incidenceId = incidence.id;
 
+    // Defensive: pick_pending_incidence() should always return a 'processing' row.
+    // Guard against unlikely race conditions (e.g. manual status change between pick and this check).
+    if (incidence.status !== 'processing') {
+      console.warn(`Picked incidence ${incidenceId} has unexpected status "${incidence.status}", skipping`);
+      return NextResponse.json({
+        success: false,
+        message: 'Unexpected incidence status after pick, skipped',
+      });
+    }
+
     try {
       // 3. Get planogram record
       const { data: planogram, error: planogramErr } = await supabase
