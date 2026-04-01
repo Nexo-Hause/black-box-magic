@@ -84,7 +84,7 @@ function AreaCard({ area }: { area: EvaluationArea }) {
                   {c.name}
                   {c.critical && (
                     <span style={{ marginLeft: '0.5rem', color: 'var(--accent-red)', fontSize: '0.75rem', fontWeight: 600 }}>
-                      critico
+                      crítico
                     </span>
                   )}
                 </span>

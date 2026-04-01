@@ -58,6 +58,23 @@ import { supabase } from '@/lib/supabase';
 const TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (matches JWT expiry)
 
 const memoryStore = new Map<string, { payload: OnboardingTokenPayload; expiresAt: number }>();
+const MEMORY_STORE_MAX_SIZE = 10_000;
+
+function pruneMemoryStore(): void {
+  const now = Date.now();
+  const entries = Array.from(memoryStore.entries());
+  for (const [key, entry] of entries) {
+    if (entry.expiresAt <= now) memoryStore.delete(key);
+  }
+  // If still over limit after expiry cleanup, evict oldest
+  if (memoryStore.size >= MEMORY_STORE_MAX_SIZE) {
+    const toDelete = Math.ceil(MEMORY_STORE_MAX_SIZE * 0.1);
+    const keys = Array.from(memoryStore.keys());
+    for (let i = 0; i < toDelete && i < keys.length; i++) {
+      memoryStore.delete(keys[i]);
+    }
+  }
+}
 
 // ─── Token Functions ──────────────────────────────────────────────────────────
 
@@ -111,6 +128,7 @@ export async function generateOnboardingCode(
       memoryStore.set(code, { payload, expiresAt: Date.now() + TTL_MS });
     }
   } else {
+    pruneMemoryStore();
     memoryStore.set(code, { payload, expiresAt: Date.now() + TTL_MS });
   }
 

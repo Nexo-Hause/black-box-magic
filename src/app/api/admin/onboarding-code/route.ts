@@ -5,6 +5,24 @@ import { generateOnboardingCode } from '@/lib/onboarding/auth';
 
 export const maxDuration = 10;
 
+// ─── Rate limiter (per-process, resets on deploy) ─────────────────────────────
+
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 10;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
 const RequestSchema = z.object({
   clientId: z
     .string()
@@ -22,10 +40,11 @@ function getBaseUrl(request: NextRequest): string {
   if (process.env.NEXT_PUBLIC_BASE_URL) {
     return process.env.NEXT_PUBLIC_BASE_URL;
   }
-  const origin = request.headers.get('origin');
-  if (origin) return origin;
   const host = request.headers.get('host');
-  const proto = request.headers.get('x-forwarded-proto') || 'http';
+  if (!host || !/^[a-zA-Z0-9][-a-zA-Z0-9.:]*$/.test(host)) {
+    throw new Error('Unable to determine base URL');
+  }
+  const proto = process.env.NODE_ENV === 'development' ? 'http' : 'https';
   return `${proto}://${host}`;
 }
 
@@ -60,6 +79,14 @@ export async function POST(request: NextRequest) {
   }
 
   const { clientId, clientName, email } = parsed.data;
+
+  // Rate limit per clientId
+  if (!checkRateLimit(clientId)) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Try again later.', status: 429 },
+      { status: 429 },
+    );
+  }
 
   // Generate code
   const code = await generateOnboardingCode(clientId, clientName, email);

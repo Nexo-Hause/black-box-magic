@@ -562,14 +562,13 @@ export function useOnboardingChat() {
   // Cleanup blob URLs to prevent memory leaks
   useEffect(() => {
     return () => {
-      state.testPhotos.forEach(p => {
+      stateRef.current.testPhotos.forEach(p => {
         if (p.previewUrl.startsWith('blob:')) {
           URL.revokeObjectURL(p.previewUrl);
         }
       });
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Cleanup on unmount only
+  }, []); // Cleanup on unmount only — stateRef gives latest state
 
   return {
     state,
