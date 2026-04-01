@@ -1,6 +1,6 @@
 'use client';
 
-import { useReducer, useCallback, useRef } from 'react';
+import { useReducer, useCallback, useRef, useEffect } from 'react';
 import type { ClientConfig, EngineV3Result } from '@/types/engine';
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -558,6 +558,18 @@ export function useOnboardingChat() {
   const endVoiceSession = useCallback(() => {
     dispatch({ type: 'VOICE_SESSION_ENDED' });
   }, []);
+
+  // Cleanup blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      state.testPhotos.forEach(p => {
+        if (p.previewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(p.previewUrl);
+        }
+      });
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Cleanup on unmount only
 
   return {
     state,
