@@ -14,7 +14,8 @@ src/
 │   │   ├── demo/             # Endpoints demo (cookie-gated)
 │   │   │   ├── analyze/      # Análisis demo
 │   │   │   └── email/        # Envío de reportes por email
-│   │   ├── admin/            # Admin endpoints (Bearer auth)
+│   │   ├── admin/            # Admin endpoints (Bearer auth + cookie admin)
+│   │   │   ├── gate/         # Admin gate (login, check, logout — cookie bbm_admin)
 │   │   │   └── onboarding-code/ # Generar códigos de onboarding
 │   │   ├── gate/             # Email gate (registro + check + logout)
 │   │   ├── onboarding/       # Engine v3 onboarding endpoints
@@ -25,6 +26,7 @@ src/
 │   │   │   ├── deploy/       # Activar config (testing → active)
 │   │   │   └── voice/        # Token efímero para Live API (voz)
 │   │   └── health/           # Status + documentación
+│   ├── admin/                # UI admin (generar links de onboarding)
 │   ├── demo/                 # UI demo (upload, batch, exports)
 │   ├── onboarding/           # UI onboarding (chat, review, test, voz)
 │   └── page.tsx              # Landing page
