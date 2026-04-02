@@ -13,6 +13,7 @@
 | 9 | 2026-03-31 | feat/remotion-video | Validar commits worktree anterior + media Veo/Imagen + render v2 | — |
 | 10 | 2026-03-31 | session/rescue-unmerged-code | Auditoría sesiones 6-10, rescue código perdido, 3 rondas review | #11 (mergeado) |
 | 11 | 2026-04-01 | feat/admin-page | Página /admin para generar links de onboarding, cookie separada, 3 rondas review | #13 |
+| 12 | 2026-04-01 | session/ubiqo-api-validation | Spec 00 + 02 Fase 1: pipeline Ubiqo + planogram, migration 008, 58 tests, 4 rondas review | #14 |
 
 ### Sesión 3 (2026-03-28)
 Diseño completo del motor multi-industria (engine v3) con onboarding conversacional.
@@ -63,6 +64,15 @@ tenía trabajo relevante. Recuperamos cambios sin commitear: 8 escenas con Media
 (reemplazo de gradients por media reales), componente MediaBackground (Ken Burns + video overlay),
 script generate-media.ts (Veo 3.1 + Imagen 4). Media generada: 3 clips Veo (29MB) + 5 imágenes
 Imagen 4 (7MB). Commit a feat/remotion-video. Render v2: out/bbm-evidence-v2.mp4 (93MB, 1920x1080, 2:10).
+
+### Sesión 12 (2026-04-01)
+Validación Fase 0 API Evidence real (JWT, 8 forms, URL 3 partes urlBase+path+firma, idTipo=7,
+firma CloudFront ~24h TTL). Implementación paralela Spec 00 Fase 1 (pipeline Ubiqo genérico:
+ingest→process→results→status) y Spec 02 Fase 1 (planogram: ingest→process→webhook skeleton).
+Módulos compartidos: ubiqo/client.ts, ubiqo/types.ts, ubiqo/ssrf.ts, analyze.ts. Migration 008
+ejecutada (bbm_ubiqo_captures + pick_pending_ubiqo_capture + pick_pending_incidence RPC).
+Migraciones 002-007 también ejecutadas en Supabase. 58 nuevos tests (165 total). PR #14 — 4
+rondas review AI, fix workflow ai-review (UTF-8 truncation). CI verde. Pendiente merge.
 
 ### Sesión 11 (2026-04-01)
 Página `/admin` para generar links de onboarding sin terminal. Cookie admin separada (`bbm_admin`,
