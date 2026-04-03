@@ -11,7 +11,7 @@
  * Plaintext values (legacy/no-key) are stored as-is (start with '?').
  */
 
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;   // 96-bit IV recommended for GCM
@@ -21,11 +21,16 @@ function getEncryptionKey(): Buffer | null {
   const envKey = process.env.BBM_FIRMA_ENCRYPTION_KEY;
   if (!envKey) return null;
 
-  // 64-char hex → 32 bytes directly; anything else → SHA-256 to get 32 bytes
-  if (/^[0-9a-f]{64}$/i.test(envKey)) {
-    return Buffer.from(envKey, 'hex');
+  // Only accept 64-char hex (32 bytes). Reject passphrases to prevent weak-key mistakes.
+  // Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  if (!/^[0-9a-f]{64}$/i.test(envKey)) {
+    throw new Error(
+      'BBM_FIRMA_ENCRYPTION_KEY must be exactly 64 hexadecimal characters (32 bytes). ' +
+      "Generate with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+    );
   }
-  return createHash('sha256').update(envKey).digest();
+
+  return Buffer.from(envKey, 'hex');
 }
 
 /**
