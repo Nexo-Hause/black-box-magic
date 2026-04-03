@@ -87,9 +87,12 @@ export async function POST(request: NextRequest) {
     const now = Date.now();
     const fiveMinutes = 5 * 60 * 1000;
 
-    if (isNaN(eventTime) || Math.abs(now - eventTime) > fiveMinutes) {
+    // Reject if: timestamp is >5 min in the past OR >60s in the future.
+    // Directional check prevents replay attacks via future-dated timestamps
+    // (Math.abs would accept a timestamp 4:59 in the future, replayable later).
+    if (isNaN(eventTime) || now - eventTime > fiveMinutes || eventTime > now + 60_000) {
       return NextResponse.json(
-        { error: 'Timestamp too old or invalid (anti-replay)', status: 400 },
+        { error: 'Timestamp invalid or too old (anti-replay)', status: 400 },
         { status: 400 },
       );
     }

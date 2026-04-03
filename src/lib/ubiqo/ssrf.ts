@@ -150,7 +150,12 @@ export async function downloadPhoto(photoUrl: string): Promise<{ buffer: Buffer;
     if (err instanceof Error && err.name === 'AbortError') {
       throw new Error(`Photo download timed out after ${TIMEOUT_MS}ms: ${logPath}`);
     }
-    throw new Error(`Photo download failed: ${logPath} — ${err instanceof Error ? err.message : 'unknown error'}`);
+    // Detect redirect errors (redirect: 'error' throws TypeError in undici/fetch).
+    // Use a generic message to avoid leaking any URL info via error text.
+    if (err instanceof TypeError || (err instanceof Error && /redirect/i.test(err.message))) {
+      throw new Error(`Photo download blocked: redirects are not allowed`);
+    }
+    throw new Error(`Photo download failed: ${logPath}`);
   } finally {
     clearTimeout(timeoutId);
   }
