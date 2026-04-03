@@ -72,6 +72,34 @@
     "src/app/api/admin/gate/logout/route.ts": {
       "maxDuration": 10,
       "memory": 256
+    },
+    "src/app/api/ubiqo/ingest/route.ts": {
+      "maxDuration": 30,
+      "memory": 512
+    },
+    "src/app/api/ubiqo/process/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "src/app/api/ubiqo/results/route.ts": {
+      "maxDuration": 10,
+      "memory": 256
+    },
+    "src/app/api/ubiqo/status/route.ts": {
+      "maxDuration": 10,
+      "memory": 256
+    },
+    "src/app/api/planogram/ingest/route.ts": {
+      "maxDuration": 30,
+      "memory": 512
+    },
+    "src/app/api/planogram/process/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "src/app/api/planogram/webhook/route.ts": {
+      "maxDuration": 10,
+      "memory": 512
     }
   }
 }

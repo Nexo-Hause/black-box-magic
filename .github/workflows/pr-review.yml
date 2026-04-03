@@ -68,8 +68,8 @@ jobs:
         run: |
           import json, os, urllib.request, urllib.error
 
-          diff = open("/tmp/pr-diff.txt").read()
-          full_files = open("/tmp/full-files.txt").read()
+          diff = open("/tmp/pr-diff.txt", encoding="utf-8", errors="replace").read()
+          full_files = open("/tmp/full-files.txt", encoding="utf-8", errors="replace").read()
           pr_title = os.environ.get("PR_TITLE", "")
           pr_body = os.environ.get("PR_BODY", "") or ""
           api_key = os.environ.get("ALIBABA_API_KEY", "")

@@ -5,6 +5,8 @@
  * Each key can optionally have a label: "label:key"
  */
 
+import { timingSafeEqual } from 'crypto';
+
 export interface AuthResult {
   authenticated: boolean;
   client?: string;
@@ -34,7 +36,9 @@ export function authenticate(request: Request): AuthResult {
     const key = maybeKey || labelOrKey;
     const label = maybeKey ? labelOrKey : 'default';
 
-    if (token === key.trim()) {
+    const tokenBuf = Buffer.from(token, 'utf8');
+    const keyBuf = Buffer.from(key.trim(), 'utf8');
+    if (tokenBuf.length === keyBuf.length && timingSafeEqual(tokenBuf, keyBuf)) {
       return { authenticated: true, client: label.trim() };
     }
   }

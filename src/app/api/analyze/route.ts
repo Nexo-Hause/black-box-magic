@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth';
-import { analyzeImage } from '@/lib/gemini';
-import {
-  buildSinglePassPrompt,
-  buildConditionEscalationPrompt,
-  shouldEscalate,
-} from '@/lib/prompts';
+import { analyzePhoto } from '@/lib/analyze';
 import { getActiveConfig } from '@/lib/engine/config';
 import { analyzeWithConfig } from '@/lib/engine/analyzer';
 
@@ -102,47 +97,24 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // ─── Legacy: PASS 1 — Single-pass adaptive analysis ───
-    const prompt = buildSinglePassPrompt(body.custom_rules);
-    const result = await analyzeImage(imageBase64, mimeType, prompt, geminiKey);
-
-    let conditionDetail = null;
-    let escalated = false;
-    let totalTokens = result.tokens;
-    let totalTime = result.processing_time_ms;
-
-    // ─── PASS 2: Condition escalation (auto, only when needed) ───
-    const analysis = result.data as Record<string, unknown>;
-    if (shouldEscalate(analysis)) {
-      escalated = true;
-      const conditionPrompt = buildConditionEscalationPrompt();
-      const conditionResult = await analyzeImage(
-        imageBase64,
-        mimeType,
-        conditionPrompt,
-        geminiKey
-      );
-
-      conditionDetail = conditionResult.data;
-      totalTime += conditionResult.processing_time_ms;
-      totalTokens = {
-        input: totalTokens.input + conditionResult.tokens.input,
-        output: totalTokens.output + conditionResult.tokens.output,
-        total: totalTokens.total + conditionResult.tokens.total,
-      };
-    }
+    // ─── Legacy: 2-pass adaptive analysis ───
+    const { analysis, conditionDetail, meta } = await analyzePhoto(
+      imageBase64,
+      mimeType,
+      body.custom_rules
+    );
 
     // Build response
     const response: Record<string, unknown> = {
       success: true,
       client: auth.client,
-      analysis: result.data,
+      analysis,
       meta: {
-        model: result.model,
-        tokens: totalTokens,
-        processing_time_ms: totalTime,
+        model: meta.model,
+        tokens: meta.tokens,
+        processing_time_ms: meta.processing_time_ms,
         engine: 'hybrid-v2',
-        escalated,
+        escalated: meta.escalated,
       },
     };
 
