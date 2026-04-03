@@ -85,6 +85,33 @@ export async function POST(request: NextRequest) {
 
     const planogramId = assignment.planogram_id;
 
+    // 5b. Verify planogram is still active (guard against deactivation between lookup and insert).
+    // FK constraint only prevents DELETE, not active: false.
+    const { data: planogramCheck, error: planogramCheckErr } = await supabase
+      .from('bbm_planograms')
+      .select('id')
+      .eq('id', planogramId)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (planogramCheckErr) {
+      console.error('Error verifying planogram:', planogramCheckErr.message);
+      return NextResponse.json(
+        { error: `Error al verificar planograma: ${planogramCheckErr.message}`, status: 500 },
+        { status: 500 },
+      );
+    }
+
+    if (!planogramCheck) {
+      return NextResponse.json({
+        success: true,
+        skipped: 'planogram inactive or deleted',
+        form_id,
+        planogram_id: planogramId,
+        captures_found: captures.length,
+      });
+    }
+
     // 7. Group photos by capture (ubiqo_grupo)
     let discovered = 0;
     let skipped = 0;
