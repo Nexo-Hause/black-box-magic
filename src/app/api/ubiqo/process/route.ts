@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth';
 import { downloadPhoto } from '@/lib/ubiqo/ssrf';
+import { decryptFirma } from '@/lib/ubiqo/crypto';
 import { analyzePhoto } from '@/lib/analyze';
 import { supabase } from '@/lib/supabase';
 
@@ -67,10 +68,11 @@ export async function POST(request: NextRequest) {
 
     try {
       // Reconstruct photo URL: url_base + photo_path + firma
-      // Normalize slashes and firma prefix defensively (API always sends ? but guard anyway).
+      // Decrypt firma (no-op if stored as plaintext / key not configured).
+      const decryptedFirma = decryptFirma(row.firma);
       const urlBase = row.url_base.endsWith('/') ? row.url_base : row.url_base + '/';
       const photoPath = row.photo_path.startsWith('/') ? row.photo_path.slice(1) : row.photo_path;
-      const firma = row.firma.startsWith('?') ? row.firma : '?' + row.firma;
+      const firma = decryptedFirma.startsWith('?') ? decryptedFirma : '?' + decryptedFirma;
       const photoUrl = urlBase + photoPath + firma;
 
       // Download with SSRF protection

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth';
 import { fetchCaptures, extractPhotos } from '@/lib/ubiqo/client';
 import { ingestRequestSchema } from '@/lib/ubiqo/types';
+import { encryptFirma } from '@/lib/ubiqo/crypto';
 import { supabase } from '@/lib/supabase';
 
 export const maxDuration = 30;
@@ -97,11 +98,10 @@ export async function POST(request: NextRequest) {
               photo_description: photo.descripcion || null,
               photo_captured_at: capture.fecha,
               url_base: capture.urlBase,
-              // TODO(security): firma contains CloudFront signed credentials (~24h TTL).
-              // Stored in plaintext to enable process step within the 24h window.
-              // For production hardening: encrypt at rest with AES-256-GCM.
-              // Risk accepted for POC: DB access requires Supabase service role key.
-              firma: capture.firma,
+              // firma = CloudFront signed credentials (~24h TTL). Encrypted at rest
+              // when BBM_FIRMA_ENCRYPTION_KEY is set (AES-256-GCM); plaintext fallback
+              // for dev/local without the key (logs a warning).
+              firma: encryptFirma(capture.firma),
             },
             { onConflict: 'ubiqo_grupo,photo_path', ignoreDuplicates: true }
           );
