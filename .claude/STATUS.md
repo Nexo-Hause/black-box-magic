@@ -1,7 +1,7 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-04-01 (sesión 12: Spec 00 + Spec 02 Fase 1 implementados)
+> Última actualización: 2026-04-03 (sesión 12: Spec 00 + Spec 02 Fase 1 implementados + review AI 4 rondas)
 
 ---
 
@@ -9,7 +9,7 @@
 
 **Activo:** Spec 02 — Comparación contra Planograma (Producción Beta)
 **Spec:** `spec/02-reference-comparison.md` (auditado, con auditoría pre-implementación)
-**PRs:** #8-#13 mergeados, #14 pendiente de merge (Ubiqo + Planogram pipelines)
+**PRs:** #8-#13 mergeados, #14 listo para merge (Ubiqo + Planogram pipelines — review AI 4 rondas procesadas)
 **Siguiente:** Configurar cron externo + Fase 2 (dashboard) + test E2E con fotos FOTL
 
 ---
@@ -125,6 +125,10 @@
 | Solo idTipo=7 tiene fotos en API real | idTipo=2 no tiene fotos — corrección al spec original | 12 |
 | Atomic pick via stored procedure RPC | JS client no soporta FOR UPDATE SKIP LOCKED | 12 |
 | Cron via servicio externo (cron-job.org) | Vercel Hobby no soporta crons de 1/min | 12 |
+| Firma AES-256-GCM at rest (opcional) | Encrypt firma en DB, key-gated. Sin key = plaintext con warning | 12 |
+| Anti-replay direccional (no Math.abs) | Math.abs permite reenviar requests viejos. Ahora: now-event>5min ∥ event>now+60s | 12 |
+| SSRF: IPv6-mapped IPv4 + redirect block | `::ffff:127.x` bypass + redirect detection en catch block | 12 |
+| Planogram active check antes de incidencias | Verificar que planograma sigue activo antes de insertar incidencias | 12 |
 
 ---
 
@@ -141,10 +145,11 @@
 
 ## Próximos Pasos
 
-1. **Mergear PR #14** — pipelines Ubiqo + Planograma (listo, CI verde, review procesado)
-2. **Configurar cron externo** — cron-job.org: 2 jobs (ubiqo/process + planogram/process, cada 1 min, Bearer auth)
-3. **Smoke test E2E** — ingest form 30143 → process → verificar en DB
-4. **Fase 2 Spec 02** — dashboard para Carlos + gestión planogramas
-5. **Fase 3 Spec 02** — Excel export 4 hojas
-6. **Test E2E con fotos reales FOTL** — validar precisión del prompt de incidencias
-7. **Webhook** — acordar formato payload con Guillermo/Alberto antes de activar
+1. **Mergear PR #14** — pipelines Ubiqo + Planograma (listo, CI verde, 4 rondas review AI procesadas)
+2. **Agregar `BBM_FIRMA_ENCRYPTION_KEY`** a Vercel env vars (producción)
+3. **Configurar cron externo** — cron-job.org: 2 jobs (ubiqo/process + planogram/process, cada 1 min, Bearer auth)
+4. **Smoke test E2E** — ingest form 30143 → process → verificar en DB
+5. **Fase 2 Spec 02** — dashboard para Carlos + gestión planogramas
+6. **Fase 3 Spec 02** — Excel export 4 hojas
+7. **Test E2E con fotos reales FOTL** — validar precisión del prompt de incidencias
+8. **Webhook** — acordar formato payload con Guillermo/Alberto antes de activar
