@@ -23,7 +23,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr diff "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" > /tmp/pr-diff.txt || true
+          # Attempt gh pr diff — fallback to git diff for large PRs (>20K lines = HTTP 406)
+          gh pr diff "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" > /tmp/pr-diff.txt 2>/tmp/diff-error.txt || true
+          if [ ! -s /tmp/pr-diff.txt ] || grep -qi "406\|too_large\|exceeded" /tmp/diff-error.txt 2>/dev/null; then
+            echo "::warning::gh pr diff failed or empty — falling back to git diff"
+            BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+            git diff "origin/${BASE_BRANCH}...HEAD" > /tmp/pr-diff.txt 2>/dev/null || true
+          fi
+
           DIFF_SIZE=$(wc -c < /tmp/pr-diff.txt)
           echo "diff_size=$DIFF_SIZE" >> "$GITHUB_OUTPUT"
           if [ "$DIFF_SIZE" -gt 60000 ]; then
@@ -32,11 +39,21 @@ jobs:
           fi
 
           # Get list of changed files and concatenate their full content
-          gh pr diff "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --name-only > /tmp/changed-files.txt || true
+          gh pr diff "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --name-only > /tmp/changed-files.txt 2>/dev/null || true
+          if [ ! -s /tmp/changed-files.txt ]; then
+            BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+            git diff --name-only "origin/${BASE_BRANCH}...HEAD" > /tmp/changed-files.txt 2>/dev/null || true
+          fi
+
           echo "" > /tmp/full-files.txt
           while IFS= read -r filepath; do
             [ -z "$filepath" ] && continue
             if [ -f "$filepath" ]; then
+              # Skip binary files
+              if file "$filepath" | grep -qv "text"; then
+                echo "=== FILE: $filepath (binary — skipped) ===" >> /tmp/full-files.txt
+                continue
+              fi
               FILE_SIZE=$(wc -c < "$filepath")
               if [ "$FILE_SIZE" -lt 50000 ]; then
                 echo "=== FILE: $filepath ===" >> /tmp/full-files.txt
@@ -66,7 +83,7 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         shell: python3 {0}
         run: |
-          import json, os, urllib.request, urllib.error
+          import json, os, urllib.request, urllib.error, time
 
           diff = open("/tmp/pr-diff.txt", encoding="utf-8", errors="replace").read()
           full_files = open("/tmp/full-files.txt", encoding="utf-8", errors="replace").read()
@@ -131,8 +148,7 @@ jobs:
               }
           )
 
-          import time
-          review = None
+          review = "Review failed: unknown error"
           for attempt in range(3):
               try:
                   with urllib.request.urlopen(req, timeout=180) as resp:
@@ -157,7 +173,7 @@ jobs:
         run: |
           import subprocess, os
 
-          review = open("/tmp/review-output.txt").read()
+          review = open("/tmp/review-output.txt", encoding="utf-8", errors="replace").read()
           pr = os.environ["PR_NUMBER"]
           repo = os.environ["GITHUB_REPOSITORY"]
 
