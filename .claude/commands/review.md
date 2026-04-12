@@ -26,7 +26,7 @@ gh pr view <number> --json comments --jq '.comments[] | select(.body | contains(
 ```
 
 - **Marker:** buscar comentarios que contengan "AI Code Review"
-- Si no hay review aún: informar que el GitHub Action puede tardar ~2 minutos. Preguntar si esperar o continuar.
+- Si no hay review aún: informar que el GitHub Action puede tardar ~45 segundos. Preguntar si esperar o continuar.
 - Si hay múltiples reviews (por pushes sucesivos): tomar el MÁS RECIENTE
 
 ### 3. Parsear findings
@@ -62,12 +62,12 @@ El push dispara un nuevo review automático via GitHub Actions.
 
 ### 6. Iterar
 
-Esperar ~2 minutos para el nuevo review, luego repetir desde paso 2.
+Esperar ~45 segundos para el nuevo review, luego repetir desde paso 2.
 
 **Condiciones de salida:**
-- No hay findings CRITICAL ni HIGH pendientes
-- Todos los findings descartados tienen justificación
-- Máximo 4 rondas. Si después de 4 rondas persisten issues, reportar al usuario con el detalle para que decida.
+- ✅ No hay findings CRITICAL ni HIGH pendientes
+- ✅ Todos los findings descartados tienen justificación
+- ⚠️ Máximo 4 rondas. Si después de 4 rondas persisten issues, reportar al usuario con el detalle para que decida.
 
 ### 7. Reportar
 
@@ -84,7 +84,7 @@ Mostrar al usuario:
 **Commits de corrección:**
 - <hash> <mensaje>
 
-**Estado:** Limpio / Findings residuales (ver detalle)
+**Estado:** ✅ Limpio / ⚠️ Findings residuales (ver detalle)
 ```
 
 ---

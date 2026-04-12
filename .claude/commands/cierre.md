@@ -44,7 +44,7 @@ Informar la URL del PR al usuario. **No mergear** — esperar instrucciones.
 ### 6. Procesar review de AI (obligatorio)
 
 Ejecutar el flujo de `/review` para procesar el code review automático:
-- Esperar a que el review aparezca en el PR (~2 min)
+- Esperar a que el review aparezca en el PR (~45 seg)
 - Leer findings, corregir los válidos, descartar con justificación los que no aplican
 - Commit + push las correcciones
 - Iterar hasta que el PR esté limpio
