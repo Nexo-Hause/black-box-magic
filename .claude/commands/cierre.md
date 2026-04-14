@@ -50,7 +50,32 @@ Ejecutar el flujo de `/review` para procesar el code review automático:
 - Iterar hasta que el PR esté limpio
 - Solo entonces continuar al resumen final
 
-### 7. Resumen al usuario
+### 7. Oportunidades de delegación no aprovechadas
+
+Revisar el trabajo de la sesión y señalar tareas que pudieron haberse delegado a Alibaba. Esto NO bloquea el cierre, solo reporta.
+
+**Cómo detectar oportunidades:**
+1. Revisar `git diff master...HEAD --stat` (o la base branch correspondiente)
+2. Buscar patrones que matcheen los criterios de auto-delegación de `rules/delegation.md`:
+   - Renames o symbol replacements que tocan >5 archivos
+   - Import migrations (cambio de paths, aliases)
+   - Propagación de tipos/interfaces a múltiples archivos
+   - Bug fixes guiados con hint claro y test verificable
+   - Boilerplate (tests, JSDoc, lint fixes) repetitivo
+
+**Si hay oportunidades**, reportar al usuario en este formato:
+```
+### Oportunidades de delegación detectadas
+
+En esta sesión hubo <N> tarea(s) que pudieron delegarse a Alibaba:
+- <descripción breve> → modelo recomendado: <modelo> (por rules/delegation.md)
+
+Esto no es un error — es visibilidad para futuras sesiones.
+```
+
+**Si no hay oportunidades**, saltar este paso sin comentar.
+
+### 8. Resumen al usuario
 
 Mostrar:
 - Qué se hizo en esta sesión (bullet points)
@@ -58,9 +83,10 @@ Mostrar:
 - Si hay bloqueos nuevos
 - URL del PR
 - Estado del review (findings corregidos / descartados)
+- Oportunidades de delegación detectadas (si las hubo)
 - **Recordar: mergear el PR para que la próxima sesión tenga el STATUS.md actualizado**
 
-### 8. Verificar git
+### 9. Verificar git
 
 ```bash
 git status    # No debe haber cambios sin commit
