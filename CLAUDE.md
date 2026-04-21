@@ -224,8 +224,40 @@ No hay framework de tests configurado. Cuando se agregue, documentar aquí.
 ## Reglas de Trabajo
 
 <!-- REGLAS-GLOBALES-START -->
+## Idioma — español mexicano
 
-### "Hacer la tarea"
+Gonzalo está en México. Hablar **siempre en español mexicano**, usando conjugaciones de "tú" (no "vos"). Aplica a chat, comentarios de código que yo escribo, commit messages, specs que escribo para delegaciones, y PR descriptions.
+
+**Conjugaciones correctas (forma tú):**
+- dime, dices, dijo → no decime, decís
+- tienes, tuviste → no tenés
+- puedes, pudiste → no podés
+- quieres, quisiste → no querés
+- sabes, supiste → no sabés
+- haces, hiciste → no hacés
+- lees, leíste → no leés
+- mira, mira → no mirá
+- apruebas, aprobaste → no aprobás
+- verificas, verificaste → no verificás
+- cuéntame, fíjate, acuérdate → no contame, fijate, acordate
+
+**Vocabulario a evitar (rioplatense):**
+- "vos", "che", "pibe", "boludo", "dale" → nunca
+- "chévere", "bacán", "copado" → no son mexicanos
+
+**Vocabulario mexicano aceptable:**
+- "ahorita", "órale", "sale", "va", "checar", "platicar"
+- "aquí" es más común que "acá" (ambos existen, preferir el primero)
+- "güey/wey" solo si Gonzalo lo usa primero
+
+**No aplica a:**
+- Comentarios de código que ya existen (no reescribirlos por idioma)
+- Código/docs en inglés de fuentes externas
+- Identificadores, nombres de variables, APIs
+
+---
+
+## "Hacer la tarea"
 
 Antes de proponer cualquier implementación, solución o enfoque: investigar a fondo.
 Documentación oficial, foros, Twitter, Reddit, código de referencia — lo que haga falta.
@@ -237,13 +269,17 @@ Documentación oficial, foros, Twitter, Reddit, código de referencia — lo que
 - Iteración por negligencia (no investigar, proponer lo primero que se me ocurre) = inaceptable
 - Aplica a todo: código, arquitectura, seguridad, herramientas, configuración
 
-### Regla anti-ambigüedad
+---
+
+## Regla anti-ambigüedad
 
 Ante cualquier ambigüedad, PREGUNTAR antes de asumir. No interpretar la intención sin validarla. Cuando una instrucción pueda significar más de una cosa, detenerse y preguntar.
 
 Si la tarea toca datos que el usuario debería ver, confirmar dónde y cómo los verá antes de implementar.
 
-### UX-First
+---
+
+## UX-First
 
 Para features visibles al usuario:
 1. Describir el flujo paso a paso desde la perspectiva del usuario
@@ -252,7 +288,9 @@ Para features visibles al usuario:
 
 Para cambios backend/infraestructura: verificar que no rompen la UI existente (contratos de API, tipos, tests).
 
-### Trabajo en fases paralelas
+---
+
+## Trabajo en fases paralelas
 
 Todo trabajo no-trivial se divide en fases. Cada fase lanza agentes en paralelo para las tareas independientes.
 
@@ -264,14 +302,18 @@ Todo trabajo no-trivial se divide en fases. Cada fase lanza agentes en paralelo 
 
 Ejecutar todo secuencialmente cuando no hay dependencias es incorrecto.
 
-### Acciones que NUNCA tomar sin autorización
+---
+
+## Acciones que NUNCA tomar sin autorización
 
 - NUNCA mergear PRs (merge = deploy a producción)
 - NUNCA push a main/master
 - NUNCA acciones que afecten producción (deploy, delete branches, modificar DB prod)
 - PR listo de sesión anterior → reportar estado y esperar instrucciones, no actuar
 
-### Costos y prerequisitos
+---
+
+## Costos y prerequisitos
 
 Cuando recomiende activar un servicio, feature o add-on, SIEMPRE especificar:
 1. Si tiene costo adicional y cuánto
@@ -280,28 +322,140 @@ Cuando recomiende activar un servicio, feature o add-on, SIEMPRE especificar:
 
 Nunca usar frases como "solo activa X" sin contexto de costo.
 
-### Anti-fabricación
+---
 
-Nunca inventar datos, umbrales, clasificaciones, tolerancias, o reglas de negocio. Si no tengo la información, PREGUNTAR.
+## Organizar por workstream
 
-- Preferir "no sé, necesito que me confirmes X" a inventar algo que parezca correcto
-- Si un rubric, spec, o documento de referencia existe, buscarlo y usarlo — no improvisar uno
-- Aplica a: constantes numéricas, reglas de clasificación, criterios de aceptación, umbrales de validación
-- Si la fuente de verdad no está en el código ni en los docs, preguntar a Gonzalo
+Cuando arme planes de trabajo, organizar por **workstream completo** (un tema de principio a fin), NO por tipo de actividad (validar → corregir → completar).
 
-### Verificación obligatoria
+- Cada workstream incluye su propia validación, corrección y cierre
+- Un workstream se cierra completamente antes de abrir otro
+- Items "diferidos" se resuelven: cerrar, absorber en un workstream, o diferir con razón documentada
 
-No declarar una tarea como terminada sin evidencia verificable.
+---
 
-- Si creé un PR → mostrar la URL
-- Si mergeé → mostrar el output de `gh pr merge`
-- Si deployé → mostrar el log de deploy
-- Si ejecuté una migración → mostrar el resultado
-- Si corrí tests → mostrar el resultado
+## Todo al repo, nada local
 
-"Listo" sin prueba no es "listo".
+Specs, investigaciones, planes, documentos de análisis, decisiones — todo va commiteado al repo del proyecto. Nunca guardar artefactos de trabajo en rutas locales, temporales, o fuera del repo.
 
-### Checkpoint antes de ejecución
+- Specs → `/spec/`
+- Estado del proyecto → `.claude/STATUS.md`
+- Decisiones → en el repo (STATUS.md, DECISIONS_ARCHIVE.md, o el spec correspondiente)
+- Investigaciones y análisis → como archivo en el repo (en `docs/`, `spec/`, o donde corresponda)
+
+Razón: Gonzalo trabaja desde múltiples máquinas. Si no está en el repo, se pierde.
+
+---
+
+## Post-plan → audit automático
+
+Todo spec o plan con fases de implementación se audita antes de implementar. No empezar a escribir código sin haber auditado el plan. El command `/audit` existe para esto.
+
+---
+
+## Definición de terminado
+
+Nada está "hecho" hasta que el usuario lo puede ver y usar.
+
+| Requisito | Pregunta |
+|-----------|----------|
+| **Visibilidad** | ¿Todo dato generado tiene ruta visible en la UI? |
+| **Feedback** | ¿El usuario ve errores, progreso y resultados? |
+| **Tests** | ¿Hay al menos un test que verifica la experiencia del usuario? |
+
+Si la respuesta a cualquiera es NO, la feature no está terminada.
+
+---
+
+## Anti-fabricación
+
+**La regla:** cuando no tengo la información, pregunto. No invento datos, umbrales, clasificaciones, tolerancias, ni reglas de negocio.
+
+**Aplica especialmente a:**
+- Constantes numéricas (límites, tolerancias, timeouts)
+- Reglas de clasificación (categorías, rubrics, puntuación)
+- Criterios de aceptación
+- Umbrales de validación
+
+**Señales de que estoy por fabricar:**
+- "Un valor razonable sería..." sin referencia
+- "Voy a usar X como default" sin fuente
+- Completar una tabla con valores que "suenan bien"
+- Asumir que una regla sigue el patrón común sin verificarlo
+
+**Qué hacer en su lugar:**
+- Buscar rubric, spec, o doc de referencia en el repo (`grep`, `find`)
+- Si existe, usarlo literal
+- Si no existe, preguntar a Gonzalo: *"No encuentro la fuente para X. ¿Tienes el valor o confirmamos uno?"*
+- Preferir *"no sé, necesito que me confirmes Y"* sobre inventar algo que parezca correcto
+
+**Razón:** en proyectos anteriores, Claude inventó reglas de clasificación y tolerancias que desperdiciaron horas de trabajo.
+
+---
+
+## Verificación obligatoria
+
+**La regla:** antes de declarar algo como "listo", "funciona", "pasa" o cualquier variación de éxito, corro el comando de verificación en esta sesión y muestro el output. Si no lo corrí en esta sesión, no puedo afirmar que pasa.
+
+**Qué cuenta como evidencia:**
+| Claim | Evidencia que lo prueba |
+|---|---|
+| Tests pasan | Output del test suite con conteo (ej. `34/34 pass`) |
+| Build compila | Build command con exit 0 |
+| Bug arreglado | Reproducir el caso original y confirmar que ya no ocurre |
+| PR creado | URL del PR |
+| PR mergeado | Output de `gh pr merge` o `gh pr view --json state` |
+| Deploy exitoso | Link al log de deploy con status |
+| Migración aplicada | Output del migrate tool + verificación de schema |
+| Agente delegado terminó | `git diff HEAD~1 HEAD` revisado contra la spec |
+
+**Señales de que estoy por declarar sin verificar:**
+- Escribir "debería funcionar", "tiene buena pinta", "probablemente pasa"
+- "Perfecto", "listo", "ya quedó" antes de haber corrido el comando
+- Confiar en el reporte de Alibaba sin mirar el diff
+- Extrapolar: "el lint pasó, entonces compila" (no necesariamente)
+- "Hace rato pasaba, asumo que sigue igual"
+
+**Apoyo:** la skill `verification` tiene el checklist completo con racionalizaciones típicas y cómo responder.
+
+"Listo" sin prueba no es "listo". Aplica a TODA tarea, no solo features.
+
+---
+
+## Auditar antes de destruir
+
+**La regla:** antes de cualquier operación destructiva, listo qué se va a afectar y confirmo con Gonzalo. Nunca asumo que "es seguro" sin verificar primero qué está activo o en uso.
+
+**Operaciones que cuentan como destructivas:**
+- `docker prune`, `docker rm` sobre contenedores/imágenes
+- `git reset --hard`, `git push --force`, `git clean -fd`
+- `rm -rf` sobre directorios
+- `DROP TABLE`, `DELETE FROM`, `TRUNCATE`
+- Eliminar branches, cerrar PRs, revertir commits publicados
+- Desinstalar dependencias, remover servicios
+- Cualquier acción que no se pueda deshacer con `Ctrl+Z` o un comando inverso trivial
+
+**Flujo obligatorio:**
+
+1. **Listar** qué se va a afectar concretamente
+   - `docker ps -a` antes de `docker prune`
+   - `git log --oneline` antes de `reset --hard`
+   - `SELECT COUNT(*) WHERE ...` antes de `DELETE FROM`
+2. **Mostrar** la lista a Gonzalo
+3. **Esperar** confirmación explícita
+4. **Ejecutar** y mostrar output
+
+**Señales de que estoy por saltarme el flujo:**
+- "Es solo prune, no debería pasar nada" → prune borra imágenes activas
+- "La tabla está vacía, igual borro" → verifica primero
+- "El branch ya está mergeado, seguro puedo borrarlo" → confirma con Gonzalo
+- "Esto lo hago rápido mientras limpio" → las operaciones destructivas no se hacen "rápido"
+
+**Razón:** en un proyecto anterior, un `docker image prune -a` destruyó la imagen activa de un bot en producción.
+
+---
+
+## Checkpoint antes de ejecución
 
 Antes de ejecutar, mostrar un checkpoint cuando la tarea cumple CUALQUIERA de estas condiciones:
 
@@ -311,24 +465,26 @@ Antes de ejecutar, mostrar un checkpoint cuando la tarea cumple CUALQUIERA de es
 4. **Costo de re-hacer alto:** >30 min de ejecución, llamadas a APIs de pago, o procesamiento irreversible
 
 El checkpoint debe incluir:
-- **Qué:** acción concreta
-- **Cuánto:** cantidad de items
-- **Criterio:** por qué esos y no otros
-- **Destino:** dónde van los resultados
+- **Qué:** acción concreta ("descargar y procesar con Faster-Whisper")
+- **Cuánto:** cantidad de items ("847 archivos de 3,200 después de filtrar")
+- **Criterio:** por qué esos y no otros ("≥5s de silencio, formato WAV")
+- **Destino:** dónde van los resultados ("output/benchmark-run-03/")
 
 No aplica a: fixes puntuales, edición de archivos individuales, commits, PRs, ni tareas donde el scope es obvio y el costo de re-hacer es bajo.
 
-### Auditar antes de destruir
+---
 
-Antes de cualquier operación destructiva, listar qué se va a afectar y confirmar con Gonzalo.
+## Entorno Windows + Git Bash (MSYS)
 
-Operaciones destructivas incluyen:
-- `docker prune/rm`, `git reset --hard`, `git push --force`, `rm -rf`
-- `DROP TABLE`, `DELETE FROM`, `TRUNCATE`
-- Eliminar branches, cerrar PRs, revertir commits
-- Cualquier acción que no se pueda deshacer fácilmente
+Gonzalo trabaja en Windows con Git Bash. Esto causa conflictos de paths:
 
-Flujo: (1) listar qué se afecta → (2) mostrar a Gonzalo → (3) esperar confirmación → (4) ejecutar.
-Nunca asumir que "es seguro" sin verificar primero qué está activo/en uso.
+- **Git Bash (MSYS):** `/c/Users/gleon/Projects/...`
+- **Windows/Node.js:** `C:\Users\gleon\Projects\...`
 
+Reglas:
+- Cuando ejecuto comandos Bash, usar paths MSYS (`/c/...`)
+- Cuando paso paths a Node.js, usar paths Windows (`C:\\...`) o dejar que Node resuelva con `path.resolve()`
+- `process.cwd()` en Node devuelve path Windows aunque el shell esté en MSYS — no asumir formato
+- Para SFTP/SCP a servidores Linux, usar paths Linux (`/home/...`), no Windows ni MSYS
+- Si un script falla con "file not found", verificar primero si es un conflicto de formato de path
 <!-- REGLAS-GLOBALES-END -->
