@@ -133,3 +133,21 @@ Al completar las 3 fases, agregar una sección **"Auditoría pre-implementación
 4. **Respetar el stack.** Las recomendaciones deben usar las herramientas del proyecto (según CLAUDE.md), no proponer herramientas nuevas.
 5. **Contexto > checklist.** Adaptar las dimensiones al proyecto. Si el spec no toca frontend, no auditar frontend. Si no toca DB, no auditar data integrity. Usar sentido común.
 6. **El gate es real.** Si hay 🔴 críticos, NO continuar automáticamente. El usuario debe decidir.
+
+---
+
+## Si el spec es para delegación a Alibaba
+
+Cuando el spec va a ser ejecutado por Alibaba (path `.claude/tasks/TASK-*`, o el usuario menciona "es para delegar"), agregar una dimensión extra al audit: **delegabilidad**.
+
+| Criterio | Qué revisar |
+|---|---|
+| **File paths exactos** | ¿Cada tarea dice qué archivo crear/modificar con path concreto, o hay "el archivo apropiado"? |
+| **Code blocks completos** | ¿Cada step que cambia código incluye el código real, no "algo como..."? |
+| **Commands verificables** | ¿Cada step de verificación tiene el comando concreto con su expected output? |
+| **Commit messages** | ¿Cada tarea termina con un commit message explícito? |
+| **Safety rails** | ¿La spec prohíbe explícitamente tocar secretos, hacer push, correr migrations? |
+| **No comando de invocación** | ¿La spec evita incluir `claude -p --bare --model ...`? (incluirlo marea al worker) |
+| **Criterios de aceptación ejecutables** | ¿`/accept` puede correr los comandos tal como están escritos? |
+
+Si hay gaps en delegabilidad, reportarlos como 🔴 (la spec no es apta para Alibaba hasta cerrarlos) y remitir a la skill `writing-spec` para el formato bite-sized correcto.

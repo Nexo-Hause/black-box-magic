@@ -2,9 +2,12 @@ Delegar una tarea mecánica a un subprocess Claude Code backed by un modelo de A
 
 $ARGUMENTS
 
+**Antes de ejecutar `/delegate`**, si voy a escribir la spec desde cero, invocar la skill `writing-spec` para usar el template bite-sized con file paths exactos, code blocks completos y commands con expected output. Esto minimiza rondas de vuelta de Alibaba por ambigüedad. Si la spec ya existe y solo voy a dispararla, salto este paso.
+
 Comportamiento según argumento:
-- **Sin argumentos**: Yo acabo de detectar una tarea delegable en la conversación actual. Escribo la spec basándome en el contexto, elijo el modelo según `rules/delegation.md`, y disparo el worker.
-- **Con descripción** (ej: `rename getCwd a getCurrentWorkingDirectory en todo src/`): Uso la descripción como input para escribir la spec.
+- **Sin argumentos**: Yo acabo de detectar una tarea delegable en la conversación actual. Invoco `writing-spec` para escribir la spec basándome en el contexto, elijo el modelo según `rules/delegation.md`, y disparo el worker.
+- **Con descripción** (ej: `rename getCwd a getCurrentWorkingDirectory en todo src/`): Invoco `writing-spec` con la descripción como input.
+- **Con path a spec existente** (ej: `.claude/tasks/TASK-20260420-1430-rename.md`): La spec ya está escrita, salto `writing-spec` y paso directo al disparo.
 - **`--model <nombre>`**: Forzar modelo específico (qwen3-coder, kimi-k2.5, glm-5, qwen3.5-plus, MiniMax-M2.5). Override del criterio automático.
 - **`--dry-run`**: Escribir la spec y mostrarla, pero NO disparar el worker. Útil cuando no estoy 100% seguro.
 - **`--budget <usd>`**: Override del budget default de $2 USD.
@@ -232,36 +235,6 @@ Si éxito:
 3. Verificar que no tocó archivos fuera del alcance
 4. Correr los comandos de verificación de la spec
 5. Actualizar la spec con estado `done` + métricas (cost, duration, num_turns)
-6. **Loggear al delegation-log centralizado** (ver paso 5b abajo)
-
-### 5b. Loggear la delegación
-
-Después de parsear el resultado (éxito o fallo), appendear una línea al CSV centralizado en claude-config:
-
-```bash
-# Determinar el repo actual (nombre del directorio)
-REPO_NAME=$(basename "$(git rev-parse --show-toplevel)")
-
-# Clasificar el tipo de tarea según la spec (rename, interface-ext, bug-fix, import-migration, lint-fix, test-boilerplate, port-ts, jsdoc, vision, other)
-TASK_TYPE="<clasificar según el patrón de la spec>"
-
-# Appendear al log centralizado
-echo "${TIMESTAMP},${REPO_NAME},${TASK_ID},${MODEL},${RESULT},${COST_USD},${NUM_TURNS},${DURATION_S},${TASK_TYPE}" \
-  >> ~/Projects/claude-config/bench/delegation-log.csv
-```
-
-**Variables** (extraídas del JSON output del paso 5):
-- `TIMESTAMP`: ISO 8601 (ej: `2026-04-12T16:00:00-06:00`)
-- `REPO_NAME`: nombre del repo donde se ejecutó (ej: `sgr-cbc`)
-- `TASK_ID`: el ID de la spec (ej: `TASK-20260412-1600-parametrize-reparse-v2`)
-- `MODEL`: modelo usado (ej: `glm-5`)
-- `RESULT`: `success` | `error` | `empty` (si output vacío)
-- `COST_USD`: del campo `total_cost_usd` del JSON
-- `NUM_TURNS`: del campo `num_turns`
-- `DURATION_S`: `duration_ms / 1000`
-- `TASK_TYPE`: clasificación manual según el tipo de tarea
-
-Si el archivo `~/Projects/claude-config/bench/delegation-log.csv` no existe o no es accesible (ej: estamos en otra máquina), loggear localmente en `.claude/tasks/delegation-log.csv` del repo actual como fallback. En el próximo `/sync`, se puede consolidar.
 
 ### 6. Reportar a Gonzalo
 
