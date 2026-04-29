@@ -2,7 +2,13 @@ name: AI PR Review (kimi-k2.5)
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -21,7 +27,7 @@ jobs:
       - name: Get PR diff and changed files
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
         run: |
           # Attempt gh pr diff — fallback to git diff for large PRs (>20K lines = HTTP 406)
           gh pr diff "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" > /tmp/pr-diff.txt 2>/tmp/diff-error.txt || true
@@ -75,12 +81,25 @@ jobs:
           fi
         id: diff
 
+      - name: Get PR metadata
+        if: steps.diff.outputs.diff_size != '0'
+        id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+        run: |
+          TITLE=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json title -q .title 2>/dev/null || echo "PR #$PR_NUMBER")
+          BODY=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json body -q .body 2>/dev/null || echo "")
+          echo "pr_title=$TITLE" >> "$GITHUB_OUTPUT"
+          # Body can be multiline — write to file
+          echo "$BODY" > /tmp/pr-body.txt
+
       - name: AI Review
         if: steps.diff.outputs.diff_size != '0'
         env:
           ALIBABA_API_KEY: ${{ secrets.ALIBABA_API_KEY }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_TITLE: ${{ steps.meta.outputs.pr_title }}
+          PR_BODY_FILE: /tmp/pr-body.txt
         shell: python3 {0}
         run: |
           import json, os, urllib.request, urllib.error, time
@@ -88,7 +107,13 @@ jobs:
           diff = open("/tmp/pr-diff.txt", encoding="utf-8", errors="replace").read()
           full_files = open("/tmp/full-files.txt", encoding="utf-8", errors="replace").read()
           pr_title = os.environ.get("PR_TITLE", "")
-          pr_body = os.environ.get("PR_BODY", "") or ""
+          pr_body_file = os.environ.get("PR_BODY_FILE", "")
+          pr_body = ""
+          if pr_body_file:
+              try:
+                  pr_body = open(pr_body_file, encoding="utf-8", errors="replace").read()
+              except Exception:
+                  pass
           api_key = os.environ.get("ALIBABA_API_KEY", "")
 
           system_prompt = (
@@ -168,7 +193,7 @@ jobs:
         if: steps.diff.outputs.diff_size != '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
         shell: python3 {0}
         run: |
           import subprocess, os
