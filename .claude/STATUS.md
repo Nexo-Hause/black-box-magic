@@ -178,16 +178,28 @@ provisional (DROP+recrear OK, sin datos prod) → ventana barata para WS-MT (ten
 
 ## Próximos Pasos
 
-1. **PRÓXIMA SESIÓN — ronda de review del PR de Sesión 14.** El PR
-   (`session/2026-05-18-ws0-reorder`) dispara AI review en GitHub Actions.
-   Procesarlo con `/review` (clasificar accept/discard con justificación, aplicar
-   fixes en un commit, push, iterar máx 4 rondas). Las specs son docs (.md) — los
-   findings serán de consistencia/claridad, no de código.
-2. **Merge del PR cuando esté limpio.** ⚠️ Antes de mergear: recordar UNA vez a
-   Gonzalo que merge = deploy a prod y que confirme; con su confirmación explícita
-   → ejecutar `gh pr merge` (autorización ya dada en Sesión 14: "fusionás cuando
-   esté limpio" — el recordatorio es el único paso previo, no re-preguntar en loop).
-   Merge requiere `NEXO_GITHUB_PAT` (gonzalodev-ops es read-only en Nexo-Hause).
+0. **BLOQUEO — PR #21 está `CONFLICTING`.** Causa: PR #20 se mergeó por **squash**;
+   el branch `session/2026-05-18-ws0-reorder` aún carga los commits WS0
+   pre-squash (`cbafbb4` `3b2023e` `66a9334` `b4d04e5`) que chocan con la versión
+   squasheada ya en `main`. El **diff neto vs `origin/main` es solo docs/specs**
+   (sin código), así que el contenido es sano — el conflicto es de historia, no
+   de sustancia. **Resolver antes de review/merge.** Opciones (decisión de
+   Gonzalo, NO hacer rebase/force-push sin su OK): (a) branch nuevo desde
+   `origin/main` + `git checkout origin/main -- docs/ spec/ .claude/STATUS.md
+   .claude/SESSION_LOG.md CLAUDE.md` cherry-pick del delta limpio → PR nuevo;
+   (b) `git rebase origin/main` resolviendo conflictos (descartar los hunks WS0
+   ya en main, quedarse con specs) + force-push (destructivo, requiere OK).
+   Opción (a) es más limpia y no destructiva.
+1. **Ronda de review del PR** (tras resolver el conflicto). Dispara AI review en
+   GitHub Actions (~2 min; al cierre solo Vercel había corrido, `ai-review`
+   pendiente). Procesar con `/review` (clasificar accept/discard, fixes en un
+   commit, push, máx 4 rondas). Specs = docs `.md` → findings de
+   consistencia/claridad, no de código.
+2. **Merge del PR cuando esté limpio** (sin conflicto + review OK). ⚠️ Antes de
+   mergear: recordar UNA vez a Gonzalo que merge = deploy a prod y que confirme;
+   con su confirmación → `gh pr merge` (autorización dada en Sesión 14: "fusionás
+   cuando esté limpio"; el recordatorio es el único paso previo, no loop).
+   Requiere `NEXO_GITHUB_PAT` (gonzalodev-ops read-only en Nexo-Hause).
 3. **Ejecución del plan** (Gonzalo difiere a cuando quiera): secuencia por
    dependencias `WS1 → WS-MT → WS-H → WS2 → WS3 → WS4`. `WS1` y `WS2/WS3`
    delegables (`/delegate spec/03-ws1-pipeline-bullmq.md` arranca). `WS-MT`/`WS-H`
