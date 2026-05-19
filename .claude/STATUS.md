@@ -1,16 +1,48 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-04-03 (sesión 12: Spec 00 + Spec 02 Fase 1 implementados + review AI 4 rondas)
+> Última actualización: 2026-05-18 (Sesión 13 — cierre: retoma + auditoría profunda +
+> reencuadre a MVP multi-tenant + WS0 completo + pivote BullMQ). Roadmap: `docs/roadmap-2026-05.md`.
 
 ---
 
 ## Foco Actual
 
-**Activo:** Spec 02 — Comparación contra Planograma (Producción Beta)
-**Spec:** `spec/02-reference-comparison.md` (auditado, con auditoría pre-implementación)
-**PRs:** #8-#13 mergeados, #14 listo para merge (Ubiqo + Planogram pipelines — review AI 4 rondas procesadas)
-**Siguiente:** Configurar cron externo + Fase 2 (dashboard) + test E2E con fotos FOTL
+**Objetivo:** MVP **comercializable atado a Ubiqo Evidence**, robusto en producción ("no
+reventar"), para comercializar/testear con clientes de Ubiqo (B2B2B: Ubiqo reseller + FOTL).
+**Roadmap (fuente de verdad del orden):** `docs/roadmap-2026-05.md`
+**Secuencia estricta:** `WS0 ─► WS1 ─► WS-D ─► WS-MT ─► WS-H ─► WS2 ─► WS3 ─► WS4`
+**WS0:** ✅ completo. **Siguiente:** WS-D (cierre de specs + modelo de tenencia formal — diseño).
+
+---
+
+## Handoff — próxima sesión (leer esto primero)
+
+**Dónde estamos:** WS0 cerrado. Branch `session/2026-05-18-ws0-reorder`, commits
+`cbafbb4` (WS0) + `3b2023e` (pivote BullMQ) + el cierre de Sesión 13. PR de esta sesión:
+**#20** — https://github.com/Nexo-Hause/black-box-magic/pull/20 (pendiente de merge por Gonzalo).
+
+**Siguiente acción concreta:** arrancar **WS-D** (Opus, no delegable): cerrar en `spec/02`
+C11 (asignación planograma↔form), O1 (timezone), O3/O4 (contract `GET /api/planogram/
+incidences` + paginación), design system; y **formalizar el modelo de tenencia** (jerarquía
+Cuenta→Cliente, 3 roles, qué es schema-ready vs implementado). Salida: specs bite-sized
+`spec/02-ws2-dashboard.md` + `spec/02-ws3-export.md` auditadas. Alternativa si se prefiere
+desbloquear ejecución: detallar el refactor de extracción a `src/lib/pipeline/` (habilita WS1).
+
+**Contexto que NO está en el código (no perder):**
+- Objetivo = MVP comercializable, no solo ordenar. Modelo B2B2B (Ubiqo reseller + FOTL).
+- Pivote decidido: procesamiento por **BullMQ en VPS** (reemplaza cron-job.org + cola
+  emulada en Supabase; elimina techo 60s Vercel). WS-H quedó reducido.
+- Tenencia: **tablas canónicas** `bbm_accounts/clients/users`; reseller-admin en el MVP;
+  multi-cuenta = schema-ready. Aislamiento por helper app-layer (service-role bypasea RLS).
+- 008 es schema provisional (sin datos prod) → ventana barata para WS-MT = ahora.
+
+**Acciones de Gonzalo pendientes (no bloquean WS-D):**
+- Cerrar PR #18 en GitHub (decisión: cerrar sin merge — revierte workflow CI).
+- Mergear el PR de esta sesión (Sesión 13) cuando el review esté limpio.
+
+**Branches conservadas:** `main`, `demo/qsr-guillermo` (hold estratégico — revisar antes
+de borrar), `chore/sync-delegation-audit` (= PR #18 a cerrar).
 
 ---
 
@@ -18,32 +50,48 @@
 
 | Spec | Título | Estado |
 |------|--------|--------|
-| 00 | Integración BBM × Ubiqo (Evidence/Gather) | **Implementado** — Fase 0 validada, Fase 1 completa (PR #14) |
-| 01 | Engine v3 — Motor multi-industria con onboarding conversacional | **Implementado** (Fases 0-4), PRs #5-#6 mergeados |
-| 02 | Comparación contra Planograma (Producción Beta) | **En implementación** — Demo + Fase 0 + Fase 1 pipeline completas, Fases 2-3 pendientes |
+| 00 | Integración BBM × Ubiqo (Evidence/Gather) | **Implementado** — Fase 0+1 en `main` (PR #14 mergeado 2026-04-03). Webhook = esqueleto (post-MVP) |
+| 01 | Engine v3 — onboarding conversacional | **Implementado** (Fases 0-4), PRs #5-#6 mergeados |
+| 02 | Comparación contra Planograma | **En implementación** — Demo + Fase 0 + Fase 1 en `main`; Fase 2 (dashboard) y Fase 3 (export) NO existen. Re-scope: + WS-MT (multi-tenant) + WS-H (hardening) antes de Fase 2 |
 
 ---
 
-## Spec 00 — Progreso
+## Roadmap MVP — Workstreams (detalle en `docs/roadmap-2026-05.md`)
 
-| Fase | Descripción | Estado |
-|------|-------------|--------|
-| 0 — Validación API | JWT, form IDs, estructura URL (3 partes), idTipo=7, firma CloudFront | **Completada** |
-| 1 — Pipeline genérico | ingest + process + results + status endpoints + SSRF + analyze lib | **Completada** (PR #14) |
-| Cron | cron-job.org → POST /api/ubiqo/process cada 1 min | **Pendiente configuración** |
+| WS | Qué | Estado |
+|----|-----|--------|
+| WS0 | Reconciliación, limpieza, docs fiel | **Completo** |
+| WS1 | Worker BullMQ en VPS (reemplaza cron-job.org) | Pendiente |
+| WS-D | Cierre de specs + modelo de tenencia (Opus) | Pendiente |
+| WS-MT | Fundación multi-tenant (tablas canónicas, 3 roles, helper de scoping) | Pendiente |
+| WS-H | Endurecimiento prod (timeout, tope costo, observabilidad, token) | Pendiente |
+| WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | Pendiente |
+| WS3 | Export Excel Fase 3 (tenant-scoped) | Pendiente |
+| WS4 | Validación E2E con fotos reales FOTL | Pendiente (bloqueado por terceros) |
+| WS5 | Webhook Ubiqo | **Post-MVP** (MVP procesa por BullMQ/VPS) |
+| WS6 | Negocio: modo + propuesta comercial | Paralelo |
 
 ---
 
-## Spec 02 — Progreso
+## WS0 — Registro de reconciliación (2026-05-18)
 
-| Fase | Descripción | Estado |
-|------|-------------|--------|
-| Demo | UI `/compare` + endpoint `/api/compare` + share tokens | **Completada** |
-| 0 — Foundation | Migraciones, tipos, storage, prompt, parser, endpoints upload/list/status | **Completada** |
-| 1 — Pipeline | ingest + process + webhook skeleton | **Completada** (PR #14) |
-| Cron | cron-job.org → POST /api/planogram/process cada 1 min | **Pendiente configuración** |
-| 2 — Dashboard | Endpoints incidences + UI `/dashboard` + `/dashboard/planograms` | **Pendiente** |
-| 3 — Export | Excel 4 hojas + cron producción | **Pendiente** |
+- **`main` reconciliada**: estaba 3 commits atrás de `origin/main`; fast-forward a `caea6b3`
+  (PR #19, ci review v4). Divergencia 0/0.
+- **15 branches locales borradas** (verificadas: cabeza de PR mergeado o contenido superado
+  en `main`): chore/sync-claude-config-202604, claude/tender-williamson, feat/admin-page,
+  feat/exports-precision-fix, feat/reference-comparison, feat/remotion-video,
+  session/2026-03-30-reunion-retail, session/cierre-10, session/engine-v3-fase0-1,
+  session/engine-v3-fase4-voice, session/rescue-unmerged-code, session/ubiqo-api-validation,
+  spec/engine-v3, demo/qsr-v2, fix/ux-mobile-and-cleanup.
+- **Conservadas**: `main`, `demo/qsr-guillermo` (hold estratégico — demo QSR para Guillermo,
+  contacto Ubiqo / 2º cliente del plan; revisar antes de borrar), `chore/sync-delegation-audit`
+  (PR #18), `session/2026-05-18-ws0-reorder` (branch de sesión).
+- **PR #18 — decisión: CERRAR sin merge.** Razón: la rama precede a la V4 del workflow de
+  review (PR #19) y mergearla revertiría `.github/workflows/pr-review.yml`. El cierre queda
+  **pendiente de acción manual de Gonzalo** (la cuenta `gonzalodev-ops` es read-only en la
+  org Nexo-Hause; cerrar requiere UI de GitHub o `NEXO_GITHUB_PAT`). Los deltas valiosos de
+  `.claude/` (accept.md, rules/delegation.md) se re-sincronizan limpios desde claude-config
+  sobre rama fresca de `main` (no arrastrar el workflow viejo).
 
 ---
 
@@ -53,33 +101,22 @@
 |-----|-------|--------|
 | API producción (`/api/analyze`) | 60 | Funcional + engine v3 routing |
 | API comparación (`/api/compare`) | — | Funcional — multi-imagen Gemini + retry/backoff |
-| Planogram API (`/api/planogram/*`) | — | Funcional — upload, list, status, ingest, process, webhook |
-| Ubiqo pipeline (`/api/ubiqo/*`) | 58 nuevos | **Nuevo** — ingest, process, results, status |
-| Admin API (`/api/admin/onboarding-code`) | — | Funcional — genera códigos de onboarding (Bearer auth) |
-| Demo (`/demo`) | 0 | Funcional (legacy, intacto) |
-| Compare (`/compare`) | — | Funcional — UI responsive comparación |
-| Email (`/api/demo/email`) | 0 | Funcional |
-| Onboarding (`/onboarding`) | 40 | Funcional — chat + síntesis + test + deploy + voz + auto-start |
-| Engine v3 (`src/lib/engine/`) | 60 | Funcional — config, prompt-builder, analyzer, escalation |
-| Planogram lib (`src/lib/planogram/`) | — | Funcional — storage, incidence-prompt, incidence-parser |
-| Ubiqo lib (`src/lib/ubiqo/`) | 58 | **Nuevo** — client, types, ssrf |
-| Analyze lib (`src/lib/analyze.ts`) | 12 | **Nuevo** — función reutilizable 2-pasadas |
-| **Total** | **165+** | — |
+| Planogram API (`/api/planogram/*`) | — | Funcional — upload, list, status, ingest, process, webhook (esqueleto) |
+| Ubiqo pipeline (`/api/ubiqo/*`) | 58 | ingest, process, results, status |
+| Onboarding (`/onboarding`) | 40 | chat + síntesis + test + deploy + voz |
+| Engine v3 (`src/lib/engine/`) | 60 | config, prompt-builder, analyzer, escalation |
+| Ubiqo lib (`src/lib/ubiqo/`) | 58 | client, types, ssrf, crypto |
+| Analyze lib (`src/lib/analyze.ts`) | 12 | función reutilizable 2-pasadas |
+| **Total** | ver `npm test` | Runner: **Vitest ^4.1.2**. Suites: engine, ubiqo, onboarding, analyze/auth (~15 archivos `*.test.ts`). Conteo exacto = correr `npm test` (no fijar número sin verificar) |
 
 ---
 
 ## Migraciones Supabase
 
-| Migración | Tabla | Estado |
-|-----------|-------|--------|
-| 001 | `bbm_client_configs` | ✅ Aplicada |
-| 002 | `bbm_comparison_log` | ✅ Aplicada (sesión 12) |
-| 003 | `bbm_share_tokens` | ✅ Aplicada (sesión 12) |
-| 004 | `bbm_planograms` | ✅ Aplicada (sesión 12) |
-| 005 | `bbm_incidences` | ✅ Aplicada (sesión 12) |
-| 006 | `bbm_planogram_assignments` | ✅ Aplicada (sesión 12) |
-| 007 | `bbm_onboarding_codes` | ✅ Aplicada |
-| 008 | `bbm_ubiqo_captures` + stored procedures | ✅ Aplicada (sesión 12) |
+001 `bbm_client_configs` · 002 `bbm_comparison_log` · 003 `bbm_share_tokens` · 004
+`bbm_planograms` · 005 `bbm_incidences` · 006 `bbm_planogram_assignments` · 007
+`bbm_onboarding_codes` · 008 `bbm_ubiqo_captures` + RPCs — **todas aplicadas**. La 008 es
+provisional (DROP+recrear OK, sin datos prod) → ventana barata para WS-MT (tenancy).
 
 ---
 
@@ -87,69 +124,45 @@
 
 | Bloqueo | Depende de | Afecta |
 |---------|-----------|--------|
-| Webhook payload format de Evidence | Ubiqo (Guillermo/Alberto) | Spec 02 webhook (esqueleto listo, falta acordar formato) |
+| Cerrar PR #18 | Gonzalo (perm GitHub Nexo-Hause) | Higiene repo (no bloquea MVP) |
+| Webhook payload format de Evidence | Ubiqo (Guillermo/Alberto) | WS5 (post-MVP — el MVP va por cron PATH B, NO bloqueado) |
+| Fotos reales FOTL para E2E | Ubiqo/FOTL vía Enrique | WS4 (no bloquea WS2/WS3) |
+| Worker BullMQ no desplegado | WS1 | Pipeline no corre hasta montar worker+Redis en VPS |
 
 ---
 
-## Decisiones Clave
+## Decisiones Clave (sesión 2026-05-18 — nuevas)
 
-| Decisión | Contexto | Sesión |
-|----------|----------|--------|
-| Gemini como motor de visión | Costo bajo (~$0.004/imagen), calidad suficiente para QSR | Pre-init |
-| Prompt híbrido 2 pasadas | Pasada 1: análisis general. Pasada 2: escalación condiciones | Pre-init |
-| UI y reportes en español | Target market latinoamericano | Pre-init |
-| Cookie HMAC para demo gate | Simplicidad, sin auth provider externo | Pre-init |
-| Path B: Rule engine estructurado | Motor configurable por cliente, no prompt templates por industria | 2-3 |
-| Todo Gemini (Live + Pro + Flash Lite) | Una sola API, una key | 3 |
-| Scoring server-side | LLM retorna raw values, servidor calcula scores determinísticamente | 3 |
-| Auth onboarding: JWT con HKDF derivation | JWT derivado de BBM_COOKIE_SECRET via HKDF-SHA256 | 6 |
-| Triggers de escalación estructurados | Gramática tipada evaluada server-side, no texto libre | 3 |
-| jose para JWT | Ligero, ESM-first, edge-compatible | 6 |
-| Ephemeral tokens para Live API | Browser conecta directo a Gemini via WebSocket | 6 |
-| Onboarding codes en Supabase | Códigos persistentes (7 días TTL), fallback in-memory | 10 |
-| Modelos Gemini actualizados | Chat: 2.5-flash, Synthesis: 2.5-pro, Live: 3.1-flash-live-preview | 10 |
-| Cookie admin separada (bbm_admin) | No compartir cookie demo (bbm_user) con admin. sameSite: strict | 11 |
-| Admin email via env var | BBM_ADMIN_EMAIL con fallback hardcoded para dev | 11 |
-| Remotion para video marketing | Video programático con React, TTS con Gemini, música con Lyria 3 | 5 |
-| Media con Veo 3.1 + Imagen 4 | Clips de video e imágenes AI para fondos de escenas Remotion | 9 |
-| Proteger IP en materiales públicos | Nunca exponer modelos, costos, arquitectura en videos/presentaciones | 5 |
-| CSS del proyecto (no Tailwind) | globals.css classes + CSS variables. NO Tailwind | 7 |
-| Comparación como feature de primer nivel | ComparisonResult tipo separado de EngineV3Result (no criterion type) | 8 |
-| Incidencias > scoring de cumplimiento | Carlos necesita "qué está mal", no "qué % está bien" | 8 |
-| Webhook async (enqueue only) | Webhook solo encola (202), cron procesa. 90s timeout insuficiente para sync | 8 |
-| Auth dashboard: email gate + allowlist | DASHBOARD_ALLOWED_EMAILS en env. Para producción futura: auth real | 8 |
-| Supabase Storage privado + signed URLs | Bucket privado, TTL 30 min, paths en DB (no URLs firmadas) | 8 |
-| Planograma ↔ formulario Evidence (1:1) | Carlos asigna planograma a form. bbm_planogram_assignments | 8 |
-| Multi-foto por captura Evidence | Un folio = un grupo de fotos, se comparan juntas | 8 |
-| URL foto = urlBase + path + firma (3 partes) | Descubierto en Fase 0 validación API real | 12 |
-| Solo idTipo=7 tiene fotos en API real | idTipo=2 no tiene fotos — corrección al spec original | 12 |
-| Atomic pick via stored procedure RPC | JS client no soporta FOR UPDATE SKIP LOCKED | 12 |
-| Cron via servicio externo (cron-job.org) | Vercel Hobby no soporta crons de 1/min | 12 |
-| Firma AES-256-GCM at rest (opcional) | Encrypt firma en DB, key-gated. Sin key = plaintext con warning | 12 |
-| Anti-replay direccional (no Math.abs) | Math.abs permite reenviar requests viejos. Ahora: now-event>5min ∥ event>now+60s | 12 |
-| SSRF: IPv6-mapped IPv4 + redirect block | `::ffff:127.x` bypass + redirect detection en catch block | 12 |
-| Planogram active check antes de incidencias | Verificar que planograma sigue activo antes de insertar incidencias | 12 |
+| Decisión | Contexto |
+|----------|----------|
+| Objetivo = MVP comercializable, no solo ordenar | Reencuadre de Gonzalo |
+| Modelo de negocio B2B2B | Ubiqo = cliente + reseller; FOTL et al. = clientes finales; otras cuentas a futuro |
+| Tenencia: jerarquía Cuenta→Cliente, 3 roles | bbm_admin / reseller-admin (Ubiqo, **en MVP**) / client-user (FOTL) |
+| Tablas canónicas para multi-tenant | `bbm_accounts/clients/users` (no columnas pegadas). Multi-cuenta = schema-ready, lógica diferida |
+| WS-MT antes de WS2 | Aislamiento de datos se construye sobre base limpia, no se retrofitea (008 provisional = ventana barata) |
+| Enforcement de tenant = app-layer | service-role bypasea RLS; helper centralizado de scoping + RLS defensa en profundidad |
+| WS-H completo antes de exponer a cliente | "No reventar": timeout interno, tope de costo, observabilidad, manejo de token |
+| Procesamiento por BullMQ en VPS | Reemplaza cron-job.org + cola emulada en Supabase; elimina techo 60s Vercel; retries/observabilidad/fairness nativos. WS-H se reduce |
+| Webhook post-MVP | MVP procesa por BullMQ/VPS; webhook no bloquea |
+| Triage de branches por mapeo a PR mergeado | `git diff main...branch` (three-dot) y `--is-ancestor` fallan con squash |
+
+> Decisiones históricas (sesiones Pre-init–12) preservadas en git history / `docs/roadmap-2026-05.md` y specs.
 
 ---
 
-## Documentación Retail
+## Documentación
 
-| Doc | Contenido |
-|-----|-----------|
-| `docs/ubiqo/reunion-2026-03-30-retail.md` | Transcripción reunión con René y Carlos (FOTL) |
-| `docs/ubiqo/resumen-reunion-2026-03-30-retail.md` | Resumen ejecutivo + análisis planograma |
-| `docs/ubiqo/analisis-implicaciones-retail-2026-03-30.md` | Análisis de implicaciones 1er/2do orden (auditado) |
-| `docs/ubiqo/api-validation-2026-03-31.md` | Validación Fase 0 — hallazgos reales del API Evidence |
+- `docs/roadmap-2026-05.md` — **roadmap MVP (fuente de verdad del orden de trabajo)**
+- `docs/ubiqo/reunion-2026-03-30-retail.md`, `resumen-...`, `analisis-implicaciones-retail-2026-03-30.md`,
+  `api-validation-2026-03-31.md`, `analisis-clientes-evidence.md`
 
 ---
 
 ## Próximos Pasos
 
-1. **Mergear PR #14** — pipelines Ubiqo + Planograma (listo, CI verde, 4 rondas review AI procesadas)
-2. **Agregar `BBM_FIRMA_ENCRYPTION_KEY`** a Vercel env vars (producción)
-3. **Configurar cron externo** — cron-job.org: 2 jobs (ubiqo/process + planogram/process, cada 1 min, Bearer auth)
-4. **Smoke test E2E** — ingest form 30143 → process → verificar en DB
-5. **Fase 2 Spec 02** — dashboard para Carlos + gestión planogramas
-6. **Fase 3 Spec 02** — Excel export 4 hojas
-7. **Test E2E con fotos reales FOTL** — validar precisión del prompt de incidencias
-8. **Webhook** — acordar formato payload con Guillermo/Alberto antes de activar
+1. **WS0.7** — corregir CLAUDE.md (Testing: Vitest real; Specs: agregar Spec 02).
+2. **WS0.8** — commit local de cierre WS0.
+3. **Gonzalo**: cerrar PR #18 desde GitHub (decisión ya tomada arriba).
+4. **WS1** — extraer lógica de proceso a `src/lib/pipeline/`; worker BullMQ + repeatable
+   ingest en VPS; secrets al VPS; smoke test E2E por la cola.
+5. Seguir secuencia: WS-D → WS-MT → WS-H → WS2 → WS3 → WS4.

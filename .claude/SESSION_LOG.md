@@ -14,6 +14,7 @@
 | 10 | 2026-03-31 | session/rescue-unmerged-code | Auditoría sesiones 6-10, rescue código perdido, 3 rondas review | #11 (mergeado) |
 | 11 | 2026-04-01 | feat/admin-page | Página /admin para generar links de onboarding, cookie separada, 3 rondas review | #13 |
 | 12 | 2026-04-01 | session/ubiqo-api-validation | Spec 00 + 02 Fase 1: pipeline Ubiqo + planogram, migration 008, 58 tests, 4 rondas review | #14 |
+| 13 | 2026-05-18 | session/2026-05-18-ws0-reorder | Retoma: auditoría profunda, reencuadre a MVP comercializable multi-tenant B2B2B, roadmap-2026-05, WS0 completo (15 branches purgadas, main reconciliada, STATUS/CLAUDE fieles), pivote BullMQ/VPS | #20 |
 
 ### Sesión 3 (2026-03-28)
 Diseño completo del motor multi-industria (engine v3) con onboarding conversacional.

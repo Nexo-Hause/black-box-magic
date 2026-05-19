@@ -174,7 +174,11 @@ Definidas en `.env.local` (no versionado). Template en `.env.example`:
 
 ## Testing
 
-No hay framework de tests configurado. Cuando se agregue, documentar aquí.
+Runner: **Vitest** `^4.1.2`. Correr con `npm test` (`vitest run`) o `npm run test:watch`.
+
+~165 tests en `src/**/__tests__/`: Engine v3 (config, prompt-builder, analyzer,
+escalation), Ubiqo lib (client, ssrf, types), Onboarding (auth, synthesis, test-runner,
+tools, live-session), y `analyze`/`auth`. Configuración en `vitest.config.ts`.
 
 ---
 
@@ -192,8 +196,9 @@ No hay framework de tests configurado. Cuando se agregue, documentar aquí.
 
 | Spec | Título | Estado |
 |------|--------|--------|
-| `spec/00-ubiqo-integration.md` | Integración BBM × Ubiqo (Evidence/Gather) | Aprobado, pendiente tokens |
-| `spec/01-engine-v3.md` | Engine v3 — Motor multi-industria con onboarding conversacional | Auditado, PR #3 |
+| `spec/00-ubiqo-integration.md` | Integración BBM × Ubiqo (Evidence/Gather) | **Implementado** — Fase 0+1 en `main` (PR #14). Webhook post-MVP |
+| `spec/01-engine-v3.md` | Engine v3 — Motor multi-industria con onboarding conversacional | **Implementado** — Fases 0-4 (PRs #5-#6) |
+| `spec/02-reference-comparison.md` | Comparación contra Planograma (Producción Beta) | **En implementación** — Fase 0+1 en `main`; Fase 2-3 + WS-MT/WS-H pendientes. Ver `docs/roadmap-2026-05.md` |
 
 ---
 
