@@ -1,8 +1,8 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-05-18 (sesión de retoma: auditoría profunda + reencuadre a MVP
-> comercializable multi-tenant + WS0 limpieza). Roadmap de trabajo: `docs/roadmap-2026-05.md`.
+> Última actualización: 2026-05-18 (Sesión 13 — cierre: retoma + auditoría profunda +
+> reencuadre a MVP multi-tenant + WS0 completo + pivote BullMQ). Roadmap: `docs/roadmap-2026-05.md`.
 
 ---
 
@@ -12,8 +12,37 @@
 reventar"), para comercializar/testear con clientes de Ubiqo (B2B2B: Ubiqo reseller + FOTL).
 **Roadmap (fuente de verdad del orden):** `docs/roadmap-2026-05.md`
 **Secuencia estricta:** `WS0 ─► WS1 ─► WS-D ─► WS-MT ─► WS-H ─► WS2 ─► WS3 ─► WS4`
-**En curso:** WS0 (reconciliación/limpieza) — branch de sesión `session/2026-05-18-ws0-reorder`.
-**Siguiente:** WS0.6/0.7 (este STATUS + CLAUDE.md) → WS1 (desbloqueo prod + medición latencia).
+**WS0:** ✅ completo. **Siguiente:** WS-D (cierre de specs + modelo de tenencia formal — diseño).
+
+---
+
+## Handoff — próxima sesión (leer esto primero)
+
+**Dónde estamos:** WS0 cerrado. Branch `session/2026-05-18-ws0-reorder`, commits
+`cbafbb4` (WS0) + `3b2023e` (pivote BullMQ) + el cierre de Sesión 13. PR de esta sesión:
+ver sección PR abajo.
+
+**Siguiente acción concreta:** arrancar **WS-D** (Opus, no delegable): cerrar en `spec/02`
+C11 (asignación planograma↔form), O1 (timezone), O3/O4 (contract `GET /api/planogram/
+incidences` + paginación), design system; y **formalizar el modelo de tenencia** (jerarquía
+Cuenta→Cliente, 3 roles, qué es schema-ready vs implementado). Salida: specs bite-sized
+`spec/02-ws2-dashboard.md` + `spec/02-ws3-export.md` auditadas. Alternativa si se prefiere
+desbloquear ejecución: detallar el refactor de extracción a `src/lib/pipeline/` (habilita WS1).
+
+**Contexto que NO está en el código (no perder):**
+- Objetivo = MVP comercializable, no solo ordenar. Modelo B2B2B (Ubiqo reseller + FOTL).
+- Pivote decidido: procesamiento por **BullMQ en VPS** (reemplaza cron-job.org + cola
+  emulada en Supabase; elimina techo 60s Vercel). WS-H quedó reducido.
+- Tenencia: **tablas canónicas** `bbm_accounts/clients/users`; reseller-admin en el MVP;
+  multi-cuenta = schema-ready. Aislamiento por helper app-layer (service-role bypasea RLS).
+- 008 es schema provisional (sin datos prod) → ventana barata para WS-MT = ahora.
+
+**Acciones de Gonzalo pendientes (no bloquean WS-D):**
+- Cerrar PR #18 en GitHub (decisión: cerrar sin merge — revierte workflow CI).
+- Mergear el PR de esta sesión (Sesión 13) cuando el review esté limpio.
+
+**Branches conservadas:** `main`, `demo/qsr-guillermo` (hold estratégico — revisar antes
+de borrar), `chore/sync-delegation-audit` (= PR #18 a cerrar).
 
 ---
 
