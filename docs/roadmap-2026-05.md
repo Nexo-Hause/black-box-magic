@@ -69,15 +69,20 @@ inicio. Latencia 5-10 min OK. Producción endurecida (WS-H) para no reventar des
 **Cierre:** roadmap+STATUS+CLAUDE.md fieles/commiteados; `main` reconciliada; branches
 limpias; PR #18 resuelto. Commit local.
 
-### WS1 — Desbloqueo de producción + medición de latencia real
-1. Generar secrets (sin tocar disco/chat): `BBM_FIRMA_ENCRYPTION_KEY` (64-hex, commit
-   `3e2297d`), `CRON_SECRET`, `WEBHOOK_SECRET`. (Allowlist plano se reemplaza en WS-MT.)
-2. Verificar `UBIQO_API_TOKEN/BASE` en Vercel; separar "fallo de código" vs "credencial".
-3. Costo/prereq declarados (regla CLAUDE.md): cron-job.org (gratis vs pago + signup) y
-   Vercel Pro (~$20/mes si latencia exige maxDuration>60). Sin fabricar; Gonzalo decide.
-4. Smoke test E2E + **medir latencia real por foto** (decide H1/WS-H, maxDuration, Pro).
+### WS1 — Worker BullMQ en VPS (reemplaza cron-job.org)
+**Decidido:** procesamiento por BullMQ en el VPS existente (no cron-job.org, no Vercel Pro).
+La API Next.js (Vercel) queda igual; se mueve el worker.
+1. Extraer la lógica de proceso de los bodies de `src/app/api/ubiqo/process/route.ts` y
+   `src/app/api/planogram/process/route.ts` (+ `src/lib/analyze.ts`) a un módulo
+   compartido `src/lib/pipeline/` que el worker importe.
+2. Worker BullMQ en VPS: cola(s) de proceso + **repeatable job** de ingest (reemplaza el
+   cron). `bbm_*` deja de ser la cola → espejo/auditoría; `pick_pending_*` RPC se retira.
+3. Secrets al env del VPS (no a disco/chat): `GOOGLE_AI_API_KEY`, Supabase service key,
+   `UBIQO_API_TOKEN`, `BBM_FIRMA_ENCRYPTION_KEY`. Supervisión del worker (pm2/systemd).
+4. Smoke test E2E real por la cola → fila en Supabase + job visible en Bull Board.
 
-**Cierre:** filas en Supabase tras cron; latencia medida; decisión Hobby/Pro con datos.
+**Cierre:** ingest+proceso corriendo por BullMQ; un job E2E completo verificado;
+worker supervisado en VPS.
 
 ### WS-D — Cierre de decisiones de spec + modelo de tenencia (Opus, NO delegable)
 Cerrar y commitear en `spec/02` (o sub-specs):
@@ -118,17 +123,17 @@ implementar solo lo del MVP.
 adicionales sin recreate. `/review`.
 
 ### WS-H — Endurecimiento de producción ("no reventar")
-Prereq: WS-MT. LOCKED antes de WS2/WS3.
-- **H1** Timeout interno (`AbortController`) que escriba `failed`/`pending` antes del kill
-  de Vercel; ajustar `maxDuration` (Pro=300) según latencia medida en WS1.
-- **H2** Guardrail de costo: tope configurable + kill-switch si `pending` > umbral.
-- **H3** Observabilidad: `/status` reporta rows `stuck`, tasa de error, último éxito;
-  persistir errores consultables.
-- **H4** Distinguir transitorio/permanente/safety-block Gemini; fallo token/API Ubiqo
-  surfaceado distinto + runbook.
+Prereq: WS-MT. LOCKED antes de WS2/WS3. **Reducido: BullMQ (WS1) cubre H1/H2/H3/parte-H4
+nativo** (job timeout + stalled-recovery, concurrency+rate-limit, Bull Board, retries/
+backoff/dead-letter). Queda solo lo específico:
+- Tipos de error Gemini (transitorio / permanente / safety-block) → política de retry vs
+  fail definitiva en el worker.
+- Fallo token/API Ubiqo surfaceado distinto + runbook de rotación.
+- Espejo de estado en Supabase coherente con el estado real de la cola (no divergir).
+- Configurar concurrency + rate-limit del worker al techo de cuota Gemini (tope de costo).
 
-**Cierre:** fallo Gemini/timeout/token simulado → sin stuck/gasto infinito, visible en
-`/status`. `/review`.
+**Cierre:** fallo Gemini/timeout/token simulado → sin stuck, sin gasto sin tope, visible en
+Bull Board. `/review`.
 
 ### WS2 — Dashboard FOTL (Fase 2, ejecución delegable)
 Prereq: WS-D + WS-MT + WS-H. Endpoints `incidences` + `incidences/[id]` (signed URLs
@@ -157,8 +162,10 @@ Gonzalo pide fotos vía Enrique/Ubiqo; E2E → incidencias vs ground truth; tuni
 ## Backlog (diferido con razón — schema-ready)
 - **Lógica multi-cuenta**: onboarding de cuentas, clientes directos / otros resellers,
   billing/cuota por cuenta, rotación de token por cuenta. Schema lo soporta (WS-MT).
-- **Fairness de cola por tenant** (pick RPC global FIFO, `008:74-129`).
 - **Retención** de filas (spec/02 O2). **Auth real** (OAuth/SSO Evidence).
+
+> Fairness de cola por tenant sale del Backlog → entra con BullMQ (WS1): colas/prioridades
+> por cuenta. `pick_pending_*` RPC se retira.
 
 ## NO se hace sin autorización de Gonzalo
 Borrar branches · merge/cierre PR #18 · tocar Vercel/cron/DB prod · merge o push a `main`.

@@ -32,14 +32,14 @@ reventar"), para comercializar/testear con clientes de Ubiqo (B2B2B: Ubiqo resel
 | WS | Qué | Estado |
 |----|-----|--------|
 | WS0 | Reconciliación, limpieza, docs fiel | **En curso** |
-| WS1 | Desbloqueo prod + medición latencia real | Pendiente |
+| WS1 | Worker BullMQ en VPS (reemplaza cron-job.org) | Pendiente |
 | WS-D | Cierre de specs + modelo de tenencia (Opus) | Pendiente |
 | WS-MT | Fundación multi-tenant (tablas canónicas, 3 roles, helper de scoping) | Pendiente |
 | WS-H | Endurecimiento prod (timeout, tope costo, observabilidad, token) | Pendiente |
 | WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | Pendiente |
 | WS3 | Export Excel Fase 3 (tenant-scoped) | Pendiente |
 | WS4 | Validación E2E con fotos reales FOTL | Pendiente (bloqueado por terceros) |
-| WS5 | Webhook Ubiqo | **Post-MVP** (MVP va por cron PATH B) |
+| WS5 | Webhook Ubiqo | **Post-MVP** (MVP procesa por BullMQ/VPS) |
 | WS6 | Negocio: modo + propuesta comercial | Paralelo |
 
 ---
@@ -98,7 +98,7 @@ provisional (DROP+recrear OK, sin datos prod) → ventana barata para WS-MT (ten
 | Cerrar PR #18 | Gonzalo (perm GitHub Nexo-Hause) | Higiene repo (no bloquea MVP) |
 | Webhook payload format de Evidence | Ubiqo (Guillermo/Alberto) | WS5 (post-MVP — el MVP va por cron PATH B, NO bloqueado) |
 | Fotos reales FOTL para E2E | Ubiqo/FOTL vía Enrique | WS4 (no bloquea WS2/WS3) |
-| Latencia real Gemini sin medir | WS1 smoke test | Define si se necesita Vercel Pro (costo) para maxDuration |
+| Worker BullMQ no desplegado | WS1 | Pipeline no corre hasta montar worker+Redis en VPS |
 
 ---
 
@@ -113,7 +113,8 @@ provisional (DROP+recrear OK, sin datos prod) → ventana barata para WS-MT (ten
 | WS-MT antes de WS2 | Aislamiento de datos se construye sobre base limpia, no se retrofitea (008 provisional = ventana barata) |
 | Enforcement de tenant = app-layer | service-role bypasea RLS; helper centralizado de scoping + RLS defensa en profundidad |
 | WS-H completo antes de exponer a cliente | "No reventar": timeout interno, tope de costo, observabilidad, manejo de token |
-| MVP por cron PATH B, webhook post-MVP | Desacopla el MVP del bloqueo de Ubiqo (formato webhook) |
+| Procesamiento por BullMQ en VPS | Reemplaza cron-job.org + cola emulada en Supabase; elimina techo 60s Vercel; retries/observabilidad/fairness nativos. WS-H se reduce |
+| Webhook post-MVP | MVP procesa por BullMQ/VPS; webhook no bloquea |
 | Triage de branches por mapeo a PR mergeado | `git diff main...branch` (three-dot) y `--is-ancestor` fallan con squash |
 
 > Decisiones históricas (sesiones Pre-init–12) preservadas en git history / `docs/roadmap-2026-05.md` y specs.
@@ -133,6 +134,6 @@ provisional (DROP+recrear OK, sin datos prod) → ventana barata para WS-MT (ten
 1. **WS0.7** — corregir CLAUDE.md (Testing: Vitest real; Specs: agregar Spec 02).
 2. **WS0.8** — commit local de cierre WS0.
 3. **Gonzalo**: cerrar PR #18 desde GitHub (decisión ya tomada arriba).
-4. **WS1** — generar secrets, verificar UBIQO_API_TOKEN, declarar costo cron/Vercel Pro,
-   smoke test E2E **midiendo latencia real por foto**.
+4. **WS1** — extraer lógica de proceso a `src/lib/pipeline/`; worker BullMQ + repeatable
+   ingest en VPS; secrets al VPS; smoke test E2E por la cola.
 5. Seguir secuencia: WS-D → WS-MT → WS-H → WS2 → WS3 → WS4.
