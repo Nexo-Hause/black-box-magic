@@ -83,3 +83,14 @@ fallback (Bearer sigue funcionando). Formulario: nombre + email + clientId auto-
 copiable con badge 7 días. Historial en localStorage. Auditoría pre-implementación: hallazgo
 crítico (cookie compartida demo/admin) resuelto con cookie separada. 3 rondas de AI review:
 env var, email enumeration, localStorage, sameSite strict, email length.
+
+### Sesión 14 (2026-05-18)
+PRs: #20 ya mergeado; #18 cerrado sin merge (token Nexo). WS-D cerrado:
+`docs/tenancy-model.md` + decisiones spec/02 (C11/O1/O3/O4/design-system).
+Escritas las 6 specs del plan MVP (`spec/03` WS1, `spec/04` WS-MT, `spec/05` WS-H,
+`spec/02-ws2`, `spec/02-ws3`). Auditoría completa con skill `audit` (6 auditores
+paralelos + gate aprobado por Gonzalo + Fase 2/3 + síntesis): críticos resueltos en
+spec, incl. fix de aislamiento raíz (`client_id` FK en `bbm_planograms`,
+`client_key`→legacy, FOTL=1 cliente). Cada spec con sección Auditoría
+pre-implementación. Commits `24ab771` (specs) + `fe15c19` (auditoría). PR de la
+sesión + ronda de review pendiente para próxima sesión.

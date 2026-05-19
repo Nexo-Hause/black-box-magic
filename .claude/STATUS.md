@@ -1,8 +1,9 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-05-18 (Sesión 13 — cierre: retoma + auditoría profunda +
-> reencuadre a MVP multi-tenant + WS0 completo + pivote BullMQ). Roadmap: `docs/roadmap-2026-05.md`.
+> Última actualización: 2026-05-18 (Sesión 14 — cierre: WS-D cerrado + 6 specs del
+> plan escritas y auditadas (críticos resueltos, fix de aislamiento raíz) + PR de
+> sesión). Roadmap: `docs/roadmap-2026-05.md`.
 
 ---
 
@@ -177,9 +178,18 @@ provisional (DROP+recrear OK, sin datos prod) → ventana barata para WS-MT (ten
 
 ## Próximos Pasos
 
-1. **WS0.7** — corregir CLAUDE.md (Testing: Vitest real; Specs: agregar Spec 02).
-2. **WS0.8** — commit local de cierre WS0.
-3. **Gonzalo**: cerrar PR #18 desde GitHub (decisión ya tomada arriba).
-4. **WS1** — extraer lógica de proceso a `src/lib/pipeline/`; worker BullMQ + repeatable
-   ingest en VPS; secrets al VPS; smoke test E2E por la cola.
-5. Seguir secuencia: WS-D → WS-MT → WS-H → WS2 → WS3 → WS4.
+1. **PRÓXIMA SESIÓN — ronda de review del PR de Sesión 14.** El PR
+   (`session/2026-05-18-ws0-reorder`) dispara AI review en GitHub Actions.
+   Procesarlo con `/review` (clasificar accept/discard con justificación, aplicar
+   fixes en un commit, push, iterar máx 4 rondas). Las specs son docs (.md) — los
+   findings serán de consistencia/claridad, no de código.
+2. **Merge del PR cuando esté limpio.** ⚠️ Antes de mergear: recordar UNA vez a
+   Gonzalo que merge = deploy a prod y que confirme; con su confirmación explícita
+   → ejecutar `gh pr merge` (autorización ya dada en Sesión 14: "fusionás cuando
+   esté limpio" — el recordatorio es el único paso previo, no re-preguntar en loop).
+   Merge requiere `NEXO_GITHUB_PAT` (gonzalodev-ops es read-only en Nexo-Hause).
+3. **Ejecución del plan** (Gonzalo difiere a cuando quiera): secuencia por
+   dependencias `WS1 → WS-MT → WS-H → WS2 → WS3 → WS4`. `WS1` y `WS2/WS3`
+   delegables (`/delegate spec/03-ws1-pipeline-bullmq.md` arranca). `WS-MT`/`WS-H`
+   = superficie de riesgo, revisión Opus en `/accept`. Pasos de operador (deploy
+   worker, migraciones a DB, seeds reales) NO se delegan — marcados en cada spec.
