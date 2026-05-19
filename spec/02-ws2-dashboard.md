@@ -43,8 +43,11 @@ WS-D + WS-MT + WS-H completos. La UI replica los patrones de
 | `src/app/api/planogram/incidences/route.ts` | Crear |
 | `src/app/api/planogram/incidences/[id]/route.ts` | Crear |
 | `src/app/api/planogram/assign/route.ts` | Crear |
+| `src/app/api/planogram/clients/route.ts` | Crear (pob­la el selector de cliente por rol) |
 | `src/app/api/planogram/__tests__/incidences.test.ts` | Crear |
 | `src/app/api/planogram/__tests__/assign.test.ts` | Crear |
+| `src/app/api/planogram/__tests__/clients.test.ts` | Crear |
+| `src/types/incidence.ts` | Modificar (extender `IncidenceFilters` + `IncidenceRecord`) |
 | `src/hooks/useDashboard.ts` | Crear |
 | `src/app/dashboard/page.tsx` | Crear |
 | `src/app/dashboard/planograms/page.tsx` | Crear |
@@ -54,7 +57,7 @@ WS-D + WS-MT + WS-H completos. La UI replica los patrones de
 
 | Patrón | Archivo:línea |
 |---|---|
-| Auth de route (cookie → 401 → session → 403 → !supabase → 503) | `src/app/api/planogram/list/route.ts:17` y `status/route.ts:17` |
+| Auth de route — estructura (cookie→401, !supabase→503) | `src/app/api/planogram/list/route.ts:17` y `status/route.ts:17` ⚠️ **el molde aún muestra `isAllowedEmail()`+`DASHBOARD_ALLOWED_EMAILS` (patrón PRE-WS-MT). NO replicar eso. Usar `resolveSession(email, supabase)` → null=403, y `scopedQuery`. WS-MT spec/04 ya reemplazó el patrón viejo.** |
 | Resolución de rol+scope | `src/lib/auth/session.ts` (`resolveSession`), WS-MT |
 | Filtrado tenant-scoped | `src/lib/tenant/scope.ts` (`scopedQuery`), WS-MT |
 | Signed URLs | `src/lib/planogram/storage.ts:44-74` (`getSignedUrl`, `getSignedUrls`, TTL 1800) |
@@ -68,6 +71,27 @@ WS-D + WS-MT + WS-H completos. La UI replica los patrones de
 | Upload de planograma (patrón) | `src/app/api/planogram/upload/route.ts` |
 
 ## Tareas
+
+### Tarea 0: Extender tipos (prerrequisito de las demás tareas)
+
+El contrato O3 usa `clientId` y `sort` y proyecta `client_id`, pero
+`src/types/incidence.ts` no los tiene. Sin esto, las tareas siguientes no compilan.
+
+- [ ] **Step 1:** En `src/types/incidence.ts`, en la interfaz `IncidenceFilters`
+  (hoy `:80-89`), agregar:
+  ```typescript
+  clientId?: string;                     // UUID — selector reseller/admin
+  sort?: 'captured_desc' | 'captured_asc';
+  ```
+- [ ] **Step 2:** En `IncidenceRecord` (hoy `:46-70`), agregar
+  `client_id?: string | null;` (la columna la crea WS-MT spec/04; el tipo debe
+  reflejarla para el response O3).
+- [ ] **Step 3:** `npx tsc --noEmit` exit 0 (no romper usos existentes del tipo).
+- [ ] **Step 4: Commit local.**
+  ```bash
+  git add src/types/incidence.ts
+  git commit -m "feat(dashboard): extiende IncidenceFilters/IncidenceRecord (contrato O3)"
+  ```
 
 ### Tarea 1: `GET /api/planogram/incidences` (TDD)
 
@@ -143,13 +167,44 @@ Contract exacto = `spec/02-reference-comparison.md` § "WS-D … O3".
   git commit -m "feat(dashboard): POST assign form_id↔planograma (1:1, C11)"
   ```
 
+### Tarea 3b: `GET /api/planogram/clients` (pob­la el selector) (TDD)
+
+> Sin este endpoint el `<select>` de clientes por rol no tiene de dónde sacar las
+> opciones — era un hueco que forzaría al worker a inventar.
+
+- [ ] **Step 1: Test que falle** en `src/app/api/planogram/__tests__/clients.test.ts`:
+  - `client_user` → response `{ clients: [{ id, name }] }` con SOLO su cliente.
+  - `reseller_admin` → todos los `bbm_clients` de su `account_id`.
+  - `bbm_admin` → todos los `bbm_clients`.
+  - email sin fila `bbm_users` → 403.
+  Mock `resolveSession` + query builder (fake builder que registra `.eq`).
+- [ ] **Step 2: Verificar FAIL.**
+- [ ] **Step 3: Implementar** `src/app/api/planogram/clients/route.ts`: auth +
+  `resolveSession`. Query `bbm_clients` (select `id, name, account_id`) pasada por
+  `scopedQuery(builder, session, {})` (mismo helper de WS-MT; para `client_user`
+  filtra a su `client_id`, para `reseller_admin` a su `account_id`, `bbm_admin`
+  sin filtro). Responder `{ clients: [{ id, name }] }`.
+- [ ] **Step 4: Verificar PASS.**
+- [ ] **Step 5: tsc + lint.**
+- [ ] **Step 6: Commit local.**
+  ```bash
+  git add src/app/api/planogram/clients/route.ts src/app/api/planogram/__tests__/clients.test.ts
+  git commit -m "feat(dashboard): GET clients tenant-scoped (pob­la selector)"
+  ```
+
 ### Tarea 4: Hook `useDashboard.ts`
 
 - [ ] **Step 1:** Crear `src/hooks/useDashboard.ts` (patrón
   `src/hooks/useEmailGate.ts:12-63`). Expone:
-  `{ rows, total, loading, error, filters, setFilters, page, setPage, selectedClientId, setSelectedClientId, detail, openDetail, closeDetail }`.
-  - `filters` = forma de `IncidenceFilters`. `setFilters` re-fetchea
-    `GET /api/planogram/incidences` con los params del contrato O3.
+  `{ rows, total, loading, error, filters, setFilters, page, setPage,
+  clients, selectedClientId, setSelectedClientId, detail, openDetail, closeDetail }`.
+  - `clients` = `{ id, name }[]` — al montar, `GET /api/planogram/clients`. Si
+    devuelve 1 solo cliente (`client_user`), `selectedClientId` se fija a ese y el
+    consumidor NO renderiza selector. `clientName` derivable de
+    `clients.find(c => c.id === selectedClientId)?.name` para el empty state 1.
+  - `filters` = forma de `IncidenceFilters` (ya extendida en Tarea 0 con
+    `clientId`/`sort`). `setFilters` re-fetchea `GET /api/planogram/incidences`
+    con los params del contrato O3; `selectedClientId` se manda como `clientId`.
   - `openDetail(id)` → `GET /api/planogram/incidences/[id]`.
   - Maneja loading/error como `useEmailGate` (no lanzar; exponer `error` string).
 - [ ] **Step 2: Test:** `src/hooks/__tests__/useDashboard.test.ts` con `fetch`
@@ -168,12 +223,18 @@ Contract exacto = `spec/02-reference-comparison.md` § "WS-D … O3".
 > `"use client"`, gate con `useEmailGate`). NO Tailwind.
 
 - [ ] **Step 1:** `src/app/dashboard/page.tsx` (`"use client"`):
-  - Gate: igual que `demo/page.tsx:133-143` (`useEmailGate`); si `!email` →
-    `GateScreen`.
-  - **Selector de cliente por rol:** el endpoint o un `GET /api/planogram/list`
-    informan el rol; si `reseller_admin`/`bbm_admin` renderizar un `<select>` de
-    clientes (alimenta `selectedClientId` → param `clientId`); si `client_user`
-    NO renderizar selector.
+  - Gate: usar `useEmailGate` igual que `demo/page.tsx:133-143`. **`GateScreen`
+    está definido DENTRO de `demo/page.tsx`, NO es importable.** Crear en
+    `src/app/dashboard/page.tsx` un componente equivalente con la misma firma de
+    props `(onSubmit: (email)=>void, error?: string, loading?: boolean)` y el
+    mismo markup/clases (`.gate-*` de `globals.css:101-170`). No importar de
+    `demo/page.tsx`; replicar el patrón.
+  - **Selector de cliente por rol:** las opciones vienen de `clients` del hook
+    (`GET /api/planogram/clients`, Tarea 3b). Si `clients.length > 1` renderizar
+    un `<select>` que setea `selectedClientId` (→ param `clientId`); si
+    `clients.length === 1` (caso `client_user`) NO renderizar selector
+    (el hook ya fijó `selectedClientId`). NO usar `GET /api/planogram/list` para
+    esto.
   - **Barra de filtros:** rango de fechas, promotor, tienda (inputs/select),
     severidad mínima, estado. Cambios → `setFilters`.
   - **4 tarjetas resumen** (`.card`): total incidencias, críticas, altas,
@@ -214,9 +275,17 @@ Contract exacto = `spec/02-reference-comparison.md` § "WS-D … O3".
   planograma el bloque de **asignación de form_id** del contrato C11 (input +
   "Guardar asignación" → `POST /api/planogram/assign`; badges "Sin formulario"
   `.badge--yellow` / "form: <id>" `.badge--green`; 409 inline).
-- [ ] **Step 2:** `src/app/globals.css`: agregar (O5) — `.table tbody tr:hover {
-  background: var(--bg-subtle, …) }` y `.table thead th { position: sticky; top:
-  0; background: … }`. NO romper las clases existentes (`:81-83`).
+- [ ] **Step 2:** `src/app/globals.css`: agregar (O5), sin romper `:81-83`.
+  Primero leé el bloque `:root` de `globals.css` y usá la variable de fondo
+  existente (p. ej. `--bg`, `--bg-card`, o la que esté definida). Reglas exactas
+  a agregar (reemplazá `var(--bg)` por la var real que exista; fallback hex
+  literal, NO inventar nombre de var nueva):
+  ```css
+  .table tbody tr:hover { background: var(--bg, #f5f5f5); }
+  .table thead th { position: sticky; top: 0; background: var(--bg, #ffffff); z-index: 1; }
+  ```
+  Si en `:root` no hay ninguna var de fondo, usar los hex literales
+  (`#f5f5f5` hover, `#ffffff` sticky) sin `var()`.
 - [ ] **Step 3: Navegador:** verificar upload + asignación + 409 visible.
   Screenshot. Si no testeable, decirlo.
 - [ ] **Step 4:** `npx tsc --noEmit && npm run lint`.
@@ -272,3 +341,58 @@ git diff --name-only main..HEAD | grep -E '\.env|secrets|credentials' && echo "V
 - Verificación en navegador obligatoria para la UI; si no podés, declaralo — no
   afirmes "funciona" sin prueba.
 - Commit local por tarea. Self-review: `npm test` + `tsc` + `lint` verdes.
+
+---
+
+## Auditoría pre-implementación
+
+**Fecha:** 2026-05-18
+**Resultado global:** Aprobado con cambios — críticos resueltos.
+
+### Hallazgos críticos (resueltos)
+
+1. **`GateScreen` no importable** (vive dentro de `demo/page.tsx`). Resuelto:
+   Tarea 5 Step 1 instruye crear un equivalente con la misma firma de props,
+   sin importar.
+2. **Selector de clientes sin fuente de datos.** Resuelto: **Tarea 3b** crea
+   `GET /api/planogram/clients` (tenant-scoped) + `clients` en `useDashboard`.
+3. **`IncidenceFilters`/`IncidenceRecord` sin `clientId`/`sort`/`client_id`
+   (viola O3).** Resuelto: **Tarea 0** extiende el tipo como prerrequisito;
+   `src/types/incidence.ts` agregado a archivos afectados.
+4. **Molde de auth muestra `isAllowedEmail` (pre-WS-MT)** y contradecía la
+   instrucción. Resuelto: warning explícito en la tabla de molde.
+
+### Observaciones (decisión)
+
+- `--bg-subtle` inexistente → reemplazado por instrucción de leer `:root` + hex
+  literal de fallback (no inventar var).
+- Empty state 1 necesita nombre de cliente → `clientName` derivado en el hook.
+- Molde `demo/page.tsx:466-483` es `InventorySection` (no la tabla de
+  incidencias) → vale como patrón de clase `.table`, contenido se reescribe.
+  Aceptado.
+- TTL signed URL canónico 1800s vía `getSignedUrl(s)`; no usar `createSignedUrl`
+  directo (nota agregada).
+
+### Tests requeridos
+
+| Tipo | Qué verificar | Prioridad |
+|------|--------------|-----------|
+| Unit | `incidences`: leak por rol, paginación, clamp | **Máxima** |
+| Unit | `incidences/[id]`: cross-tenant→404, signed URLs | Alta |
+| Unit | `assign`: 409 form duplicado, 404 cross-tenant | Alta |
+| Unit | `clients`: scope por rol | Alta |
+| Unit | `useDashboard`: fetch con params O3, error sin throw | Media |
+| Visibilidad | navegador: tabla, filtros, detalle, empty states | Alta |
+
+### Criterios de aceptación
+
+Los de la sección arriba. Adicional: `grep scopedQuery` en cada route de datos
+= presente; navegador verificado o ausencia declarada.
+
+### Riesgos residuales
+
+- Verificación en navegador depende de tener datos mock o un estado vacío real;
+  si el entorno no permite `npm run dev`, el ejecutor debe **declararlo** (no
+  afirmar "funciona").
+- `client_user` con >1 cliente (no debería pasar por diseño) → el selector
+  aparecería; el endpoint `clients` igual lo scopea, sin leak. Aceptado.

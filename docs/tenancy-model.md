@@ -72,12 +72,15 @@ Cuenta (account)            type: 'reseller' | 'direct'
 |---|---|---|
 | `id` | UUID PK | |
 | `account_id` | UUID FK → `bbm_accounts(id)` NOT NULL | |
-| `client_key` | TEXT UNIQUE NOT NULL | reconcilia con `bbm_planograms.client_key` y `bbm_client_configs.client_id` existentes |
+| `client_key` | TEXT UNIQUE NOT NULL | **slug canónico del cliente** (ej. `'fotl'`). NO es FK a `bbm_planograms.client_key` (esa columna es legacy y puede tener varios valores por cliente — ver §8). |
 | `name` | TEXT NOT NULL | "Fruit of the Loom" |
 | `created_at` | TIMESTAMPTZ | |
 
-**Seed MVP:** una fila — FOTL bajo la cuenta Ubiqo. `client_key` = el valor ya usado
-en `bbm_planograms` para FOTL (reconciliar contra el dato real al migrar, no inventar).
+**Seed MVP:** una fila — FOTL bajo la cuenta Ubiqo, `client_key='fotl'` (slug
+canónico nuevo, NO uno de los `bbm_planograms.client_key` legacy). El mapeo de los
+`client_key` legacy de FOTL (`fotl_caballeros`, `fotl_damas`) al `client_id` de
+esta fila se hace por backfill (ver §8 + spec/04 Tarea 1). El slug exacto se
+confirma al migrar; el nombre legible es libre.
 
 ### `bbm_users` (reemplaza `DASHBOARD_ALLOWED_EMAILS`)
 | Columna | Tipo | Nota |
@@ -94,8 +97,18 @@ Carlos (`client_user`, client=FOTL). Emails reales se confirman al migrar (no in
 ### Columnas de tenencia en tablas de datos
 - `bbm_incidences`: agregar `account_id UUID`, `client_id UUID` (FK, NOT NULL tras backfill).
 - `bbm_ubiqo_captures`: agregar `account_id UUID`, `client_id UUID` (FK, NOT NULL tras backfill).
-- `bbm_planograms.client_key` y `bbm_client_configs.client_id` ya son nivel cliente:
-  se mantienen y se reconcilian contra `bbm_clients` (no se borran columnas).
+- **`bbm_planograms`: agregar `client_id UUID` (FK → `bbm_clients(id)`, NOT NULL
+  tras backfill).** Es la corrección clave: sin esta columna el helper de scoping
+  NO puede filtrar planogramas y `list/route.ts` filtra leak. El backfill mapea
+  `bbm_planograms.client_key` legacy → `client_id` (ver §8). `client_key` se
+  conserva como atributo legacy/display, **deja de ser la clave de tenencia**.
+- `bbm_client_configs.client_id` (TEXT): **fuera de scope de WS-MT** — lo consume
+  el flujo de onboarding (`src/lib/onboarding/auth.ts`, auth separada por JWT que
+  NO se toca). Se reconcilia/scopea en un workstream posterior si onboarding se
+  expone multi-tenant; documentado como diferido, no como olvido.
+- **Toda lectura tenant-scoped filtra por `client_id` (UUID), nunca por
+  `client_key`.** El helper `scopedQuery` opera sobre `client_id` en las 3 tablas
+  (`bbm_incidences`, `bbm_ubiqo_captures`, `bbm_planograms`).
 
 ---
 
@@ -131,6 +144,7 @@ cuenta · `bbm_admin` ve todo. Es el criterio de cierre de WS-MT.
 | Múltiples cuentas | Sí (FK + helper genérico) | No — solo Ubiqo seedeada |
 | Cuentas `direct` (consumo propio) | Sí (`type='direct'`) | No |
 | Onboarding de cuentas/clientes (UI) | Sí | No — seed manual SQL |
+| Alta/baja de usuarios (`bbm_users`) | Sí | **No — SQL manual en el MVP, UI diferida.** Agregar un usuario (ej. nuevo prospecto Ubiqo) = INSERT. Decisión deliberada, no falta de scope. |
 | Billing/cuota por cuenta | No | No — backlog |
 | Rotación de token por cuenta | Sí (`evidence_api_token` por fila) | No — token único en env todavía |
 | Fairness de cola por tenant | — | Entra con BullMQ (WS1), no aquí |
@@ -154,11 +168,33 @@ cuenta nueva post-MVP = INSERT + seed de usuarios, sin recrear esquema ni migrar
 
 ---
 
-## 8. Riesgos residuales
+## 8. Decisiones cerradas (post-auditoría 2026-05-18) + riesgos residuales
 
-- **Reconciliación `client_key`:** el valor real de FOTL en `bbm_planograms` debe
-  leerse del dato, no asumirse. Si hay más de un `client_key` FOTL (caballeros/damas),
-  decidir 1 cliente con N planogramas (correcto) vs N clientes (incorrecto) → 1 cliente.
+### Decisión cerrada — FOTL = 1 cliente, N planogramas
+
+`bbm_planograms` ya tiene 2 `client_key` para FOTL (`fotl_caballeros`,
+`fotl_damas`). **Decisión:** FOTL es **1 solo cliente** (`bbm_clients` con
+`client_key='fotl'`) con **N planogramas** (uno caballeros, uno damas, etc.). Los
+`client_key` legacy de `bbm_planograms` NO son clientes distintos.
+
+Implicación de esquema (corrige el crítico de aislamiento):
+- `bbm_planograms` recibe `client_id UUID FK` (ver §4). El **backfill** mapea cada
+  `client_key` legacy al `client_id` correcto: `fotl_caballeros` → FOTL,
+  `fotl_damas` → FOTL (ambos al mismo `client_id`).
+- `bbm_clients.client_key` es un slug canónico por cliente, **no** se reconcilia
+  1:1 contra `bbm_planograms.client_key`. La relación planograma↔cliente es por
+  `client_id`, no por matching de strings.
+- El valor canónico del slug y el mapeo legacy→client_id se confirman contra el
+  dato real al hacer el seed/backfill (spec/04 Tarea 1), **no se inventan**.
+
+### Riesgos residuales
+
+- **`pick_pending_*` no son tenant-scoped:** las RPC (`008:74-130`) toman la
+  siguiente fila por `status` sin filtrar tenant. No es leak de lectura al usuario
+  (las lecturas del dashboard van por `scopedQuery`); el procesador estampa
+  `client_id` en la fila al ingestar (WS-MT Tarea 5) y resuelve el contexto desde
+  esa fila. Las RPC se **retiran en el cierre de WS1** (el worker BullMQ hace el
+  pick). Hasta entonces: aceptable, documentado, no bloquea el MVP.
 - **Backfill NOT NULL:** agregar `client_id` NOT NULL a tablas con datos requiere
   backfill antes del constraint. Como 008 es provisional sin datos prod, se recrea
   limpio (sin backfill) — confirmar "sin datos prod" al ejecutar, no asumir.

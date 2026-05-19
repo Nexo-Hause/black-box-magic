@@ -14,9 +14,11 @@ Decisión del roadmap (`docs/roadmap-2026-05.md` WS-H): con el worker BullMQ (sp
 03) los reintentos, backoff, dead-letter, job-timeout, stalled-recovery y
 observabilidad (Bull Board) son **nativos de BullMQ**. Lo que NO resuelve la cola:
 distinguir un error de Gemini que vale reintentar (429/5xx) de uno que NO
-(safety-block, 400) — hoy `withRetry` (`src/lib/gemini.ts:127-150`) decide por
-substring del mensaje y los safety-block (`:194-196`, "No response text") se
-reintentan inútilmente 3 veces. Tampoco surfacea distinto un 401 de Ubiqo
+(safety-block, 400). Hoy `withRetry` (`src/lib/gemini.ts:127-150`) solo reintenta
+429/500/503 por substring; un safety-block ("No response text", `:~194-196`) NO lo
+reintenta `withRetry`, pero **tampoco se marca distinto**: cae como error genérico
+y BullMQ lo reintentaría a nivel de job sin sentido (la foto no cambia). Tampoco
+surfacea distinto un 401 de Ubiqo
 (`src/lib/ubiqo/client.ts:41`) ni garantiza que `bbm_*.status` refleje el estado de
 la cola. Prereq: WS-MT (spec 04). LOCKED antes de WS2/WS3.
 
@@ -84,8 +86,13 @@ la cola. Prereq: WS-MT (spec 04). LOCKED antes de WS2/WS3.
       expect(classifyError(new Error('Gemini API error (400): bad')).kind).toBe('permanent');
       expect(classifyError(new Error('Gemini API error (403): denied')).kind).toBe('permanent');
     });
-    it('no response text → safety_block', () => {
+    it('no response text (single image) → safety_block', () => {
       expect(classifyError(new Error('No response text from Gemini')).kind).toBe('safety_block');
+    });
+    it('no response text (comparison, con sufijo) → safety_block', () => {
+      // analyzeWithReferences lanza 'No response text from Gemini comparison'
+      // (gemini.ts:~261). El match DEBE ser includes(), no ===.
+      expect(classifyError(new Error('No response text from Gemini comparison')).kind).toBe('safety_block');
     });
     it('timeout/abort → transient', () => {
       const e = new Error('aborted'); e.name = 'AbortError';
@@ -100,10 +107,13 @@ la cola. Prereq: WS-MT (spec 04). LOCKED antes de WS2/WS3.
 - [ ] **Step 2: Verificar FAIL.** `npm test src/lib/pipeline/__tests__/errors.test.ts`
 - [ ] **Step 3: Implementar `classifyError(err): { kind: 'transient' |
   'permanent' | 'safety_block'; reason: string }`** en
-  `src/lib/pipeline/errors.ts`. Reglas exactas según la tabla. Default
+  `src/lib/pipeline/errors.ts`. Reglas exactas según la tabla. **El match de
+  safety_block es `message.includes('No response text from Gemini')`
+  (substring), NUNCA `===`**: `analyzeWithReferences` lanza la variante con
+  sufijo `' comparison'` (`gemini.ts:~261`) y debe clasificarse igual. Default
   desconocido = `permanent` (un error no clasificado NO se reintenta a ciegas:
   evita loops de gasto).
-- [ ] **Step 4: Verificar PASS.** Reportar `6/6`.
+- [ ] **Step 4: Verificar PASS.** Reportar `7/7`.
 - [ ] **Step 5: tsc + lint.** `npx tsc --noEmit && npm run lint`
 - [ ] **Step 6: Commit local.**
   ```bash
@@ -113,18 +123,33 @@ la cola. Prereq: WS-MT (spec 04). LOCKED antes de WS2/WS3.
 
 ### Tarea 2: Política de retry por clasificación en el worker
 
-- [ ] **Step 1:** En `infra/vps/worker/src/worker.ts`, envolver la llamada al
-  processor: si lanza, `classifyError(err)`:
-  - `transient` → re-lanzar para que BullMQ reintente (respeta `attempts:3` +
+> **Decisión de capas de retry (cierra ambigüedad):** hay DOS capas.
+> (1) `withRetry` interno de `gemini.ts` (MAX_RETRIES=3) = nivel llamada HTTP,
+> reintenta 429/5xx con backoff dentro del mismo job. (2) BullMQ `attempts` =
+> nivel job. Para acotar el total de llamadas a Gemini por foto, **esta spec fija
+> `attempts: 2` en las colas** (sobrescribe el `attempts:3` por defecto de
+> spec/03 Tarea 5 Step 2 — ajustar ahí también para consistencia). Total máximo:
+> 2 jobs × (1 + 3 reintentos internos) = 8 llamadas/foto en el peor caso
+> transitorio, acotado y documentado. Las dos capas coexisten a propósito (HTTP
+> blips los come `withRetry`; caídas largas las come BullMQ).
+
+- [ ] **Step 1:** En `infra/vps/worker/src/worker.ts`, fijar `attempts: 2` en
+  las opciones de cola (y actualizar spec/03 Tarea 5 Step 2 a `attempts: 2`).
+  Envolver la llamada al processor: si lanza, `classifyError(err)`:
+  - `transient` → re-lanzar para que BullMQ reintente (respeta `attempts:2` +
     backoff exponencial).
   - `permanent` / `safety_block` → marcar el job como fallido **sin reintentos**
     (BullMQ: lanzar `UnrecoverableError` de `bullmq`), y persistir en
     `bbm_*.status='failed'` con `error_kind` (`permanent`|`safety_block`) y
     `error_message`.
-- [ ] **Step 2:** En `src/lib/pipeline/ubiqo.ts` y `planogram.ts`: al escribir
-  `status='failed'`, incluir columna/campo `error_kind` (agregar la columna en la
-  migración 009 si no existe: `ALTER TABLE ... ADD COLUMN error_kind TEXT` —
-  coordinar con spec 04; si 009 ya está, crear `010_add_error_kind.sql`).
+- [ ] **Step 2:** Crear **siempre** una migración independiente
+  `supabase/migrations/010_add_error_kind.sql` con:
+  `ALTER TABLE bbm_ubiqo_captures ADD COLUMN error_kind TEXT;`
+  `ALTER TABLE bbm_incidences ADD COLUMN error_kind TEXT;`
+  (migración aditiva, sin dependencia de orden con 009 — no condicional, el
+  worker no puede inspeccionar la DB). En `src/lib/pipeline/ubiqo.ts` y
+  `planogram.ts`: al escribir `status='failed'`, incluir `error_kind`
+  (`permanent`|`safety_block`|`ubiqo_auth`).
 - [ ] **Step 3: Test:** unit en `__tests__/` del pipeline que verifica que un
   `safety_block` NO se reintenta (processor llamado 1 vez) y que un `transient` sí
   re-lanza. (Mockear `classifyError` o inyectar errores).
@@ -168,9 +193,19 @@ la cola. Prereq: WS-MT (spec 04). LOCKED antes de WS2/WS3.
 - [ ] **Step 1:** Crear `infra/vps/worker/src/reconcile.ts`: un repeatable job
   (cada 10 min) que:
   - Busca filas `bbm_ubiqo_captures`/`bbm_incidences` en `processing` con
-    `updated_at` (o `processed_at` null) > 15 min y sin job activo/encolado en
-    BullMQ correspondiente → las regresa a `pending` (o `failed` si superaron
-    `attempts`).
+    `updated_at` (o `processed_at` null) > 15 min.
+  - **Para cada fila candidata, verifica si hay job vivo en BullMQ con la API
+    concreta** (no inferir solo por `updated_at`, eso causaría re-encolado
+    duplicado de un job lento). Cada fila lleva su `jobId` (el worker lo guarda al
+    encolar, ej. `bbm_*.bullmq_job_id`). Verificación:
+    `const job = await queue.getJob(row.bullmq_job_id);` →
+    `const live = job && (await job.isActive() || await job.getState() === 'waiting' || await job.getState() === 'delayed');`
+    Si `live` → NO tocar la fila (job en curso). Si NO `live` y >15 min →
+    regresar a `pending` (o `failed` si `row.retry_count >= attempts`).
+  - Requiere agregar `bullmq_job_id TEXT` a `bbm_ubiqo_captures`/`bbm_incidences`
+    (incluir en la migración `010_add_error_kind.sql` de Tarea 2 Step 2:
+    `ALTER TABLE ... ADD COLUMN bullmq_job_id TEXT;`), y que el worker estampe el
+    job id al encolar.
   - Loggea cuántas reconcilió (`RECONCILE_REQUEUED=<n>`).
 - [ ] **Step 2:** Registrar el job en `worker.ts` (repeatable). Concurrency 1.
 - [ ] **Step 3: Test:** unit de la función de decisión de reconcile (dado un set de
@@ -249,3 +284,56 @@ git diff --name-only main..HEAD | grep -E '\.env$|\.env\.local|secrets|credentia
 - Si un comportamiento de `gemini.ts` no encaja en la tabla, reportá `BLOCKED` con
   el caso, no inventes una clase.
 - Commit local por tarea. Self-review: `npm test` + `tsc` + `lint` verdes.
+
+---
+
+## Auditoría pre-implementación
+
+**Fecha:** 2026-05-18
+**Resultado global:** Aprobado con cambios — críticos resueltos.
+
+### Hallazgos críticos (resueltos)
+
+1. **`analyzeWithReferences` lanza `'No response text from Gemini comparison'`
+   (con sufijo); match `===` fallaba.** Resuelto: match = `includes(...)`
+   (substring) + test de la variante "comparison" (7/7).
+2. **Doble retry `withRetry`(3)+BullMQ(3) → hasta 12 llamadas/foto.** Resuelto:
+   decisión documentada; `attempts:2` en colas (alineado con spec/03); total
+   acotado a 8 peor caso, dos capas a propósito.
+3. **Migración `error_kind` condicional irresoluble por el worker.** Resuelto:
+   siempre `010_add_error_kind.sql` (aditiva, sin dependencia de orden) + columna
+   `bullmq_job_id` para el reconcile.
+4. **Reconcile sin API concreta → re-encolado duplicado.** Resuelto: API BullMQ
+   explícita (`queue.getJob` + `isActive`/`getState`) + `bullmq_job_id` por fila.
+5. **Contexto factualmente errado** ("safety-block se reintenta 3 veces" —
+   `withRetry` no lo reintenta). Corregido.
+
+### Observaciones (decisión)
+
+- Fallback de modelo interno de `gemini.ts` (primary→FALLBACK) suma intentos no
+  contados → documentado como nota; no se altera el camino feliz de `gemini.ts`.
+- `GEMINI_MAX_PER_MIN` default 30 = conservador y marcado configurable (no
+  fabricación). Valor real lo fija el operador contra cuota Gemini.
+
+### Tests requeridos
+
+| Tipo | Qué verificar | Prioridad |
+|------|--------------|-----------|
+| Unit | `classifyError`: 7 casos incl. variante comparison + `ubiqo_auth` | Alta |
+| Unit | safety_block NO reintenta; transient sí re-lanza | Alta |
+| Unit | reconcile: decide re-encolar vs no según estado de job | Alta |
+
+### Criterios de aceptación
+
+Los de la sección arriba. Camino feliz de `gemini.ts` sin cambio de comportamiento
+(`git diff src/lib/gemini.ts` solo tipa el error que ya lanza).
+
+### Riesgos residuales
+
+- El tope de costo real depende de que el operador fije
+  `GEMINI_MAX_PER_MIN`/`WORKER_CONCURRENCY` al cuota verdadero — sin eso, el
+  default 30 puede no proteger contra un cuota menor. Documentado en runbook.
+- Migración de `error_kind`/`bullmq_job_id` a prod = paso de operador.
+- Si el worker no estampa `bullmq_job_id` al encolar, el reconcile cae a heurística
+  de tiempo (riesgo de re-encolado de job lento) — el test lo cubre, pero depende
+  de que WS1 guarde el job id.

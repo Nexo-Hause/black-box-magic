@@ -34,6 +34,12 @@ OK) → ventana barata para hacerlo bien ahora, antes de tener datos.
 - No tocar `src/lib/onboarding/auth.ts` (JWT jose, auth separada de onboarding).
 - No implementar onboarding de cuentas, billing, ni rotación de token por cuenta
   (schema-ready, lógica diferida — ver tenancy-model §6).
+- **No scopear `bbm_client_configs`** — lo consume el flujo de onboarding (auth
+  JWT separada, `src/lib/onboarding/auth.ts`, que NO se toca). Fuera de scope de
+  WS-MT por diseño (tenancy-model §4); se aborda si onboarding se expone
+  multi-tenant a futuro. No es olvido.
+- No retirar las RPC `pick_pending_*` (se retiran en cierre de WS1; ver
+  tenancy-model §8 — no son tenant-scoped y es aceptable hasta entonces).
 - No construir el dashboard (WS2, spec 02-ws2).
 
 ## Archivos afectados
@@ -79,27 +85,47 @@ OK) → ventana barata para hacerlo bien ahora, antes de tener datos.
     bbm_accounts(id), ADD COLUMN client_id UUID REFERENCES bbm_clients(id);`
   - `ALTER TABLE bbm_ubiqo_captures ADD COLUMN account_id UUID REFERENCES
     bbm_accounts(id), ADD COLUMN client_id UUID REFERENCES bbm_clients(id);`
+  - **`ALTER TABLE bbm_planograms ADD COLUMN client_id UUID REFERENCES
+    bbm_clients(id);`** — corrección de aislamiento (sin esto el helper no puede
+    filtrar planogramas → leak en `list/route.ts`). `client_key` se conserva como
+    columna legacy/display; deja de ser la clave de tenencia.
   - Índices: `bbm_clients(account_id)`, `bbm_incidences(client_id)`,
-    `bbm_ubiqo_captures(client_id)`, `bbm_users(account_id)`.
+    `bbm_ubiqo_captures(client_id)`, `bbm_planograms(client_id)`,
+    `bbm_users(account_id)`.
 
 - [ ] **Step 2: Seeds (parametrizados, NO inventar emails/keys).** La migración
   incluye un bloque de seed comentado con placeholders explícitos:
 
   ```sql
-  -- SEED MVP — reemplazar placeholders con valores reales antes de aplicar.
-  -- client_key DEBE coincidir con el valor ya usado en bbm_planograms para FOTL
-  -- (leerlo del dato, no inventar). Emails reales confirmados por el operador.
+  -- SEED + BACKFILL MVP — reemplazar placeholders con valores reales antes de
+  -- aplicar. APLICAR 009 + ESTE BLOQUE EN UNA SOLA TRANSACCIÓN: si la migración
+  -- entra sin seed, todo usuario pierde acceso al instante (bbm_users vacío → 403).
+  -- bbm_clients.client_key = slug canónico nuevo (ej. 'fotl'), NO uno de los
+  -- bbm_planograms.client_key legacy. Emails reales confirmados por el operador;
+  -- si no se conocen, BLOCKED (no inventar).
+  -- BEGIN;
   -- INSERT INTO bbm_accounts (id, type, name) VALUES ('<acc-uuid>','reseller','Ubiqo');
   -- INSERT INTO bbm_clients (id, account_id, client_key, name)
-  --   VALUES ('<cli-uuid>','<acc-uuid>','<FOTL_CLIENT_KEY>','Fruit of the Loom');
+  --   VALUES ('<cli-uuid>','<acc-uuid>','fotl','Fruit of the Loom');
   -- INSERT INTO bbm_users (email, role, account_id, client_id) VALUES
   --   ('<gonzalo>','bbm_admin',NULL,NULL),
   --   ('<enrique>','reseller_admin','<acc-uuid>',NULL),
   --   ('<carlos>','client_user','<acc-uuid>','<cli-uuid>');
+  -- -- BACKFILL: mapear client_key legacy de bbm_planograms al client_id de FOTL.
+  -- -- Los valores legacy ('fotl_caballeros','fotl_damas'...) se leen del dato
+  -- -- real (SELECT DISTINCT client_key FROM bbm_planograms), NO se inventan.
+  -- UPDATE bbm_planograms SET client_id='<cli-uuid>'
+  --   WHERE client_key IN (<lista real de client_key de FOTL>);
+  -- -- bbm_incidences / bbm_ubiqo_captures: 008 es provisional sin datos prod →
+  -- -- normalmente sin filas que backfillear. Si las hay, derivar client_id por
+  -- -- la cadena planogram_id→bbm_planograms.client_id (incidences) o
+  -- -- form_id→assignment→planogram (captures). Confirmar conteo antes (SELECT
+  -- -- COUNT(*)), no asumir vacío.
+  -- COMMIT;
   ```
-  El ejecutor **deja el seed comentado**. Activarlo con valores reales = paso de
-  operador (los emails/keys reales no están en esta spec — si no se conocen,
-  reportar `BLOCKED`, no inventar).
+  El ejecutor **deja el bloque comentado**. Activarlo con valores reales = paso de
+  operador. Si los emails/slug/lista de client_key reales no están disponibles,
+  reportar `BLOCKED`, **no inventar**.
 
 - [ ] **Step 3: RLS defensa en profundidad.** Habilitar RLS en `bbm_incidences` y
   `bbm_ubiqo_captures` con policy por `client_id`. Comentario en el SQL:
@@ -207,6 +233,13 @@ OK) → ventana barata para hacerlo bien ahora, antes de tener datos.
       expect(b._calls).toContainEqual(['eq', 'account_id', 'acc1']);
       expect(b._calls).toContainEqual(['eq', 'client_id', 'cliX']);
     });
+    it('reseller_admin: account_id del token SIEMPRE presente aunque pida clientId de otra cuenta', () => {
+      const b = fakeBuilder();
+      scopedQuery(b, reseller, { requestedClientId: 'cli-de-OTRA-cuenta' });
+      // el account_id del token gana siempre: account_id=acc1 + client_id ajeno
+      // → la query devuelve 0 filas (no leak). Un refactor que quite este eq es bug.
+      expect(b._calls).toContainEqual(['eq', 'account_id', 'acc1']);
+    });
     it('bbm_admin sin filtro de tenencia', () => {
       const b = fakeBuilder();
       scopedQuery(b, admin, {});
@@ -248,8 +281,13 @@ OK) → ventana barata para hacerlo bien ahora, antes de tener datos.
     `DASHBOARD_ALLOWED_EMAILS`/`isAllowedEmail()` por:
     `const session = await resolveSession(cookie.email, supabase); if (!session)
     return 403;`
-  - Pasar `session` a las queries de datos vía `scopedQuery` (en routes que leen
-    `bbm_planograms`/`bbm_incidences`; `share` solo necesita el 403).
+  - Pasar `session` a las queries de datos vía `scopedQuery` (filtra por
+    `client_id`). En `list/route.ts` la query de `bbm_planograms` (hoy
+    `select('*').eq('active',true)` SIN filtro de tenant — el leak) DEBE pasar por
+    `scopedQuery(builder, session, {})` antes de ejecutarse. `status/route.ts`
+    igual para `bbm_incidences`. `share` solo necesita el 403 (no lee datos de
+    tenant). `upload` valida que el `client_id` del planograma pertenece a la
+    sesión antes de insertar.
 - [ ] **Step 2:** `.env.example`: marcar `DASHBOARD_ALLOWED_EMAILS` como
   `# DEPRECATED (reemplazado por tabla bbm_users desde migración 009)`.
 - [ ] **Step 3:** `npm test` (suite completa, no romper tests existentes) +
@@ -262,13 +300,22 @@ OK) → ventana barata para hacerlo bien ahora, antes de tener datos.
 
 ### Tarea 5: Estampar tenencia en el ingest
 
-- [ ] **Step 1:** En `src/lib/pipeline/ubiqo.ts` (`ingestUbiqoCaptures`) y
-  `src/lib/pipeline/planogram.ts` (`ingestPlanogramCaptures`): antes del upsert,
-  derivar `client_id`/`account_id` de la cadena `form_id →
-  bbm_planogram_assignments → bbm_planograms.client_key → bbm_clients →
-  bbm_accounts`. Estampar ambas columnas en cada fila upserteada.
-  - Si un `form_id` no resuelve a un cliente conocido: NO upsertar esa fila;
-    loggear `unmapped_form_id` (no inventar un cliente default).
+> **Prerrequisito de orden:** esta tarea asume que `src/lib/pipeline/` ya existe
+> (lo crea WS1, spec/03). El roadmap fija WS1 → WS-MT, así que el módulo existirá.
+> **Fallback** si WS1 NO está hecho cuando se ejecuta esta tarea: estampar la
+> tenencia directamente en los route reales `src/app/api/ubiqo/ingest/route.ts` y
+> `src/app/api/planogram/ingest/route.ts` (donde hoy vive el upsert), no en
+> `src/lib/pipeline/`. El ejecutor verifica si `src/lib/pipeline/ubiqo.ts` existe
+> y elige el archivo correcto; si la ambigüedad de cuál tocar persiste, `BLOCKED`.
+
+- [ ] **Step 1:** En `ingestUbiqoCaptures` / `ingestPlanogramCaptures` (o en los
+  route reales — ver prerrequisito): antes del upsert, derivar
+  `client_id`/`account_id` de la cadena `form_id → bbm_planogram_assignments
+  (planogram_id) → bbm_planograms.client_id → bbm_clients.account_id`. Estampar
+  ambas columnas en cada fila upserteada.
+  - Si un `form_id` no resuelve a un cliente conocido (sin assignment, o
+    planograma sin `client_id` backfilleado): NO upsertar esa fila; loggear
+    `unmapped_form_id=<id>` (no inventar un cliente default).
 - [ ] **Step 2: Test:** extender `src/lib/pipeline/__tests__/*.test.ts` con un caso
   que verifica que las filas upserteadas llevan `client_id`/`account_id` resueltos,
   y que un `form_id` sin mapeo NO se upsertea.
@@ -322,3 +369,62 @@ git diff --name-only main..HEAD | grep -E '\.env$|\.env\.local|secrets|credentia
   bug bloqueante, no lo marques DONE.
 - Ambigüedad de seed (emails/keys reales) → `BLOCKED`, no inventes.
 - Commit local por tarea. Self-review: `npm test` + `tsc` + `lint` verdes.
+
+---
+
+## Auditoría pre-implementación
+
+**Fecha:** 2026-05-18
+**Resultado global:** Aprobado con cambios — críticos de aislamiento resueltos.
+**Criticidad:** máxima (superficie de leak de datos B2B2B).
+
+### Hallazgos críticos (resueltos)
+
+1. **`bbm_planograms` sin `client_id` → leak en `list/route.ts`.** Resuelto:
+   Tarea 1 agrega `client_id UUID FK` + backfill desde `client_key` legacy;
+   Tarea 4 obliga `scopedQuery` sobre la query de `bbm_planograms`. `client_key`
+   pasa a legacy/display, NO es clave de tenencia.
+2. **FOTL tiene 2 `client_key` vs `bbm_clients.client_key UNIQUE`.** Cerrado en
+   `docs/tenancy-model.md §8`: FOTL = 1 cliente; `bbm_clients.client_key` = slug
+   canónico nuevo (`'fotl'`), NO matchea los legacy; el mapeo es por backfill.
+3. **`src/lib/pipeline/` no existe si WS1 no corrió.** Resuelto: prerrequisito de
+   orden explícito en Tarea 5 + fallback a los route reales + `BLOCKED` si dudoso.
+4. **Aplicar 009 sin seeds = todos pierden acceso.** Resuelto: bloque
+   `BEGIN/COMMIT`, "009 + seeds en una sola transacción".
+5. **`pick_pending_*` cross-tenant.** Documentado como riesgo residual aceptable
+   (lecturas de usuario van por `scopedQuery`; RPC se retiran en cierre WS1).
+
+### Observaciones (decisión)
+
+- `bbm_client_configs` (onboarding) **fuera de scope** — documentado explícito en
+  "No incluye", no es olvido.
+- Test de aislamiento de `reseller_admin` cross-account → **4º caso agregado**
+  (account_id del token gana siempre).
+- Mock de `supabase` frágil si se agrega un 2º `.eq` → aceptado; los tests son
+  ilustrativos del comportamiento, el oracle real es la suite de aislamiento.
+
+### Tests requeridos
+
+| Tipo | Qué verificar | Prioridad |
+|------|--------------|-----------|
+| Unit | `resolveSession`: sin fila→null, 3 roles | Alta |
+| Unit | `scopedQuery`: client_user/reseller/admin + cross-account | **Máxima (leak)** |
+| Integración | routes 403 sin `bbm_users`; `list` scopeado | Alta |
+| Unit | ingest estampa `client_id`; `form_id` sin mapeo no entra | Alta |
+
+### Criterios de aceptación
+
+Los de la sección arriba + suite de aislamiento `N/N` verde (criterio de cierre
+de WS-MT). `git diff src/lib/cookie.ts` vacío.
+
+### Riesgos residuales
+
+- **Backfill incompleto:** un `client_key` legacy no listado deja planogramas sin
+  `client_id` → invisibles al dashboard (no leak, sí dato perdido). Mitigar:
+  `SELECT DISTINCT client_key FROM bbm_planograms` antes del backfill, confirmar
+  cobertura. Operador.
+- **RLS no es barrera primaria** (service-role la bypasea). El helper único +
+  tests de aislamiento son la defensa real; review debe rechazar queries de datos
+  fuera del helper.
+- Acceso denegado (email sin `bbm_users`) no se loggea → agregar log de
+  diagnóstico en la implementación (observabilidad, no bloqueante).

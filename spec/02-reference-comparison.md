@@ -539,7 +539,10 @@ form_id)`, 1:1) se mantiene. Lo que se cierra es el **flujo de UI**:
 ### O3 — Contract de `GET /api/planogram/incidences`
 
 Query params (todos opcionales, validar y clampear; tipos en
-`src/types/incidence.ts` `IncidenceFilters`):
+`src/types/incidence.ts` `IncidenceFilters`). **Nota:** `IncidenceFilters`
+actual NO tiene `clientId` ni `sort`, e `IncidenceRecord` no tiene `client_id`;
+**WS2 spec/02-ws2 Tarea 0 los agrega** como prerrequisito (este contrato asume
+los tipos ya extendidos). No es discrepancia sin resolver — está asignada.
 
 | Param | Tipo | Default | Regla |
 |---|---|---|---|
@@ -622,5 +625,12 @@ clases nuevas; usar las de `globals.css:68-76`):
 
 C11, O1, O3, O4 y design system: **cerrados**. O2 (retención) y O6/O7/O8 siguen
 diferidos con razón ya documentada. Tenencia formal: `docs/tenancy-model.md`.
+
+**Decisión FOTL cerrada** (post-auditoría 2026-05-18): FOTL = **1 cliente con N
+planogramas**; los `client_key` legacy de `bbm_planograms` (`fotl_caballeros`,
+`fotl_damas`) mapean al mismo `client_id`. La clave de tenencia es `client_id`
+(UUID FK), NO `client_key`. Detalle e implicación de esquema:
+`docs/tenancy-model.md §8` + `spec/04-ws-mt-multitenant.md` Tarea 1.
+
 Specs delegables que consumen este contrato: `spec/02-ws2-dashboard.md`,
 `spec/02-ws3-export.md`.

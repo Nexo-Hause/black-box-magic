@@ -34,11 +34,17 @@ las 6 specs del plan en branch `session/2026-05-18-ws0-reorder`.
 - `spec/02-ws2-dashboard.md` — dashboard tenant-scoped.
 - `spec/02-ws3-export.md` — export Excel tenant-scoped.
 
-**Siguiente acción concreta:** `/audit` de cada spec delegable antes de implementar
-(regla CLAUDE.md: post-plan → audit). Orden de ejecución por dependencias:
-WS1 → WS-MT → WS-H → WS2 → WS3. WS1 y WS2/WS3 son delegables a Alibaba; WS-MT/WS-H
-tienen partes de superficie de riesgo (auth, error policy) que requieren revisión
-Opus en `/accept`.
+**Specs AUDITADAS** (skill `audit`, 6 auditores paralelos + gate aprobado por
+Gonzalo + Fase 2/3 + síntesis). Cada spec tiene sección "Auditoría
+pre-implementación". Resultado: **Aprobado con cambios — todos los críticos
+resueltos en spec** (incl. fix de aislamiento raíz: `client_id` FK en
+`bbm_planograms`, `client_key`→legacy, FOTL=1 cliente; ver tenancy-model §8).
+
+**Siguiente acción concreta:** ejecutar por dependencias WS1 → WS-MT → WS-H →
+WS2 → WS3. WS1 y WS2/WS3 delegables a Alibaba (`/delegate`); WS-MT (auth/aislamiento)
+y WS-H (error policy) = superficie de riesgo, requieren revisión Opus en `/accept`.
+Pasos de operador marcados en cada spec (deploy worker, migraciones a DB, seeds
+reales) NO se delegan.
 
 **Contexto que NO está en el código (no perder):**
 - Objetivo = MVP comercializable, no solo ordenar. Modelo B2B2B (Ubiqo reseller + FOTL).
@@ -72,12 +78,12 @@ borrado de la rama remota = pendiente de Gonzalo (no urgente).
 | WS | Qué | Estado |
 |----|-----|--------|
 | WS0 | Reconciliación, limpieza, docs fiel | **Completo** |
-| WS1 | Worker BullMQ en VPS (reemplaza cron-job.org) | Spec escrita (`spec/03`) — pendiente /audit + ejecución |
-| WS-D | Cierre de specs + modelo de tenencia (Opus) | **Completo** (`docs/tenancy-model.md` + `spec/02` § WS-D) |
-| WS-MT | Fundación multi-tenant (tablas canónicas, 3 roles, helper de scoping) | Spec escrita (`spec/04`) — pendiente /audit + ejecución |
-| WS-H | Endurecimiento prod (timeout, tope costo, observabilidad, token) | Spec escrita (`spec/05`) — pendiente /audit + ejecución |
-| WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | Spec escrita (`spec/02-ws2`) — pendiente /audit + ejecución |
-| WS3 | Export Excel Fase 3 (tenant-scoped) | Spec escrita (`spec/02-ws3`) — pendiente /audit + ejecución |
+| WS1 | Worker BullMQ en VPS (reemplaza cron-job.org) | Spec `spec/03` **escrita + auditada** (críticos resueltos) — lista para ejecución |
+| WS-D | Cierre de specs + modelo de tenencia (Opus) | **Completo** (`docs/tenancy-model.md` + `spec/02` § WS-D, auditado) |
+| WS-MT | Fundación multi-tenant (tablas canónicas, 3 roles, helper de scoping) | Spec `spec/04` **escrita + auditada** (fix aislamiento raíz aplicado) — lista |
+| WS-H | Endurecimiento prod (timeout, tope costo, observabilidad, token) | Spec `spec/05` **escrita + auditada** — lista |
+| WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | Spec `spec/02-ws2` **escrita + auditada** — lista |
+| WS3 | Export Excel Fase 3 (tenant-scoped) | Spec `spec/02-ws3` **escrita + auditada** — lista |
 | WS4 | Validación E2E con fotos reales FOTL | Pendiente (bloqueado por terceros) |
 | WS5 | Webhook Ubiqo | **Post-MVP** (MVP procesa por BullMQ/VPS) |
 | WS6 | Negocio: modo + propuesta comercial | Paralelo |

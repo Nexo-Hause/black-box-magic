@@ -86,7 +86,6 @@ extraído es la frontera: routes y worker lo importan.
           update: vi.fn(() => ({ eq: vi.fn(async () => ({ error: null })) })),
         })),
       } as any,
-      env: { GOOGLE_AI_API_KEY: 'k' } as any,
       ...over,
     };
   }
@@ -102,6 +101,7 @@ extraído es la frontera: routes y worker lo importan.
       expect(deps.downloadPhoto).toHaveBeenCalledOnce();
       expect(deps.analyzePhoto).toHaveBeenCalledOnce();
       expect(r.status).toBe('completed');
+      expect(r.captureId).toBe('c1');
     });
 
     it('propaga error de download sin marcar completed', async () => {
@@ -119,28 +119,46 @@ extraído es la frontera: routes y worker lo importan.
 - [ ] **Step 3: Definir tipos.** En `src/lib/pipeline/types.ts`:
 
   ```typescript
-  import type { supabase as SupabaseClient } from '@/lib/supabase';
+  import type { supabase as SupabaseClientOrNull } from '@/lib/supabase';
   import type { downloadPhoto } from '@/lib/ubiqo/ssrf';
   import type { analyzePhoto } from '@/lib/analyze';
   import type { decryptFirma } from '@/lib/ubiqo/crypto';
 
-  export interface PipelineEnv {
-    GOOGLE_AI_API_KEY: string;
-  }
+  // El cliente real es `SupabaseClient | null` (supabase.ts puede devolver null
+  // si el env no está configurado). El route YA valida `!supabase → 503` ANTES
+  // de llamar al pipeline, así que las funciones puras reciben el cliente
+  // garantizado no-null. Tipar como NonNullable evita null-checks redundantes
+  // dentro de la lógica pura.
+  type SupabaseClient = NonNullable<typeof SupabaseClientOrNull>;
 
   export interface PipelineDeps {
     downloadPhoto: typeof downloadPhoto;
-    analyzePhoto: typeof analyzePhoto;
+    analyzePhoto: typeof analyzePhoto;   // lee GOOGLE_AI_API_KEY de process.env
+                                         // internamente — NO se le pasa la key
     decryptFirma: typeof decryptFirma;
-    supabase: typeof SupabaseClient;
-    env: PipelineEnv;
+    supabase: SupabaseClient;
   }
 
+  // ProcessResult lleva TODO lo que el route wrapper necesita para construir su
+  // NextResponse sin recalcular nada. No incluir `env` en deps: analyzePhoto ya
+  // resuelve la API key por su cuenta (no acepta key como parámetro).
   export interface ProcessResult {
     status: 'completed';
     captureId: string;
+    model: string;
+    tokens: number;
+    processingTimeMs: number;
+    escalated: boolean;
   }
   ```
+
+  **Nota de contrato route↔pipeline:** la función pura NO retorna `NextResponse`.
+  Retorna `ProcessResult`. El route wrapper (Step 6) hace
+  `const r = await processUbiqoCapture(capture, deps); return
+  NextResponse.json({ ok: true, ...r })` — el shape del JSON de respuesta del
+  route NO cambia respecto al actual (mapear los campos de `ProcessResult` a las
+  mismas keys que hoy devuelve el handler; leer el handler actual `:121-131` para
+  igualar las keys exactas).
 
 - [ ] **Step 4: Implementar `processUbiqoCapture`.** Leé primero
   `src/app/api/ubiqo/process/route.ts`. Moví **íntegro** el bloque de proceso de una
@@ -155,10 +173,21 @@ extraído es la frontera: routes y worker lo importan.
   ): Promise<ProcessResult>
   ```
 
-  Reglas: misma lógica, mismas escrituras. Toda dependencia externa
-  (`downloadPhoto`, `analyzePhoto`, `decryptFirma`, `supabase`, env) se usa **vía
-  `deps`**, no por import directo dentro de la función. NO incluir el pick
-  (`pick_pending_ubiqo_capture`) ni el retry/fail (`:132-169`): eso queda en el caller.
+  Reglas:
+  - Misma lógica, mismas escrituras a `bbm_ubiqo_captures`.
+  - Dependencias externas (`downloadPhoto`, `analyzePhoto`, `decryptFirma`,
+    `supabase`) se usan **vía `deps`**, no por import directo. **NO** hay `deps.env`:
+    `analyzePhoto` lee `GOOGLE_AI_API_KEY` de `process.env` por su cuenta (su firma
+    real es `analyzePhoto(imageBase64, mimeType, customRules?)` — no recibe key).
+  - El bloque `:69-120` (download → base64 → analyze → UPDATE completed) se mueve
+    tal cual. El return de éxito actual `:121-131` (hoy `NextResponse.json(...)`)
+    **NO se mueve como `NextResponse`**: se convierte en
+    `return { status:'completed', captureId: capture.id, model: meta.model,
+    tokens: meta.tokens, processingTimeMs: meta.processing_time_ms,
+    escalated: meta.escalated }` (mapear desde el `meta` que devuelve
+    `analyzePhoto`). El route wrapper reconstruye el `NextResponse` con esas keys.
+  - NO incluir el pick (`pick_pending_ubiqo_capture`) ni el retry/fail
+    (`:132-169`): eso queda en el caller (el route).
 
 - [ ] **Step 5: Verificar que pasa.** Run: `npm test src/lib/pipeline/__tests__/ubiqo.test.ts`
   Expected: PASS 2/2.
@@ -243,6 +272,27 @@ Extraer la lógica de discover/upsert de ambos ingest a
 `ingestUbiqoCaptures(params, deps)` y `ingestPlanogramCaptures(params, deps)` en
 `src/lib/pipeline/ubiqo.ts` / `planogram.ts`.
 
+**Contrato de retorno (resuelve el crítico de early-returns):** las funciones
+puras NO retornan `NextResponse`. Agregar a `types.ts`:
+
+```typescript
+export interface IngestResult {
+  discovered: number;        // capturas/incidencias nuevas upserteadas
+  alreadyProcessed: number;  // ya existían (no upsert)
+  pending: number;           // total quedando en estado pending tras el ingest
+}
+```
+
+Las early returns del route actual de `planogram/ingest` (hoy
+`return NextResponse.json(...)` cuando no hay `assignment` o el planograma no está
+activo) se convierten a: **`throw new Error('<mensaje exacto del route actual>')`**
+para condiciones de error, y a `return { discovered:0, alreadyProcessed:0,
+pending:0 }` cuando es "nada que hacer" legítimo (sin assignment ≠ error). El route
+wrapper hace `try { const r = await ingestPlanogramCaptures(...); return
+NextResponse.json(r) } catch (e) { return NextResponse.json({ error: e.message },
+{ status: 400 }) }` — preservando el mismo status/shape que hoy. Leé el route
+actual para igualar mensajes y status exactos.
+
 - [ ] **Step 1: Test que falle** en `__tests__/ubiqo.test.ts` (agregar `describe`):
   mock de `fetchCaptures` devolviendo 2 capturas `estatus:'Completa'` + 1 incompleta;
   assert que solo las 2 completas se upsertan (`supabase.from().upsert` llamado con
@@ -294,15 +344,21 @@ src/board.ts, ecosystem.config.js, README.md).
 
 - [ ] **Step 2: `src/queues.ts`** — define 2 colas BullMQ:
   `ubiqo-process` y `planogram-process`, conexión a Redis vía
-  `process.env.REDIS_URL`. Opciones por defecto: `attempts: 3`,
+  `process.env.REDIS_URL`. Opciones por defecto: `attempts: 2`
+  (decidido en spec/05 WS-H — acota el total con el `withRetry` interno de
+  `gemini.ts`; no usar 3),
   `backoff: { type: 'exponential', delay: 5000 }`,
   `removeOnComplete: 1000`, `removeOnFail: 5000`.
 
 - [ ] **Step 3: `src/worker.ts`** — un `Worker` por cola que:
-  - importa los processors desde el repo Next (`../../src/lib/pipeline/`) o desde
-    un paquete compartido — resolver el import path al integrar; documentarlo en
-    README. Arma `deps` reales (supabase, gemini, ubiqo helpers) desde el env del
-    VPS.
+  - **Import path (decidido, no a elección):** el worker corre con `tsx` y tiene su
+    propio `infra/vps/worker/tsconfig.json` con
+    `"paths": { "@/*": ["../../src/*"] }` y `"baseUrl": "."`. Importa así:
+    `import { processUbiqoCapture } from '@/lib/pipeline'`. NO copiar código del
+    repo Next; se referencia por path alias. Documentar en README que el worker
+    depende del árbol `src/` del repo (deploy = repo completo en el VPS, no solo
+    `infra/vps/worker/`).
+  - Arma `deps` reales (supabase, gemini, ubiqo helpers) desde el env del VPS.
   - Por cada job: hace el pick atómico (las RPC `pick_pending_*` siguen vigentes
     hasta el cierre de WS1) y llama `processUbiqoCapture` / `processIncidence`.
   - Define un **repeatable job** de ingest: cada 5 min encola un job de ingest que
@@ -379,3 +435,52 @@ grep -nE "import .* from '@/lib/(supabase|gemini|analyze)'" src/lib/pipeline/ubi
 - La lógica de negocio NO cambia: extracción literal, deps inyectadas.
 - Commit local después de cada tarea.
 - Self-review antes de DONE: `npm test`, `npx tsc --noEmit`, `npm run lint` verdes.
+
+---
+
+## Auditoría pre-implementación
+
+**Fecha:** 2026-05-18
+**Resultado global:** Aprobado con cambios — críticos resueltos en esta misma sesión.
+
+### Hallazgos críticos (resueltos)
+
+1. **`analyzePhoto` no recibe la API key por parámetro** (lee `process.env`
+   directo). `PipelineEnv`/`deps.env` era incompatible → **eliminado** de
+   `PipelineDeps`; Step 4 explícito.
+2. **`typeof supabase` es nullable** → tipado como `NonNullable` con nota de que el
+   route valida `!supabase → 503` antes de llamar al pipeline.
+3. **Bloques extraídos retornan `NextResponse`** sin contrato de conversión →
+   `ProcessResult` definido con todos los campos; nota de contrato route↔pipeline;
+   early-returns del ingest → `throw`/`IngestResult` (Tarea 3).
+4. **Import path del worker ambiguo** → fijado: `tsx` + `tsconfig` con
+   `paths @/* → ../../src/*` (no copiar código).
+
+### Observaciones (decisión)
+
+- `parseIncidenceResponse`/`analyzePhoto` retornan tipos que el worker debe leer
+  para mapear columnas → la spec exige leer los archivos molde (no se inline el
+  tipo para no duplicar; el worker tiene `file:line`). Aceptado.
+- `attempts:2` alineado con WS-H (antes 3). Resuelto.
+
+### Tests requeridos
+
+| Tipo | Qué verificar | Prioridad |
+|------|--------------|-----------|
+| Unit | `processUbiqoCapture`/`processIncidence` con deps mock | Alta |
+| Unit | `ingest*` filtra `Completa`, upsert correcto, `IngestResult` | Alta |
+| Integración | 4 routes responden igual post-refactor (no breaking) | Alta |
+| Worker | compila (`tsc` propio) | Media |
+
+### Criterios de aceptación
+
+Los de la sección "Criterios de aceptación" arriba. Adicional: `grep` de imports
+duros en funciones puras = OK (deps inyectadas).
+
+### Riesgos residuales
+
+- Deploy del worker + retiro de `pick_pending_*` = pasos de operador (no en
+  delegación). Hasta el retiro, las RPC siguen sirviendo el pick.
+- El árbol `src/` del repo debe estar en el VPS (no solo `infra/vps/worker/`) —
+  documentado en README; si el deploy del VPS no lo contempla, el worker no
+  resuelve el alias.

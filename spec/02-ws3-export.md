@@ -97,22 +97,33 @@ Hojas (de `spec/02-reference-comparison.md:243-249`):
       expect(ana[1]).toBe(2); // total comparaciones de Ana
     });
     it('sanitiza celdas con prefijo peligroso', () => {
-      const wb = buildIncidencesWorkbook([{ ...rows[0], promoter_name: '=cmd()' } ] as any);
-      const aoa = XLSX.utils.sheet_to_json(wb.Sheets['Resumen'], { header: 1 }) as any[];
-      const cell = aoa.flat().find((c: any) => typeof c === 'string' && c.includes('cmd()'));
-      expect(cell.startsWith('=')).toBe(false);
+      const wb = buildIncidencesWorkbook([{ ...rows[0], promoter_name: '=cmd()' }] as any);
+      // Acceder a la celda CRUDA del workbook (sin sheet_to_json, que
+      // deserializa y puede ocultar el escape). 'Resumen' col B (promotor) fila 2:
+      // ajustar la celda exacta a la posición real de promoter_name en la hoja
+      // Resumen según el orden de columnas implementado.
+      const ws = wb.Sheets['Resumen'];
+      const promoterCell = Object.keys(ws)
+        .filter(k => !k.startsWith('!'))
+        .map(k => ws[k])
+        .find((c: any) => typeof c.v === 'string' && c.v.includes('cmd()'));
+      expect(promoterCell).toBeTruthy();
+      expect((promoterCell.v as string).startsWith('=')).toBe(false);
     });
   });
   ```
 
 - [ ] **Step 2: Verificar FAIL.** `npm test src/lib/exports/__tests__/incidences-excel.test.ts`
-- [ ] **Step 3: Implementar `buildIncidencesWorkbook(rows): XLSX.WorkBook`** en
+- [ ] **Step 3a: Exportar `sanitize`.** En `src/lib/exports/excel.ts`, agregar
+  `export` a la declaración de `sanitize` (hoy `function sanitize(` en `:6-17` →
+  `export function sanitize(`). Es el ÚNICO cambio permitido en ese archivo. NO
+  replicar la función en otro lado (dos copias se desincronizan).
+- [ ] **Step 3b: Implementar `buildIncidencesWorkbook(rows): XLSX.WorkBook`** en
   `src/lib/exports/incidences-excel.ts`, reusando el patrón de
   `src/lib/exports/excel.ts:20-96`: `aoa_to_sheet([headers, ...rows])` por hoja,
   `book_new()` + `book_append_sheet` con los 4 nombres exactos en orden. **Cada
-  celda string pasa por `sanitize()`** (importar de `@/lib/exports/excel` si está
-  exportado; si no, replicar la función — preferible exportarla, mínimo cambio en
-  excel.ts limitado a `export`). Fechas formateadas `es-MX`/`America/Mexico_City`.
+  celda string pasa por `sanitize`** (`import { sanitize } from
+  '@/lib/exports/excel'`). Fechas formateadas `es-MX`/`America/Mexico_City`.
 - [ ] **Step 4: Verificar PASS.** Reportar `N/N`.
 - [ ] **Step 5: tsc + lint.** `npx tsc --noEmit && npm run lint`
 - [ ] **Step 6: Commit local.**
@@ -136,8 +147,9 @@ Hojas (de `spec/02-reference-comparison.md:243-249`):
 - [ ] **Step 3: Implementar el route** (molde
   `incidences/route.ts` de WS2): misma auth+session+`scopedQuery`, **mismos
   filtros que el contrato O3 pero SIN paginación** (export = todo el set filtrado;
-  cap defensivo a, p.ej., 5000 filas → si excede, responder 413 con mensaje "Filtrá
-  más, demasiadas filas"). Llamar `buildIncidencesWorkbook(rows)`,
+  cap defensivo fijo: `if (count > 5000) return 413` con mensaje "Demasiadas
+  filas; aplicá más filtros" (5000 es el valor, no "p.ej."). Llamar
+  `buildIncidencesWorkbook(rows)`,
   `XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })`, devolver el buffer con
   los headers de arriba.
 - [ ] **Step 4: Verificar PASS.** Reportar `N/N`.
@@ -151,11 +163,24 @@ Hojas (de `spec/02-reference-comparison.md:243-249`):
 ### Tarea 3: Botón en el dashboard
 
 - [ ] **Step 1:** En `src/app/dashboard/page.tsx` agregar botón
-  `.btn--secondary` "Exportar Excel" en la barra de filtros. Al click: navegar/
-  descargar `GET /api/planogram/export?<mismos query params que los filtros
-  activos, incluido clientId si hay selector>`. Usar un `<a download>` o
-  `window.location` con la querystring construida desde `filters`/`selectedClientId`
-  (mismo serializador que usa `useDashboard` para `incidences`).
+  `.btn--secondary` "Exportar Excel" en la barra de filtros. Al click, construir
+  la querystring **explícitamente con `URLSearchParams`** desde el estado del hook
+  (NO depende de ninguna función "serializadora" — no existe tal export):
+  ```typescript
+  const qs = new URLSearchParams();
+  const f = filters; // IncidenceFilters del hook useDashboard
+  if (f.dateFrom) qs.set('dateFrom', f.dateFrom);
+  if (f.dateTo) qs.set('dateTo', f.dateTo);
+  if (f.promoter) qs.set('promoter', f.promoter);
+  if (f.store) qs.set('store', f.store);
+  if (f.minSeverity) qs.set('minSeverity', f.minSeverity);
+  if (f.status) qs.set('status', f.status);
+  if (f.sort) qs.set('sort', f.sort);
+  if (selectedClientId) qs.set('clientId', selectedClientId);
+  window.location.href = `/api/planogram/export?${qs.toString()}`;
+  ```
+  (Los mismos campos del contrato O3 que usa `incidences`; el endpoint export
+  los parsea idéntico.)
 - [ ] **Step 2: Navegador (obligatorio):** levantar `npm run dev`, aplicar un
   filtro, click "Exportar Excel", confirmar que descarga un `.xlsx` y que el
   archivo abre con 4 hojas. Screenshot. Si no testeable, declararlo (no afirmar
@@ -216,9 +241,56 @@ git diff --name-only main..HEAD | grep -E '\.env$|\.env\.local|secrets|credentia
 
 ## Notas para el worker (ejecutor de la spec)
 
-- Filtros y aislamiento = idénticos al endpoint `incidences` de WS2; reusá el
-  serializador de params, no inventes otro.
+- Filtros y aislamiento = idénticos al endpoint `incidences` de WS2; los params
+  se construyen con el `URLSearchParams` literal del Step 1 (no hay función
+  serializadora compartida — no la busques ni la inventes).
 - `sanitize()` en cada celda string — es defensa contra CSV/DDE injection, no
   opcional.
 - Verificación en navegador obligatoria para el botón; si no podés, declaralo.
 - Commit local por tarea. Self-review: `npm test` + `tsc` + `lint` verdes.
+
+---
+
+## Auditoría pre-implementación
+
+**Fecha:** 2026-05-18
+**Resultado global:** Aprobado con cambios — críticos resueltos.
+
+### Hallazgos críticos (resueltos)
+
+1. **`sanitize` no exportada + dos caminos (exportar vs replicar).** Resuelto:
+   Step 3a imperativo — agregar `export` a `sanitize` en `excel.ts` (único cambio
+   permitido); rama "replicar" eliminada.
+2. **"Serializador de `useDashboard`" no existe.** Resuelto: Step 1 ahora da el
+   bloque `URLSearchParams` literal con los campos exactos de O3.
+
+### Observaciones (decisión)
+
+- Cap export → fijado `5000` imperativo (no "p.ej.").
+- Test de sanitización → accede a la celda cruda del workbook
+  (`ws[k].v`) en vez de `sheet_to_json` (evita deserialización que oculta el
+  escape).
+- Dependencia de WS2 (`incidences/route.ts`, `useDashboard`) bien declarada como
+  prereq; el archivo no existe hasta WS2 — el ejecutor lee el prereq.
+
+### Tests requeridos
+
+| Tipo | Qué verificar | Prioridad |
+|------|--------------|-----------|
+| Unit | `buildIncidencesWorkbook`: 4 hojas, nombres exactos, pivots | Alta |
+| Unit | sanitización de celda con prefijo peligroso (celda cruda) | Alta |
+| Unit | `export` route: leak por rol, mismos filtros, headers xlsx, 413 | **Máxima** |
+| Visibilidad | navegador: descarga `.xlsx`, abre con 4 hojas | Alta |
+
+### Criterios de aceptación
+
+Los de la sección arriba. `git diff src/lib/exports/excel.ts` = solo el `export`
+agregado a `sanitize`. `grep scopedQuery` en el route export = presente.
+
+### Riesgos residuales
+
+- Cap 5000 sin fuente de requisito (es defensivo, no de negocio) — si Carlos
+  necesita exportar más, se ajusta tras WS4. Bajo riesgo (memoria ~2MB OK en
+  Vercel 1GB).
+- Verificación en navegador depende de WS2 desplegado con datos; si no, declarar
+  ausencia de verificación (no afirmar "funciona").
