@@ -12,22 +12,33 @@
 reventar"), para comercializar/testear con clientes de Ubiqo (B2B2B: Ubiqo reseller + FOTL).
 **Roadmap (fuente de verdad del orden):** `docs/roadmap-2026-05.md`
 **Secuencia estricta:** `WS0 ─► WS1 ─► WS-D ─► WS-MT ─► WS-H ─► WS2 ─► WS3 ─► WS4`
-**WS0:** ✅ completo. **Siguiente:** WS-D (cierre de specs + modelo de tenencia formal — diseño).
+**WS0:** ✅ completo. **WS-D:** ✅ completo (`docs/tenancy-model.md` + decisiones
+spec/02 cerradas). **Specs escritas** para WS1/WS-MT/WS-H/WS2/WS3 (sin auditar aún
+— Gonzalo defiere ejecución). **Siguiente:** `/audit` de cada spec delegable, luego
+ejecución secuencial empezando por WS1.
 
 ---
 
 ## Handoff — próxima sesión (leer esto primero)
 
-**Dónde estamos:** WS0 cerrado. Branch `session/2026-05-18-ws0-reorder`, commits
-`cbafbb4` (WS0) + `3b2023e` (pivote BullMQ) + el cierre de Sesión 13. PR de esta sesión:
-**#20** — https://github.com/Nexo-Hause/black-box-magic/pull/20 (pendiente de merge por Gonzalo).
+**Dónde estamos:** WS0 + WS-D cerrados. PR **#20 mergeado** (2026-05-19, review +
+Vercel OK). PR **#18 cerrado sin merge** (decisión WS0). Sesión actual: escribió
+las 6 specs del plan en branch `session/2026-05-18-ws0-reorder`.
 
-**Siguiente acción concreta:** arrancar **WS-D** (Opus, no delegable): cerrar en `spec/02`
-C11 (asignación planograma↔form), O1 (timezone), O3/O4 (contract `GET /api/planogram/
-incidences` + paginación), design system; y **formalizar el modelo de tenencia** (jerarquía
-Cuenta→Cliente, 3 roles, qué es schema-ready vs implementado). Salida: specs bite-sized
-`spec/02-ws2-dashboard.md` + `spec/02-ws3-export.md` auditadas. Alternativa si se prefiere
-desbloquear ejecución: detallar el refactor de extracción a `src/lib/pipeline/` (habilita WS1).
+**Specs escritas (commiteadas, sin auditar):**
+- `docs/tenancy-model.md` — modelo de tenencia formal (entrada de WS-MT).
+- `spec/02-reference-comparison.md` § WS-D — C11/O1/O3/O4/design-system cerrados.
+- `spec/03-ws1-pipeline-bullmq.md` — extracción `src/lib/pipeline/` + worker BullMQ.
+- `spec/04-ws-mt-multitenant.md` — tablas canónicas + auth 3 roles + scoping helper.
+- `spec/05-ws-h-hardening.md` — taxonomía error Gemini + token Ubiqo + reconcile.
+- `spec/02-ws2-dashboard.md` — dashboard tenant-scoped.
+- `spec/02-ws3-export.md` — export Excel tenant-scoped.
+
+**Siguiente acción concreta:** `/audit` de cada spec delegable antes de implementar
+(regla CLAUDE.md: post-plan → audit). Orden de ejecución por dependencias:
+WS1 → WS-MT → WS-H → WS2 → WS3. WS1 y WS2/WS3 son delegables a Alibaba; WS-MT/WS-H
+tienen partes de superficie de riesgo (auth, error policy) que requieren revisión
+Opus en `/accept`.
 
 **Contexto que NO está en el código (no perder):**
 - Objetivo = MVP comercializable, no solo ordenar. Modelo B2B2B (Ubiqo reseller + FOTL).
@@ -37,12 +48,12 @@ desbloquear ejecución: detallar el refactor de extracción a `src/lib/pipeline/
   multi-cuenta = schema-ready. Aislamiento por helper app-layer (service-role bypasea RLS).
 - 008 es schema provisional (sin datos prod) → ventana barata para WS-MT = ahora.
 
-**Acciones de Gonzalo pendientes (no bloquean WS-D):**
-- Cerrar PR #18 en GitHub (decisión: cerrar sin merge — revierte workflow CI).
-- Mergear el PR de esta sesión (Sesión 13) cuando el review esté limpio.
+**Acciones de Gonzalo pendientes:** ninguna bloqueante. PR #18 cerrado, #20
+mergeado en esta sesión. El branch de esta sesión (specs) está sin PR todavía.
 
-**Branches conservadas:** `main`, `demo/qsr-guillermo` (hold estratégico — revisar antes
-de borrar), `chore/sync-delegation-audit` (= PR #18 a cerrar).
+**Branches conservadas:** `main`, `demo/qsr-guillermo` (hold estratégico — revisar
+antes de borrar). `chore/sync-delegation-audit` (PR #18) ya cerrado en GitHub;
+borrado de la rama remota = pendiente de Gonzalo (no urgente).
 
 ---
 
@@ -61,12 +72,12 @@ de borrar), `chore/sync-delegation-audit` (= PR #18 a cerrar).
 | WS | Qué | Estado |
 |----|-----|--------|
 | WS0 | Reconciliación, limpieza, docs fiel | **Completo** |
-| WS1 | Worker BullMQ en VPS (reemplaza cron-job.org) | Pendiente |
-| WS-D | Cierre de specs + modelo de tenencia (Opus) | Pendiente |
-| WS-MT | Fundación multi-tenant (tablas canónicas, 3 roles, helper de scoping) | Pendiente |
-| WS-H | Endurecimiento prod (timeout, tope costo, observabilidad, token) | Pendiente |
-| WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | Pendiente |
-| WS3 | Export Excel Fase 3 (tenant-scoped) | Pendiente |
+| WS1 | Worker BullMQ en VPS (reemplaza cron-job.org) | Spec escrita (`spec/03`) — pendiente /audit + ejecución |
+| WS-D | Cierre de specs + modelo de tenencia (Opus) | **Completo** (`docs/tenancy-model.md` + `spec/02` § WS-D) |
+| WS-MT | Fundación multi-tenant (tablas canónicas, 3 roles, helper de scoping) | Spec escrita (`spec/04`) — pendiente /audit + ejecución |
+| WS-H | Endurecimiento prod (timeout, tope costo, observabilidad, token) | Spec escrita (`spec/05`) — pendiente /audit + ejecución |
+| WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | Spec escrita (`spec/02-ws2`) — pendiente /audit + ejecución |
+| WS3 | Export Excel Fase 3 (tenant-scoped) | Spec escrita (`spec/02-ws3`) — pendiente /audit + ejecución |
 | WS4 | Validación E2E con fotos reales FOTL | Pendiente (bloqueado por terceros) |
 | WS5 | Webhook Ubiqo | **Post-MVP** (MVP procesa por BullMQ/VPS) |
 | WS6 | Negocio: modo + propuesta comercial | Paralelo |
