@@ -1,6 +1,6 @@
 # Plan — MVP Comercializable Black Box Magic × Ubiqo Evidence
 
-> Roadmap de trabajo vivo. Finalizado 2026-05-18 (sesión de retoma + auditoría profunda +
+> Roadmap de trabajo vivo. **Versión 1.0 — 2026-05-18.** Finalizado (sesión de retoma + auditoría profunda +
 > dimensionamiento de tenencia). Fuente de verdad del orden de trabajo; STATUS.md referencia
 > el workstream activo.
 

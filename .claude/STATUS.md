@@ -20,7 +20,7 @@ reventar"), para comercializar/testear con clientes de Ubiqo (B2B2B: Ubiqo resel
 
 **Dónde estamos:** WS0 cerrado. Branch `session/2026-05-18-ws0-reorder`, commits
 `cbafbb4` (WS0) + `3b2023e` (pivote BullMQ) + el cierre de Sesión 13. PR de esta sesión:
-ver sección PR abajo.
+**#20** — https://github.com/Nexo-Hause/black-box-magic/pull/20 (pendiente de merge por Gonzalo).
 
 **Siguiente acción concreta:** arrancar **WS-D** (Opus, no delegable): cerrar en `spec/02`
 C11 (asignación planograma↔form), O1 (timezone), O3/O4 (contract `GET /api/planogram/
@@ -60,7 +60,7 @@ de borrar), `chore/sync-delegation-audit` (= PR #18 a cerrar).
 
 | WS | Qué | Estado |
 |----|-----|--------|
-| WS0 | Reconciliación, limpieza, docs fiel | **En curso** |
+| WS0 | Reconciliación, limpieza, docs fiel | **Completo** |
 | WS1 | Worker BullMQ en VPS (reemplaza cron-job.org) | Pendiente |
 | WS-D | Cierre de specs + modelo de tenencia (Opus) | Pendiente |
 | WS-MT | Fundación multi-tenant (tablas canónicas, 3 roles, helper de scoping) | Pendiente |
@@ -107,7 +107,7 @@ de borrar), `chore/sync-delegation-audit` (= PR #18 a cerrar).
 | Engine v3 (`src/lib/engine/`) | 60 | config, prompt-builder, analyzer, escalation |
 | Ubiqo lib (`src/lib/ubiqo/`) | 58 | client, types, ssrf, crypto |
 | Analyze lib (`src/lib/analyze.ts`) | 12 | función reutilizable 2-pasadas |
-| **Total** | **~165** | Runner: **Vitest ^4.1.2** (`npm test`). CLAUDE.md aún dice "no hay framework" → corregir en WS0.7 |
+| **Total** | ver `npm test` | Runner: **Vitest ^4.1.2**. Suites: engine, ubiqo, onboarding, analyze/auth (~15 archivos `*.test.ts`). Conteo exacto = correr `npm test` (no fijar número sin verificar) |
 
 ---
 
