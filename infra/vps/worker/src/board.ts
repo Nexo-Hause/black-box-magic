@@ -4,15 +4,17 @@ import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import { ubiqoProcessQueue, planogramProcessQueue, reconcileQueue } from './queues';
 import dotenv from 'dotenv';
+import { timingSafeEqual } from 'crypto';
 
 dotenv.config();
 
 const app = express();
 const port = process.env.WORKER_PORT || 3005;
 
-// Requerir variables de entorno de administración explícitas, sin fallbacks inseguros
-const adminUser = process.env.WORKER_ADMIN_USER;
-const adminPass = process.env.WORKER_ADMIN_PASS;
+// Requerir variables de entorno de administración explícitas, sin fallbacks inseguros.
+// Se provee un fallback seguro solo durante la ejecución de pruebas unitarias para no abortar el proceso.
+const adminUser = process.env.WORKER_ADMIN_USER || (process.env.NODE_ENV === 'test' ? 'test-admin' : '');
+const adminPass = process.env.WORKER_ADMIN_PASS || (process.env.NODE_ENV === 'test' ? 'test-pass' : '');
 
 if (!adminUser || !adminPass) {
   console.error('[Board] Error: WORKER_ADMIN_USER y WORKER_ADMIN_PASS son variables requeridas.');
@@ -32,12 +34,27 @@ createBullBoard({
 });
 
 // Almacén en memoria simple para limitar intentos de autenticación (Rate Limiting contra Fuerza Bruta)
-const authAttempts = new Map<string, { count: number; lastAttempt: number }>();
+export const authAttempts = new Map<string, { count: number; lastAttempt: number }>();
+
+// Normalizar IP con validación de proxy confiable para evitar IP Spoofing
+export function getClientIp(req: express.Request): string {
+  const trustProxy = process.env.WORKER_TRUST_PROXY === 'true';
+  
+  if (trustProxy) {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+      const firstIp = ips.split(',')[0].trim();
+      if (firstIp) return firstIp;
+    }
+  }
+  
+  return req.ip || req.socket.remoteAddress || 'unknown';
+}
 
 // Middleware de autenticación básica (Basic Auth) con Rate Limiting y seguridad mejorada
-app.use('/admin/queues', (req, res, next) => {
-  const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-  const ipStr = Array.isArray(ip) ? ip[0] : String(ip);
+export const authMiddleware: express.RequestHandler = (req, res, next) => {
+  const ipStr = getClientIp(req);
   const now = Date.now();
   
   const attempts = authAttempts.get(ipStr);
@@ -45,33 +62,56 @@ app.use('/admin/queues', (req, res, next) => {
   // Limitar a máximo 5 intentos fallidos cada 15 minutos
   if (attempts && attempts.count >= 5 && (now - attempts.lastAttempt) < 15 * 60 * 1000) {
     const remainingTime = Math.ceil((15 * 60 * 1000 - (now - attempts.lastAttempt)) / 1000 / 60);
-    return res.status(429).send(`Too many login attempts. Try again in ${remainingTime} minutes.`);
+    res.status(429).send(`Too many login attempts. Try again in ${remainingTime} minutes.`);
+    return;
   }
 
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     res.setHeader('WWW-Authenticate', 'Basic realm="BBM Worker Dashboard"');
-    return res.status(401).send('Authentication required');
+    res.status(401).send('Authentication required');
+    return;
   }
 
   const parts = authHeader.split(' ');
   if (parts.length !== 2 || parts[0].toLowerCase() !== 'basic') {
     res.setHeader('WWW-Authenticate', 'Basic realm="BBM Worker Dashboard"');
-    return res.status(401).send('Invalid auth header format');
+    res.status(401).send('Invalid auth header format');
+    return;
   }
 
   const credentials = Buffer.from(parts[1], 'base64').toString().split(':');
   if (credentials.length !== 2) {
     res.setHeader('WWW-Authenticate', 'Basic realm="BBM Worker Dashboard"');
-    return res.status(401).send('Invalid credentials format');
+    res.status(401).send('Invalid credentials format');
+    return;
   }
 
   const user = credentials[0];
   const pass = credentials[1];
 
-  if (user === adminUser && pass === adminPass) {
+  // Mitigar ataques de timing mediante comparación timing-safe con buffers de igual longitud
+  const userBuf = Buffer.from(user);
+  const passBuf = Buffer.from(pass);
+  const adminUserBuf = Buffer.from(adminUser);
+  const adminPassBuf = Buffer.from(adminPass);
+
+  const userLenMatch = userBuf.length === adminUserBuf.length;
+  const passLenMatch = passBuf.length === adminPassBuf.length;
+
+  const userMatch = timingSafeEqual(
+    userLenMatch ? userBuf : adminUserBuf,
+    adminUserBuf
+  );
+  const passMatch = timingSafeEqual(
+    passLenMatch ? passBuf : adminPassBuf,
+    adminPassBuf
+  );
+
+  if (userLenMatch && passLenMatch && userMatch && passMatch) {
     authAttempts.delete(ipStr); // Reset en inicio de sesión exitoso
-    return next();
+    next();
+    return;
   }
 
   // Incrementar intentos fallidos
@@ -81,12 +121,19 @@ app.use('/admin/queues', (req, res, next) => {
   });
 
   res.setHeader('WWW-Authenticate', 'Basic realm="BBM Worker Dashboard"');
-  return res.status(401).send('Invalid credentials');
-});
+  res.status(401).send('Invalid credentials');
+  return;
+};
+
+app.use('/admin/queues', authMiddleware);
 
 app.use('/admin/queues', serverAdapter.getRouter());
 
-app.listen(port, () => {
-  console.log(`📊 Bull Board ejecutándose en http://localhost:${port}/admin/queues`);
-});
+// Iniciar servidor solo si no estamos en entorno de pruebas unitarias
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log(`📊 Bull Board ejecutándose en http://localhost:${port}/admin/queues`);
+  });
+}
+
 export default app;
