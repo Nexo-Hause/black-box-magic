@@ -244,7 +244,7 @@ describe('ingestPlanogramCaptures', () => {
 
     expect(r.success).toBe(true);
     expect(upsertMock).toHaveBeenCalledOnce();
-    const upsertArg = upsertMock.mock.calls[0][0];
+    const upsertArg = (upsertMock.mock.calls as any)[0][0];
     expect(upsertArg.account_id).toBe('acc-1');
     expect(upsertArg.client_id).toBe('cli-1');
   });

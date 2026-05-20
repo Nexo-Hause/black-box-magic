@@ -155,7 +155,7 @@ describe('ingestUbiqoCaptures', () => {
 
     // Verify tenant fields were included in the upsert
     expect(upsertMock).toHaveBeenCalledOnce();
-    const upsertArg = upsertMock.mock.calls[0][0];
+    const upsertArg = (upsertMock.mock.calls as any)[0][0];
     expect(upsertArg.account_id).toBe('acc-1');
     expect(upsertArg.client_id).toBe('cli-1');
   });
@@ -202,7 +202,7 @@ describe('ingestUbiqoCaptures', () => {
     await ingestUbiqoCaptures({ form_id: 123, from: '2026-05-19', to: '2026-05-20', tz: 'UTC' }, deps);
 
     expect(upsertMock).toHaveBeenCalledOnce();
-    const upsertArg = upsertMock.mock.calls[0][0];
+    const upsertArg = (upsertMock.mock.calls as any)[0][0];
     expect(upsertArg.status).toBe('unmapped');
     expect(upsertArg.account_id).toBeUndefined();
   });
