@@ -111,7 +111,12 @@ const concurrencyPlanogram = process.env.WORKER_CONCURRENCY ? Number(process.env
 const ubiqoWorker = new Worker(
   'ubiqo-process',
   async (job: Job) => {
-    console.log(`[Ubiqo Worker] Procesando job ${job.id} para captura ${job.data.captureId}`);
+    const captureId = job.data?.captureId;
+    if (!captureId || typeof captureId !== 'string' || !/^[0-9a-f-]{36}$/i.test(captureId)) {
+      throw new UnrecoverableError(`Invalid captureId in job data: ${captureId}`);
+    }
+
+    console.log(`[Ubiqo Worker] Procesando job ${job.id} para captura ${captureId}`);
     
     // Verificación de límite de presupuesto
     const budget = await checkGeminiDailyBudgetLimit();
@@ -127,16 +132,21 @@ const ubiqoWorker = new Worker(
     const { data: capture, error } = await supabase
       .from('bbm_ubiqo_captures')
       .select('*')
-      .eq('id', job.data.captureId)
+      .eq('id', captureId)
       .single();
 
     if (error || !capture) {
-      throw new Error(`Captura ${job.data.captureId} no encontrada en base de datos: ${error?.message}`);
+      throw new Error(`Captura ${captureId} no encontrada en base de datos: ${error?.message}`);
     }
 
     if (capture.status !== 'pending' && capture.status !== 'processing') {
-      console.log(`[Ubiqo Worker] Captura ${job.data.captureId} ya está en estado '${capture.status}', omitiendo.`);
-      return { status: 'skipped', captureId: capture.id };
+      console.log(`[Ubiqo Worker] Captura ${captureId} ya está en estado '${capture.status}', omitiendo.`);
+      return { 
+        status: 'skipped', 
+        captureId: capture.id,
+        reason: `already_${capture.status}`,
+        timestamp: new Date().toISOString()
+      };
     }
 
     // Marcar en proceso
@@ -208,7 +218,12 @@ const ubiqoWorker = new Worker(
 const planogramWorker = new Worker(
   'planogram-process',
   async (job: Job) => {
-    console.log(`[Planogram Worker] Procesando job ${job.id} para incidencia ${job.data.incidenceId}`);
+    const incidenceId = job.data?.incidenceId;
+    if (!incidenceId || typeof incidenceId !== 'string' || !/^[0-9a-f-]{36}$/i.test(incidenceId)) {
+      throw new UnrecoverableError(`Invalid incidenceId in job data: ${incidenceId}`);
+    }
+
+    console.log(`[Planogram Worker] Procesando job ${job.id} para incidencia ${incidenceId}`);
 
     // Verificación de límite de presupuesto
     const budget = await checkGeminiDailyBudgetLimit();
@@ -224,16 +239,21 @@ const planogramWorker = new Worker(
     const { data: incidence, error } = await supabase
       .from('bbm_incidences')
       .select('*')
-      .eq('id', job.data.incidenceId)
+      .eq('id', incidenceId)
       .single();
 
     if (error || !incidence) {
-      throw new Error(`Incidencia ${job.data.incidenceId} no encontrada en base de datos: ${error?.message}`);
+      throw new Error(`Incidencia ${incidenceId} no encontrada en base de datos: ${error?.message}`);
     }
 
     if (incidence.status !== 'pending' && incidence.status !== 'processing') {
-      console.log(`[Planogram Worker] Incidencia ${job.data.incidenceId} ya está en estado '${incidence.status}', omitiendo.`);
-      return { status: 'skipped', captureId: incidence.id };
+      console.log(`[Planogram Worker] Incidencia ${incidenceId} ya está en estado '${incidence.status}', omitiendo.`);
+      return { 
+        status: 'skipped', 
+        incidenceId: incidence.id,
+        reason: `already_${incidence.status}`,
+        timestamp: new Date().toISOString()
+      };
     }
 
     // Marcar en proceso

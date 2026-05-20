@@ -43,9 +43,12 @@ export function getClientIp(req: express.Request): string {
   if (trustProxy) {
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
+      // Tomar la IP más confiable (última del proxy chain, no la primera)
       const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-      const firstIp = ips.split(',')[0].trim();
-      if (firstIp) return firstIp;
+      const ipList = ips.split(',').map(ip => ip.trim()).filter(ip => ip);
+      // Última IP = más cercana al servidor (confiable), primera = cliente original (spoofable)
+      const lastIp = ipList[ipList.length - 1];
+      if (lastIp) return lastIp;
     }
   }
   
@@ -96,17 +99,23 @@ export const authMiddleware: express.RequestHandler = (req, res, next) => {
   const adminUserBuf = Buffer.from(adminUser);
   const adminPassBuf = Buffer.from(adminPass);
 
-  // Comparar siempre ambos pares, sin condicionales de longitud que filtren timing
-  const userMatch = timingSafeEqual(
-    userBuf.length === adminUserBuf.length ? userBuf : Buffer.alloc(adminUserBuf.length),
-    adminUserBuf
-  );
-  const passMatch = timingSafeEqual(
-    passBuf.length === adminPassBuf.length ? passBuf : Buffer.alloc(adminPassBuf.length),
-    adminPassBuf
-  );
+  // Si las longitudes difieren, la comparación falla de inmediato sin exponer timing ni lanzar excepciones en timingSafeEqual
+  if (userBuf.length !== adminUserBuf.length || passBuf.length !== adminPassBuf.length) {
+    // Incrementar intentos fallidos
+    authAttempts.set(ipStr, {
+      count: (attempts?.count || 0) + 1,
+      lastAttempt: now
+    });
+    res.setHeader('WWW-Authenticate', 'Basic realm="BBM Worker Dashboard"');
+    res.status(401).send('Invalid credentials');
+    return;
+  }
 
-  if (userBuf.length === adminUserBuf.length && passBuf.length === adminPassBuf.length && userMatch && passMatch) {
+  // Ahora timingSafeEqual es completamente seguro porque las longitudes de los buffers coinciden
+  const userMatch = timingSafeEqual(userBuf, adminUserBuf);
+  const passMatch = timingSafeEqual(passBuf, adminPassBuf);
+
+  if (userMatch && passMatch) {
     authAttempts.delete(ipStr); // Reset en inicio de sesión exitoso
     next();
     return;

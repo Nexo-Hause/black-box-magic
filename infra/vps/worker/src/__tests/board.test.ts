@@ -65,7 +65,7 @@ describe('Seguridad y Rate Limiting del Panel de Control (board.ts)', () => {
       expect(ip).toBe('192.168.1.100');
     });
 
-    it('debe retornar la IP más a la izquierda (cliente original) si WORKER_TRUST_PROXY es true', () => {
+    it('debe retornar la IP más a la derecha (último proxy/cliente confiable) si WORKER_TRUST_PROXY es true', () => {
       process.env.WORKER_TRUST_PROXY = 'true';
       
       const req = {
@@ -77,10 +77,10 @@ describe('Seguridad y Rate Limiting del Panel de Control (board.ts)', () => {
       } as unknown as express.Request;
 
       const ip = getClientIp(req);
-      expect(ip).toBe('203.0.113.195');
+      expect(ip).toBe('70.41.3.18');
     });
 
-    it('debe retornar la IP del arreglo en X-Forwarded-For si viene como array', () => {
+    it('debe retornar la última IP del arreglo en X-Forwarded-For si viene como array', () => {
       process.env.WORKER_TRUST_PROXY = 'true';
       
       const req = {
@@ -92,7 +92,7 @@ describe('Seguridad y Rate Limiting del Panel de Control (board.ts)', () => {
       } as unknown as express.Request;
 
       const ip = getClientIp(req);
-      expect(ip).toBe('203.0.113.195');
+      expect(ip).toBe('70.41.3.18');
     });
   });
 
