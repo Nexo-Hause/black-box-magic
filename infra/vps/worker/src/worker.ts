@@ -14,6 +14,7 @@ import { processIncidence, ingestPlanogramCaptures } from '@/lib/pipeline/planog
 import { classifyError } from '@/lib/pipeline/errors';
 import { reconcileProcessingJobs } from './reconcile';
 import dotenv from 'dotenv';
+import './board';
 
 
 dotenv.config();
@@ -62,15 +63,44 @@ export async function checkGeminiDailyBudgetLimit(): Promise<{ exceeded: boolean
     console.error('[Budget] Error consultando tokens de Incidencias:', incidenceErr.message);
   }
 
-  const ubiqoTokens = (ubiqoData || []).reduce((sum: number, row: any) => sum + (row.tokens_total || 0), 0);
-  const incidenceTokens = (incidenceData || []).reduce((sum: number, row: any) => sum + (row.tokens_total || 0), 0);
+  const ubiqoTokens = (ubiqoData || []).reduce((sum: number, row: { tokens_total: number | null }) => sum + (row.tokens_total || 0), 0);
+  const incidenceTokens = (incidenceData || []).reduce((sum: number, row: { tokens_total: number | null }) => sum + (row.tokens_total || 0), 0);
 
   const totalTokens = ubiqoTokens + incidenceTokens;
   const estimatedCost = totalTokens * GEMINI_COST_PER_TOKEN;
 
-  const exceeded = estimatedCost >= limit;
+  // 3. Contar trabajos en proceso ('processing') para proyectar costos de forma conservadora
+  // Mitigación de race condition sugerida en el review de IA
+  const { count: ubiqoProcessingCount, error: ubiqoProcErr } = await supabase
+    .from('bbm_ubiqo_captures')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'processing');
+
+  if (ubiqoProcErr) {
+    console.error('[Budget] Error consultando capturas en proceso:', ubiqoProcErr.message);
+  }
+
+  const { count: incidenceProcessingCount, error: incidenceProcErr } = await supabase
+    .from('bbm_incidences')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'processing');
+
+  if (incidenceProcErr) {
+    console.error('[Budget] Error consultando incidencias en proceso:', incidenceProcErr.message);
+  }
+
+  const ubiqoInFlight = ubiqoProcessingCount || 0;
+  const incidenceInFlight = incidenceProcessingCount || 0;
+  const totalInFlight = ubiqoInFlight + incidenceInFlight;
+
+  const AVG_TOKENS_PER_JOB = 60000;
+  const projectedInFlightTokens = totalInFlight * AVG_TOKENS_PER_JOB;
+  const projectedCost = estimatedCost + (projectedInFlightTokens * GEMINI_COST_PER_TOKEN);
+
+  const exceeded = projectedCost >= limit;
   return { exceeded, cost: estimatedCost, limit };
 }
+
 
 // ─── Configuración de Concurrencia y Rate Limits para Workers ───
 const maxPerMin = Number(process.env.GEMINI_MAX_PER_MIN ?? 30);
@@ -471,28 +501,28 @@ async function setupReconcileRepeatableJob() {
 }
 
 // ─── Inicialización y Bucle Principal ───
-console.log('🚀 Iniciando Worker de Black Box Magic...');
+if (process.env.NODE_ENV !== 'test') {
+  console.log('🚀 Iniciando Worker de Black Box Magic...');
 
-// Manejo graceful de apagado
-const gracefulShutdown = async () => {
-  console.log('Shutting down gracefully...');
-  await ubiqoWorker.close();
-  await planogramWorker.close();
-  await reconcileWorker.close();
-  await connection.quit();
-  process.exit(0);
-};
+  // Manejo graceful de apagado
+  const gracefulShutdown = async () => {
+    console.log('Shutting down gracefully...');
+    await ubiqoWorker.close();
+    await planogramWorker.close();
+    await reconcileWorker.close();
+    await connection.quit();
+    process.exit(0);
+  };
 
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
+  process.on('SIGTERM', gracefulShutdown);
+  process.on('SIGINT', gracefulShutdown);
 
-// Levantar el panel de administración Bull Board
-import './board';
+  // Ejecutar ingesta de inmediato y programar cada 5 minutos
+  runPeriodicIngest();
+  const INGEST_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
+  setInterval(runPeriodicIngest, INGEST_INTERVAL_MS);
 
-// Ejecutar ingesta de inmediato y programar cada 5 minutos
-runPeriodicIngest();
-const INGEST_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
-setInterval(runPeriodicIngest, INGEST_INTERVAL_MS);
+  // Configurar repeatable job de reconciliación
+  setupReconcileRepeatableJob();
+}
 
-// Configurar repeatable job de reconciliación
-setupReconcileRepeatableJob();
