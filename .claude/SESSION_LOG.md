@@ -15,6 +15,9 @@
 | 11 | 2026-04-01 | feat/admin-page | Página /admin para generar links de onboarding, cookie separada, 3 rondas review | #13 |
 | 12 | 2026-04-01 | session/ubiqo-api-validation | Spec 00 + 02 Fase 1: pipeline Ubiqo + planogram, migration 008, 58 tests, 4 rondas review | #14 |
 | 13 | 2026-05-18 | session/2026-05-18-ws0-reorder | Retoma: auditoría profunda, reencuadre a MVP comercializable multi-tenant B2B2B, roadmap-2026-05, WS0 completo (15 branches purgadas, main reconciliada, STATUS/CLAUDE fieles), pivote BullMQ/VPS | #20 |
+| 14 | 2026-05-18 | session/2026-05-18-ws0-reorder | Reencuadre y especificación de specs (auditorías completas de 6 specs aprobadas) | — |
+| 15 | 2026-05-19 | session/roadmap-tp-execution | Ejecución de WS1 (Worker BullMQ en VPS + módulo de pipeline puramente desacoplado), 173 tests verdes, AI reviews resueltos y timezone formalizado | — |
+
 
 ### Sesión 3 (2026-03-28)
 Diseño completo del motor multi-industria (engine v3) con onboarding conversacional.
@@ -94,3 +97,6 @@ spec, incl. fix de aislamiento raíz (`client_id` FK en `bbm_planograms`,
 `client_key`→legacy, FOTL=1 cliente). Cada spec con sección Auditoría
 pre-implementación. Commits `24ab771` (specs) + `fe15c19` (auditoría). PR de la
 sesión + ronda de review pendiente para próxima sesión.
+
+### Sesión 15 (2026-05-19)
+Resolución definitiva del conflicto en el PR #21 (Opción A). Ejecución completa del workstream WS1: extracción e implementación pura del pipeline desacoplado en `src/lib/pipeline/*`, construcción robusta del esqueleto y código ejecutable del worker BullMQ en `infra/vps/worker` con scheduler de autodescubrimiento, control diario de presupuesto de Gemini y observabilidad vía Express Bull Board protegida con Basic Auth. Suite de tests estabilizada en verde (173/173 tests). Procesamiento y corrección exhaustiva del reporte de AI Code Review de Kimi (budget, paths PM2, tokens schema, timezone canónico formalizado). Rama `session/roadmap-tp-execution` empujada limpia y lista para merge.
