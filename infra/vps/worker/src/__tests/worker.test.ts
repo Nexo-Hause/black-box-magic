@@ -55,7 +55,7 @@ describe('Control de Presupuesto Diario de Gemini (checkGeminiDailyBudgetLimit)'
     const ubiqoData = [{ tokens_total: 5000000 }, { tokens_total: 3000000 }];
     const incidenceData = [{ tokens_total: 2000000 }];
 
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    vi.mocked(supabase!.from).mockImplementation((table: string) => {
       let isCountQuery = false;
       const chain: any = {
         select: vi.fn((columns, options) => {
@@ -111,7 +111,7 @@ describe('Control de Presupuesto Diario de Gemini (checkGeminiDailyBudgetLimit)'
     const incidenceData = [{ tokens_total: 2000000 }]; // 2M * 0.000007 = $14
     // actual cost = $42
 
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    vi.mocked(supabase!.from).mockImplementation((table: string) => {
       let isCountQuery = false;
       const chain: any = {
         select: vi.fn((columns, options) => {
