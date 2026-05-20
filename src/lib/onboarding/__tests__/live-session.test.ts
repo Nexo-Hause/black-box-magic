@@ -33,8 +33,8 @@ describe('generateEphemeralToken', () => {
   it('returns token, expiresAt, and wsUrl on success', async () => {
     mockFetch(200, {
       name: FAKE_TOKEN,
-      expireTime: FAKE_EXPIRE_TIME,
-      newSessionExpireTime: '2099-01-01T00:01:00.000Z',
+      expire_time: FAKE_EXPIRE_TIME,
+      new_session_expire_time: '2099-01-01T00:01:00.000Z',
     });
 
     const result = await generateEphemeralToken(FAKE_API_KEY);
@@ -49,7 +49,7 @@ describe('generateEphemeralToken', () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ name: FAKE_TOKEN, expireTime: FAKE_EXPIRE_TIME }),
+      json: async () => ({ name: FAKE_TOKEN, expire_time: FAKE_EXPIRE_TIME }),
       text: async () => '{}',
     });
     vi.stubGlobal('fetch', fetchSpy);
@@ -62,8 +62,8 @@ describe('generateEphemeralToken', () => {
     expect(options.method).toBe('POST');
 
     const body = JSON.parse(options.body as string);
-    expect(body.authToken.uses).toBe(1);
-    expect(body.authToken.liveConnectConstraints.model).toBe(LIVE_MODEL);
+    expect(body.uses).toBe(1);
+    expect(body.expire_time).toBeTypeOf('string');
   });
 
   it('falls back to API key when endpoint returns 404', async () => {
