@@ -1,7 +1,7 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-05-19 (Sesión 15 — Cierre de PR #21 y ejecución completa de WS1, 100% de tests en verde, AI review resuelto y verificado). Roadmap TP: `docs/roadmap-2026-05.md`.
+> Última actualización: 2026-05-20 (Sesión 16 — Ejecución completa de WS-MT y WS-H, jerarquía de tenencia canónica, scoping en endpoints con `scopedQuery`, RLS/Roles, hardening de Basic Auth contra DoS y timing leaks, y prevención de race conditions de presupuesto en workers, 223/223 tests verdes). Roadmap TP: `docs/roadmap-2026-05.md`.
 
 ---
 
@@ -12,21 +12,23 @@
 **Secuencia estricta:** `WS0 ─► WS1 ─► WS-D ─► WS-MT ─► WS-H ─► WS2 ─► WS3 ─► WS4`
 **WS0:** ✅ completo. 
 **WS-D:** ✅ completo (`docs/tenancy-model.md` + decisiones spec/02 cerradas).
-**WS1 (Worker BullMQ):** ✅ completo (módulo de pipeline puros `src/lib/pipeline/*`, repeatable jobs del scheduler, control de presupuesto de Gemini, panel de monitoreo Express Bull Board, PM2 y suite de tests 173/173 en verde).
-**Siguiente:** WS-MT (fundación multi-tenant) y WS-H (hardening).
+**WS1 (Worker BullMQ):** ✅ completo (módulo de pipeline puros `src/lib/pipeline/*`, repeatable jobs del scheduler, control de presupuesto de Gemini, panel de monitoreo Express Bull Board, PM2 y suite de tests en verde).
+**WS-MT (Fundación Multi-tenant):** ✅ completo (tablas canónicas, scoping dinámico en endpoints, roles y RLS).
+**WS-H (Hardening):** ✅ completo (taxonomía de error Gemini, políticas de retry robustas, reconciliador de colas y seguridad criptográfica robusta contra ataques DoS/timing).
+**Siguiente:** WS2 (Dashboard FOTL tenant-scoped) y WS3 (Export Excel).
 
 ---
 
 ## Handoff — próxima sesión (leer esto primero)
 
-**Dónde estamos:** WS0, WS-D, WS1, WS-MT y WS-H cerrados. Branch de sesión: `session/ws-mt-multitenant` con los cambios listos y validados. PR del review automático corregido tras cuatro rondas completas (Gemini budget robustness, in-flight cost projection, timing safety en Basic Auth, normalización de IP, y reconciliación).
+**Dónde estamos:** WS0, WS1, WS-D, WS-MT y WS-H cerrados. Branch de sesión: `session/ws-mt-multitenant` con todos los cambios validados y empujados. PR #23 con revisiones automáticas (Kimi AI) completamente resueltas (prevención de race condition atómica en límites de costo diario, robustecimiento de Basic Auth contra ataques de timing leaks y DoS por tamaño de credenciales, rate limit seguro por proxy en `getClientIp`, y tests integrados).
 
 **Specs y Estado de Código:**
 - `docs/tenancy-model.md` — modelo de tenencia formal (timezone §O1 agregado).
 - `spec/02-reference-comparison.md` § WS-D — C11/O1/O3/O4/design-system cerrados.
 - `spec/03-ws1-pipeline-bullmq.md` — WS1 completamente ejecutado en el código.
-- `spec/04-ws-mt-multitenant.md` — WS-MT completamente ejecutado en el código (tablas canónicas, RLS, 3 roles y helper de scoping).
-- `spec/05-ws-h-hardening.md` — WS-H completamente ejecutado en el código (taxonomía de error Gemini, retry policies, reconciliación y timing safety).
+- `spec/04-ws-mt-multitenant.md` — WS-MT completamente ejecutado en el código (tablas canónicas, RLS, 3 roles y helper de scoping `scopedQuery`).
+- `spec/05-ws-h-hardening.md` — WS-H completamente ejecutado en el código (taxonomía de error Gemini, retry policies, reconciliación 010 y timing safety).
 - `spec/02-ws2-dashboard.md` — dashboard tenant-scoped.
 - `spec/02-ws3-export.md` — export Excel tenant-scoped.
 
@@ -34,10 +36,10 @@
 
 **Contexto que NO está en el código (no perder):**
 - Objetivo = MVP comercializable, no solo ordenar. Modelo B2B2B (Ubiqo reseller + FOTL).
-- Procesamiento por **BullMQ en VPS** (módulo de pipeline puramente desacoplado, listo para deploy por el operador; Express Bull Board con Basic Auth listo).
+- Procesamiento por **BullMQ en VPS** (módulo de pipeline puramente desacoplado, listo para deploy por el operador; Express Bull Board con Basic Auth robustecido a 1024 bytes).
 - Tenencia: **tablas canónicas** `bbm_accounts/clients/users`; reseller-admin en el MVP; multi-cuenta = schema-ready. Aislamiento por helper app-layer.
 
-**Acciones de Gonzalo pendientes:** PR #18 cerrado en GitHub, PR #23 (esta rama `session/ws-mt-multitenant`) mergeado después de la revisión limpia de Kimi.
+**Acciones de Gonzalo pendientes:** PR #23 (esta rama `session/ws-mt-multitenant`) mergeado después de la revisión limpia de Kimi (actualmente en curso la Ronda 7).
 
 **Branches conservadas:** `main`, `demo/qsr-guillermo` (hold estratégico), `session/ws-mt-multitenant` (rama activa de entrega de WS-MT y WS-H).
 
@@ -161,7 +163,7 @@ provisional (DROP+recrear OK, sin datos prod) → ventana barata para WS-MT (ten
 
 ## Próximos Pasos
 
-1. **Fusión del PR de la sesión a `main`:** La rama de sesión `session/roadmap-tp-execution` ya ha sido revisada automáticamente con AI review de Kimi, todos los findings corregidos, y empujada limpia al origen remoto. El PR está libre de conflictos y listo para merge.
-2. **Ejecutar WS-MT (Fundación Multi-tenant):** Iniciar la ejecución de la especificación `spec/04-ws-mt-multitenant.md` para crear la jerarquía de tablas canónicas (`bbm_accounts/clients/users`), inyectar scoping app-layer, y portar los endpoints a multi-tenencia estricta.
-3. **Ejecutar WS-H (Hardening):** Iniciar robustez ante errores asíncronos y consumos, asegurando estabilidad ante fallos de Gemini y SSRF.
-4. **Despliegue Físico del Worker en VPS:** Cuando el operador tenga acceso a su terminal del VPS, levantar la base de Redis, crear el `.env` correspondiente siguiendo el Runbook del `README.md`, compilar con `npm run build` e iniciar el worker en PM2.
+1. **Fusión del PR #23 a `main`:** Esperar que la Ronda 7 del review termine de validarse limpia, obtener la aprobación del usuario y fusionar la rama `session/ws-mt-multitenant` a `main`. Esto actualizará el estado del proyecto en la rama principal.
+2. **Ejecutar WS2 (Dashboard FOTL tenant-scoped):** Iniciar la implementación de la especificación `spec/02-ws2-dashboard.md` para construir las vistas de dashboard filtradas por tenencia (`scopedQuery` y `resolveSession`) que consuman y expongan el estado de incidencias y planogramas.
+3. **Ejecutar WS3 (Export Excel tenant-scoped):** Iniciar la implementación de la especificación `spec/02-ws3-export.md` para proveer la descarga de reportes Excel delimitados estrictamente por tenencia del usuario autenticado.
+4. **Validación E2E en VPS:** Continuar coordinando el despliegue del worker en VPS y la recolección de fotos reales de FOTL para la validación del sistema completo.
