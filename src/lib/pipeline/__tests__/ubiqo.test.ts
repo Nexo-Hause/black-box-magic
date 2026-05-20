@@ -7,8 +7,8 @@ function makeDeps(over: Partial<PipelineDeps> = {}): PipelineDeps {
     downloadPhoto: vi.fn(async () => ({ buffer: Buffer.from('img'), contentType: 'image/jpeg' })),
     analyzePhoto: vi.fn(async () => ({
       analysis: { ok: true } as any,
-      meta: { model: 'm', tokens: { total: 1 }, processing_time_ms: 1, escalated: false },
-    })),
+      meta: { model: 'm', tokens: { input: 1, output: 1, total: 2 }, processing_time_ms: 1, escalated: false },
+    })) as any,
     decryptFirma: vi.fn(() => 'firma'),
     supabase: {
       from: vi.fn(() => ({
@@ -95,8 +95,8 @@ describe('ingestUbiqoCaptures', () => {
     } as any;
 
     const deps: UbiqoIngestDeps = {
-      fetchCaptures,
-      extractPhotos,
+      fetchCaptures: fetchCaptures as any,
+      extractPhotos: extractPhotos as any,
       encryptFirma,
       supabase
     };

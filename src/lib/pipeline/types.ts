@@ -29,7 +29,7 @@ export interface IngestParams {
   form_id: string | number;
   from: string;
   to: string;
-  tz: string;
+  tz?: string;
 }
 
 export interface UbiqoIngestDeps {

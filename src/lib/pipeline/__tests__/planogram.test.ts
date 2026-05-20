@@ -104,7 +104,7 @@ describe('ingestPlanogramCaptures', () => {
       })
     } as any;
 
-    const deps: PlanogramIngestDeps = { fetchCaptures, extractPhotos, buildPhotoUrl, supabase };
+    const deps: any = { fetchCaptures, extractPhotos, buildPhotoUrl, supabase };
     const r = await ingestPlanogramCaptures({ form_id: 123, from: '2026-05-19', to: '2026-05-20', tz: 'UTC' }, deps);
 
     expect(r.success).toBe(true);
@@ -145,7 +145,7 @@ describe('ingestPlanogramCaptures', () => {
       })
     } as any;
 
-    const deps: PlanogramIngestDeps = { fetchCaptures, extractPhotos, buildPhotoUrl, supabase };
+    const deps: any = { fetchCaptures, extractPhotos, buildPhotoUrl, supabase };
     const r = await ingestPlanogramCaptures({ form_id: 123, from: '2026-05-19', to: '2026-05-20', tz: 'UTC' }, deps);
 
     expect(r.success).toBe(true);
@@ -192,7 +192,7 @@ describe('ingestPlanogramCaptures', () => {
       })
     } as any;
 
-    const deps: PlanogramIngestDeps = { fetchCaptures, extractPhotos, buildPhotoUrl, supabase };
+    const deps: any = { fetchCaptures, extractPhotos, buildPhotoUrl, supabase };
     const r = await ingestPlanogramCaptures({ form_id: 123, from: '2026-05-19', to: '2026-05-20', tz: 'UTC' }, deps);
 
     expect(r.success).toBe(true);

@@ -158,7 +158,8 @@ export async function ingestPlanogramCaptures(
   const { fetchCaptures, extractPhotos, buildPhotoUrl, supabase } = deps;
 
   // 4. Fetch captures from Ubiqo
-  const captures = await fetchCaptures(form_id, from, to, tz);
+  const numericFormId = typeof form_id === 'number' ? form_id : parseInt(form_id, 10);
+  const captures = await fetchCaptures(numericFormId, from, to, tz);
 
   // 5. Lookup planogram assignment for this form_id
   const { data: assignment, error: assignErr } = await supabase

@@ -96,7 +96,8 @@ export async function ingestUbiqoCaptures(
   const { fetchCaptures, extractPhotos, encryptFirma, supabase } = deps;
 
   // Fetch captures from Ubiqo API
-  const captures = await fetchCaptures(form_id, from, to, tz);
+  const numericFormId = typeof form_id === 'number' ? form_id : parseInt(form_id, 10);
+  const captures = await fetchCaptures(numericFormId, from, to, tz);
 
   // Filter only completed captures and extract photos
   const completedCaptures = captures.filter(c => c.estatus === 'Completa');
