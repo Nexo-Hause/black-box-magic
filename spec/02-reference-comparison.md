@@ -499,3 +499,138 @@ Tabla de mapeo: `bbm_planogram_assignments(planogram_id, form_id)`.
 
 3. **Precisión del prompt de incidencias** — Primera versión necesitará iteración con fotos
    reales. Fase 1 incluye tuning.
+
+---
+
+## WS-D — Cierre de decisiones (2026-05-18)
+
+> Cierra los puntos que quedaban abiertos para poder escribir las specs delegables de
+> Fase 2/3 sin ambigüedad. Tenencia formal en `docs/tenancy-model.md`. Estas decisiones
+> son el **contrato** que `spec/02-ws2-dashboard.md` y `spec/02-ws3-export.md` consumen.
+
+### C11 — Asignación planograma ↔ formulario (UX)
+
+Decisión de esquema (ya en migración 006 `bbm_planogram_assignments(planogram_id,
+form_id)`, 1:1) se mantiene. Lo que se cierra es el **flujo de UI**:
+
+- La asignación se hace en `/dashboard/planograms` (no pantalla aparte).
+- Cada planograma activo muestra un campo **"Formulario de Evidence (form_id)"**:
+  un `<input type="text">` + botón **Guardar asignación**.
+- Guardar hace `POST /api/planogram/assign` con `{ planogram_id, form_id }` →
+  upsert en `bbm_planogram_assignments` (`onConflict: 'planogram_id'`, 1:1).
+- Un `form_id` ya asignado a otro planograma → el endpoint responde 409 con mensaje
+  "Ese formulario ya está asignado a «<nombre>»"; la UI lo muestra inline.
+- Estado visible: un planograma sin `form_id` asignado muestra badge
+  `.badge--yellow` "Sin formulario"; con asignación, `.badge--green` "form: <id>".
+- **Quién puede asignar:** `client_user` solo sus planogramas; `reseller_admin` los
+  de sus clientes; `bbm_admin` todos. Scoping vía helper WS-MT (ver tenancy-model §5).
+
+### O1 — Timezone
+
+- Almacenamiento: `TIMESTAMPTZ` (UTC). Evidence envía en UTC. Sin cambio de esquema.
+- Render: **`America/Mexico_City`** fijo (FOTL y Ubiqo operan en México). No es
+  configurable por usuario en el MVP (schema-ready: se podría mover a `bbm_clients`
+  a futuro, lógica diferida).
+- Implementación: formateo en el cliente con
+  `new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', dateStyle:
+  'medium', timeStyle: 'short' })`. El endpoint devuelve ISO-8601 UTC crudo; el
+  formateo es responsabilidad de la UI (mantiene el endpoint timezone-agnóstico).
+
+### O3 — Contract de `GET /api/planogram/incidences`
+
+Query params (todos opcionales, validar y clampear; tipos en
+`src/types/incidence.ts` `IncidenceFilters`). **Nota:** `IncidenceFilters`
+actual NO tiene `clientId` ni `sort`, e `IncidenceRecord` no tiene `client_id`;
+**WS2 spec/02-ws2 Tarea 0 los agrega** como prerrequisito (este contrato asume
+los tipos ya extendidos). No es discrepancia sin resolver — está asignada.
+
+| Param | Tipo | Default | Regla |
+|---|---|---|---|
+| `dateFrom` | ISO date | — | filtro `photo_captured_at >=` |
+| `dateTo` | ISO date | — | filtro `photo_captured_at <=` |
+| `promoter` | string | — | match exacto `promoter_name` |
+| `store` | string | — | match exacto `store_name` |
+| `minSeverity` | `critical\|high\|medium\|low` | — | incluye filas con ≥1 incidencia de esa severidad o mayor |
+| `status` | `pending\|processing\|completed\|failed` | — | filtro `status` |
+| `clientId` | UUID | — | solo `reseller_admin`/`bbm_admin`; ignorado para `client_user` (forzado a su cliente) |
+| `limit` | int | `50` | clamp `[1, 200]` |
+| `offset` | int | `0` | clamp `>= 0` |
+| `sort` | `captured_desc\|captured_asc` | `captured_desc` | orden por `photo_captured_at` |
+
+Response shape:
+
+```json
+{
+  "rows": [ /* IncidenceRecord[] proyectado: id, photo_captured_at, promoter_name,
+                store_name, status, incidence_count, severity_critical, severity_high,
+                severity_medium, severity_low, summary, client_id */ ],
+  "total": 0,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+- `total` = count con los mismos filtros (sin limit/offset) para paginación.
+- Paginación = offset/limit (decidido O3: ≤200 filas/página, sin cursor).
+- **Tenant-scoping obligatorio:** la query se construye vía el helper de WS-MT; el
+  `client_user` nunca recibe filas de otro cliente aunque mande `clientId` ajeno.
+
+`GET /api/planogram/incidences/[id]`: devuelve el `IncidenceRecord` completo +
+`incidences[]` (tipo `Incidence`) + signed URLs on-the-fly de `field_photo_paths`
+y del planograma (TTL 1800s, vía `getSignedUrls` de `storage.ts`). Mismo scoping:
+404 (no 403) si el id pertenece a otro tenant — no revelar existencia.
+
+### O4 — Empty state del dashboard
+
+Tres estados vacíos distintos (no un genérico):
+
+1. **Sin planograma activo para el cliente:** card `.card` centrada, texto "Aún no
+   hay un planograma cargado para <cliente>." + botón `.btn--primary` "Cargar
+   planograma" → `/dashboard/planograms`.
+2. **Planograma sí, sin incidencias procesadas todavía:** "El pipeline aún no ha
+   procesado capturas. Las incidencias aparecerán aquí cuando Evidence envíe fotos."
+   (sin CTA — es estado de espera, no acción del usuario).
+3. **Hay datos pero los filtros no matchean:** "Ningún resultado con estos filtros."
+   + botón `.btn--secondary` "Limpiar filtros".
+
+### Design system — badges y columnas
+
+**Mapeo severidad → clase de badge existente en `globals.css`** (no se crean
+clases nuevas; usar las de `globals.css:68-76`):
+
+| Severidad | Clase | Color |
+|---|---|---|
+| `critical` | `.badge--red` | rojo |
+| `high` | `.badge--yellow` | amarillo |
+| `medium` | `.badge--blue` | azul |
+| `low` | `.badge--neutral` | gris |
+| (0 incidencias en la fila) | `.badge--green` | verde "OK" |
+
+**Columnas de la tabla `/dashboard`** (orden fijo):
+
+`Fecha` · `Promotor` · `Tienda` · `Críticas` · `Altas` · `Medias` · `Bajas` ·
+`Estado` · `Resumen`
+
+- Para `reseller_admin` y `bbm_admin` se inserta una columna **`Cliente`** entre
+  `Fecha` y `Promotor`. Para `client_user` esa columna no se renderiza (un solo
+  cliente).
+- Conteos de severidad: número + badge del color correspondiente (0 → `—` muted,
+  sin badge).
+- `Estado`: badge — `completed`→green, `processing`→yellow, `pending`→neutral,
+  `failed`→red.
+- Tabla con hover de fila + sticky header (O5): se agrega a `globals.css`
+  `.table tbody tr:hover` y `.table thead th { position: sticky; top: 0 }` en WS2.
+
+### Cierre WS-D
+
+C11, O1, O3, O4 y design system: **cerrados**. O2 (retención) y O6/O7/O8 siguen
+diferidos con razón ya documentada. Tenencia formal: `docs/tenancy-model.md`.
+
+**Decisión FOTL cerrada** (post-auditoría 2026-05-18): FOTL = **1 cliente con N
+planogramas**; los `client_key` legacy de `bbm_planograms` (`fotl_caballeros`,
+`fotl_damas`) mapean al mismo `client_id`. La clave de tenencia es `client_id`
+(UUID FK), NO `client_key`. Detalle e implicación de esquema:
+`docs/tenancy-model.md §8` + `spec/04-ws-mt-multitenant.md` Tarea 1.
+
+Specs delegables que consumen este contrato: `spec/02-ws2-dashboard.md`,
+`spec/02-ws3-export.md`.

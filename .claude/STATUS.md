@@ -1,8 +1,9 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-05-18 (Sesión 13 — cierre: retoma + auditoría profunda +
-> reencuadre a MVP multi-tenant + WS0 completo + pivote BullMQ). Roadmap: `docs/roadmap-2026-05.md`.
+> Última actualización: 2026-05-18 (Sesión 14 — cierre: WS-D cerrado + 6 specs del
+> plan escritas y auditadas (críticos resueltos, fix de aislamiento raíz) + PR de
+> sesión). Roadmap TP: `docs/roadmap-2026-05.md`.
 
 ---
 
@@ -10,24 +11,41 @@
 
 **Objetivo:** MVP **comercializable atado a Ubiqo Evidence**, robusto en producción ("no
 reventar"), para comercializar/testear con clientes de Ubiqo (B2B2B: Ubiqo reseller + FOTL).
-**Roadmap (fuente de verdad del orden):** `docs/roadmap-2026-05.md`
+**Roadmap TP (fuente de verdad del orden):** `docs/roadmap-2026-05.md`
 **Secuencia estricta:** `WS0 ─► WS1 ─► WS-D ─► WS-MT ─► WS-H ─► WS2 ─► WS3 ─► WS4`
-**WS0:** ✅ completo. **Siguiente:** WS-D (cierre de specs + modelo de tenencia formal — diseño).
+**WS0:** ✅ completo. **WS-D:** ✅ completo (`docs/tenancy-model.md` + decisiones
+spec/02 cerradas). **Specs escritas** para WS1/WS-MT/WS-H/WS2/WS3 (sin auditar aún
+— Gonzalo defiere ejecución). **Siguiente:** `/audit` de cada spec delegable, luego
+ejecución secuencial empezando por WS1.
 
 ---
 
 ## Handoff — próxima sesión (leer esto primero)
 
-**Dónde estamos:** WS0 cerrado. Branch `session/2026-05-18-ws0-reorder`, commits
-`cbafbb4` (WS0) + `3b2023e` (pivote BullMQ) + el cierre de Sesión 13. PR de esta sesión:
-**#20** — https://github.com/Nexo-Hause/black-box-magic/pull/20 (pendiente de merge por Gonzalo).
+**Dónde estamos:** WS0 + WS-D cerrados. PR **#20 mergeado** (2026-05-19, review +
+Vercel OK). PR **#18 cerrado sin merge** (decisión WS0). Sesión actual: escribió
+las 6 specs del plan en branch `session/2026-05-18-ws0-reorder`.
 
-**Siguiente acción concreta:** arrancar **WS-D** (Opus, no delegable): cerrar en `spec/02`
-C11 (asignación planograma↔form), O1 (timezone), O3/O4 (contract `GET /api/planogram/
-incidences` + paginación), design system; y **formalizar el modelo de tenencia** (jerarquía
-Cuenta→Cliente, 3 roles, qué es schema-ready vs implementado). Salida: specs bite-sized
-`spec/02-ws2-dashboard.md` + `spec/02-ws3-export.md` auditadas. Alternativa si se prefiere
-desbloquear ejecución: detallar el refactor de extracción a `src/lib/pipeline/` (habilita WS1).
+**Specs escritas (commiteadas, sin auditar):**
+- `docs/tenancy-model.md` — modelo de tenencia formal (entrada de WS-MT).
+- `spec/02-reference-comparison.md` § WS-D — C11/O1/O3/O4/design-system cerrados.
+- `spec/03-ws1-pipeline-bullmq.md` — extracción `src/lib/pipeline/` + worker BullMQ.
+- `spec/04-ws-mt-multitenant.md` — tablas canónicas + auth 3 roles + scoping helper.
+- `spec/05-ws-h-hardening.md` — taxonomía error Gemini + token Ubiqo + reconcile.
+- `spec/02-ws2-dashboard.md` — dashboard tenant-scoped.
+- `spec/02-ws3-export.md` — export Excel tenant-scoped.
+
+**Specs AUDITADAS** (skill `audit`, 6 auditores paralelos + gate aprobado por
+Gonzalo + Fase 2/3 + síntesis). Cada spec tiene sección "Auditoría
+pre-implementación". Resultado: **Aprobado con cambios — todos los críticos
+resueltos en spec** (incl. fix de aislamiento raíz: `client_id` FK en
+`bbm_planograms`, `client_key`→legacy, FOTL=1 cliente; ver tenancy-model §8).
+
+**Siguiente acción concreta:** ejecutar por dependencias WS1 → WS-MT → WS-H →
+WS2 → WS3. WS1 y WS2/WS3 delegables a Alibaba (`/delegate`); WS-MT (auth/aislamiento)
+y WS-H (error policy) = superficie de riesgo, requieren revisión Opus en `/accept`.
+Pasos de operador marcados en cada spec (deploy worker, migraciones a DB, seeds
+reales) NO se delegan.
 
 **Contexto que NO está en el código (no perder):**
 - Objetivo = MVP comercializable, no solo ordenar. Modelo B2B2B (Ubiqo reseller + FOTL).
@@ -37,12 +55,12 @@ desbloquear ejecución: detallar el refactor de extracción a `src/lib/pipeline/
   multi-cuenta = schema-ready. Aislamiento por helper app-layer (service-role bypasea RLS).
 - 008 es schema provisional (sin datos prod) → ventana barata para WS-MT = ahora.
 
-**Acciones de Gonzalo pendientes (no bloquean WS-D):**
-- Cerrar PR #18 en GitHub (decisión: cerrar sin merge — revierte workflow CI).
-- Mergear el PR de esta sesión (Sesión 13) cuando el review esté limpio.
+**Acciones de Gonzalo pendientes:** ninguna bloqueante. PR #18 cerrado, #20
+mergeado en esta sesión. El branch de esta sesión (specs) está sin PR todavía.
 
-**Branches conservadas:** `main`, `demo/qsr-guillermo` (hold estratégico — revisar antes
-de borrar), `chore/sync-delegation-audit` (= PR #18 a cerrar).
+**Branches conservadas:** `main`, `demo/qsr-guillermo` (hold estratégico — revisar
+antes de borrar). `chore/sync-delegation-audit` (PR #18) ya cerrado en GitHub;
+borrado de la rama remota = pendiente de Gonzalo (no urgente).
 
 ---
 
@@ -56,17 +74,17 @@ de borrar), `chore/sync-delegation-audit` (= PR #18 a cerrar).
 
 ---
 
-## Roadmap MVP — Workstreams (detalle en `docs/roadmap-2026-05.md`)
+## Roadmap TP — Workstreams (detalle en `docs/roadmap-2026-05.md`)
 
 | WS | Qué | Estado |
 |----|-----|--------|
 | WS0 | Reconciliación, limpieza, docs fiel | **Completo** |
-| WS1 | Worker BullMQ en VPS (reemplaza cron-job.org) | Pendiente |
-| WS-D | Cierre de specs + modelo de tenencia (Opus) | Pendiente |
-| WS-MT | Fundación multi-tenant (tablas canónicas, 3 roles, helper de scoping) | Pendiente |
-| WS-H | Endurecimiento prod (timeout, tope costo, observabilidad, token) | Pendiente |
-| WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | Pendiente |
-| WS3 | Export Excel Fase 3 (tenant-scoped) | Pendiente |
+| WS1 | Worker BullMQ en VPS (reemplaza cron-job.org) | Spec `spec/03` **escrita + auditada** (críticos resueltos) — lista para ejecución |
+| WS-D | Cierre de specs + modelo de tenencia (Opus) | **Completo** (`docs/tenancy-model.md` + `spec/02` § WS-D, auditado) |
+| WS-MT | Fundación multi-tenant (tablas canónicas, 3 roles, helper de scoping) | Spec `spec/04` **escrita + auditada** (fix aislamiento raíz aplicado) — lista |
+| WS-H | Endurecimiento prod (timeout, tope costo, observabilidad, token) | Spec `spec/05` **escrita + auditada** — lista |
+| WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | Spec `spec/02-ws2` **escrita + auditada** — lista |
+| WS3 | Export Excel Fase 3 (tenant-scoped) | Spec `spec/02-ws3` **escrita + auditada** — lista |
 | WS4 | Validación E2E con fotos reales FOTL | Pendiente (bloqueado por terceros) |
 | WS5 | Webhook Ubiqo | **Post-MVP** (MVP procesa por BullMQ/VPS) |
 | WS6 | Negocio: modo + propuesta comercial | Paralelo |
@@ -152,7 +170,7 @@ provisional (DROP+recrear OK, sin datos prod) → ventana barata para WS-MT (ten
 
 ## Documentación
 
-- `docs/roadmap-2026-05.md` — **roadmap MVP (fuente de verdad del orden de trabajo)**
+- `docs/roadmap-2026-05.md` — **Roadmap TP (fuente de verdad del orden de trabajo)**
 - `docs/ubiqo/reunion-2026-03-30-retail.md`, `resumen-...`, `analisis-implicaciones-retail-2026-03-30.md`,
   `api-validation-2026-03-31.md`, `analisis-clientes-evidence.md`
 
@@ -160,9 +178,30 @@ provisional (DROP+recrear OK, sin datos prod) → ventana barata para WS-MT (ten
 
 ## Próximos Pasos
 
-1. **WS0.7** — corregir CLAUDE.md (Testing: Vitest real; Specs: agregar Spec 02).
-2. **WS0.8** — commit local de cierre WS0.
-3. **Gonzalo**: cerrar PR #18 desde GitHub (decisión ya tomada arriba).
-4. **WS1** — extraer lógica de proceso a `src/lib/pipeline/`; worker BullMQ + repeatable
-   ingest en VPS; secrets al VPS; smoke test E2E por la cola.
-5. Seguir secuencia: WS-D → WS-MT → WS-H → WS2 → WS3 → WS4.
+0. **BLOQUEO — PR #21 está `CONFLICTING`.** Causa: PR #20 se mergeó por **squash**;
+   el branch `session/2026-05-18-ws0-reorder` aún carga los commits WS0
+   pre-squash (`cbafbb4` `3b2023e` `66a9334` `b4d04e5`) que chocan con la versión
+   squasheada ya en `main`. El **diff neto vs `origin/main` es solo docs/specs**
+   (sin código), así que el contenido es sano — el conflicto es de historia, no
+   de sustancia. **Resolver antes de review/merge.** Opciones (decisión de
+   Gonzalo, NO hacer rebase/force-push sin su OK): (a) branch nuevo desde
+   `origin/main` + `git checkout origin/main -- docs/ spec/ .claude/STATUS.md
+   .claude/SESSION_LOG.md CLAUDE.md` cherry-pick del delta limpio → PR nuevo;
+   (b) `git rebase origin/main` resolviendo conflictos (descartar los hunks WS0
+   ya en main, quedarse con specs) + force-push (destructivo, requiere OK).
+   Opción (a) es más limpia y no destructiva.
+1. **Ronda de review del PR** (tras resolver el conflicto). Dispara AI review en
+   GitHub Actions (~2 min; al cierre solo Vercel había corrido, `ai-review`
+   pendiente). Procesar con `/review` (clasificar accept/discard, fixes en un
+   commit, push, máx 4 rondas). Specs = docs `.md` → findings de
+   consistencia/claridad, no de código.
+2. **Merge del PR cuando esté limpio** (sin conflicto + review OK). ⚠️ Antes de
+   mergear: recordar UNA vez a Gonzalo que merge = deploy a prod y que confirme;
+   con su confirmación → `gh pr merge` (autorización dada en Sesión 14: "fusionás
+   cuando esté limpio"; el recordatorio es el único paso previo, no loop).
+   Requiere `NEXO_GITHUB_PAT` (gonzalodev-ops read-only en Nexo-Hause).
+3. **Ejecución del plan** (Gonzalo difiere a cuando quiera): secuencia por
+   dependencias `WS1 → WS-MT → WS-H → WS2 → WS3 → WS4`. `WS1` y `WS2/WS3`
+   delegables (`/delegate spec/03-ws1-pipeline-bullmq.md` arranca). `WS-MT`/`WS-H`
+   = superficie de riesgo, revisión Opus en `/accept`. Pasos de operador (deploy
+   worker, migraciones a DB, seeds reales) NO se delegan — marcados en cada spec.
