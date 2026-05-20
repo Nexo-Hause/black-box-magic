@@ -55,6 +55,17 @@ async function fetchWithRetry(
   throw new Error(`Ubiqo API fetch failed after ${retries} retries`);
 }
 
+/**
+ * Error personalizado para fallos de autenticación o autorización con la API de Ubiqo.
+ * Lánzalo cuando recibas un código de estado HTTP 401 (No autorizado) o 403 (Prohibido).
+ */
+export class UbiqoAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UbiqoAuthError';
+  }
+}
+
 // ─── fetchCaptures ──────────────────────────────────────────────────────────
 
 /**
@@ -94,6 +105,11 @@ export async function fetchCaptures(
     });
 
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        throw new UbiqoAuthError(
+          `Error de autenticación con la API de Ubiqo (HTTP ${response.status}). Por favor, verifica tu token.`
+        );
+      }
       throw new Error(
         `Ubiqo API error: ${response.status} ${response.statusText}`
       );

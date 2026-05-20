@@ -32,3 +32,5 @@ const defaultQueueOptions: QueueOptions = {
 // Colas del pipeline
 export const ubiqoProcessQueue = new Queue('ubiqo-process', defaultQueueOptions);
 export const planogramProcessQueue = new Queue('planogram-process', defaultQueueOptions);
+export const reconcileQueue = new Queue('reconcile', defaultQueueOptions);
+

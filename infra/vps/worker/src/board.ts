@@ -2,7 +2,7 @@ import express from 'express';
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
-import { ubiqoProcessQueue, planogramProcessQueue } from './queues';
+import { ubiqoProcessQueue, planogramProcessQueue, reconcileQueue } from './queues';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -26,6 +26,7 @@ createBullBoard({
   queues: [
     new BullMQAdapter(ubiqoProcessQueue) as any,
     new BullMQAdapter(planogramProcessQueue) as any,
+    new BullMQAdapter(reconcileQueue) as any,
   ],
   serverAdapter,
 });

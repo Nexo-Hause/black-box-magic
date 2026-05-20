@@ -29,3 +29,31 @@ describe('classifyError', () => {
     expect(classifyError(new Error('algo raro')).kind).toBe('permanent');
   });
 });
+
+describe('Retry decision logic', () => {
+  it('should identify transient error as retryable', () => {
+    const error = new Error('Gemini API error (429): Rate limit');
+    const classification = classifyError(error);
+    expect(classification.kind).toBe('transient');
+  });
+
+  it('should identify permanent error as non-retryable (unrecoverable)', () => {
+    const error = new Error('Gemini API error (400): Bad request');
+    const classification = classifyError(error);
+    expect(classification.kind).toBe('permanent');
+  });
+
+  it('should identify safety block error as non-retryable (unrecoverable)', () => {
+    const error = new Error('No response text from Gemini');
+    const classification = classifyError(error);
+    expect(classification.kind).toBe('safety_block');
+  });
+
+  it('should identify ubiqo auth error as non-retryable (unrecoverable ubiqo_auth)', () => {
+    const error = new Error('Ubiqo token inválido o expirado (HTTP 401)');
+    const classification = classifyError(error);
+    expect(classification.kind).toBe('permanent');
+    expect(classification.reason).toBe('ubiqo_auth');
+  });
+});
+

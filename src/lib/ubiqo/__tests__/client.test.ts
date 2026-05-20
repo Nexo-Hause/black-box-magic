@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { buildPhotoUrl, extractPhotos, fetchCaptures } from '@/lib/ubiqo/client';
+import { buildPhotoUrl, extractPhotos, fetchCaptures, UbiqoAuthError } from '@/lib/ubiqo/client';
 import type { UbiqoCaptura, UbiqoCapturaBase, UbiqoFotografia } from '@/lib/ubiqo/types';
 
 // ─── Fixtures ───────────────────────────────────────────────────────────────
@@ -228,12 +228,32 @@ describe('fetchCaptures', () => {
 
   it('throws on non-ok response', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('Internal Server Error', { status: 500, statusText: 'Internal Server Error' })
+    );
+
+    await expect(
+      fetchCaptures(30143, '20260317000000', '20260318000000')
+    ).rejects.toThrow('Ubiqo API error: 500 Internal Server Error');
+  });
+
+  it('throws UbiqoAuthError on HTTP 401 response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('Unauthorized', { status: 401, statusText: 'Unauthorized' })
     );
 
     await expect(
       fetchCaptures(30143, '20260317000000', '20260318000000')
-    ).rejects.toThrow('Ubiqo API error: 401 Unauthorized');
+    ).rejects.toThrow(UbiqoAuthError);
+  });
+
+  it('throws UbiqoAuthError on HTTP 403 response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('Forbidden', { status: 403, statusText: 'Forbidden' })
+    );
+
+    await expect(
+      fetchCaptures(30143, '20260317000000', '20260318000000')
+    ).rejects.toThrow(UbiqoAuthError);
   });
 
   it('throws when UBIQO_API_TOKEN is not set', async () => {

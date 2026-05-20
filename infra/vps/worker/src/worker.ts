@@ -1,5 +1,5 @@
 import { Worker, Job, UnrecoverableError } from 'bullmq';
-import { connection, ubiqoProcessQueue, planogramProcessQueue } from './queues';
+import { connection, ubiqoProcessQueue, planogramProcessQueue, reconcileQueue } from './queues';
 import { supabase } from '@/lib/supabase';
 import { downloadPhoto } from '@/lib/ubiqo/ssrf';
 import { decryptFirma, encryptFirma } from '@/lib/ubiqo/crypto';
@@ -12,7 +12,9 @@ import { analyzeWithReferences } from '@/lib/gemini';
 import { processUbiqoCapture, ingestUbiqoCaptures } from '@/lib/pipeline/ubiqo';
 import { processIncidence, ingestPlanogramCaptures } from '@/lib/pipeline/planogram';
 import { classifyError } from '@/lib/pipeline/errors';
+import { reconcileProcessingJobs } from './reconcile';
 import dotenv from 'dotenv';
+
 
 dotenv.config();
 
@@ -69,6 +71,11 @@ export async function checkGeminiDailyBudgetLimit(): Promise<{ exceeded: boolean
   const exceeded = estimatedCost >= limit;
   return { exceeded, cost: estimatedCost, limit };
 }
+
+// ─── Configuración de Concurrencia y Rate Limits para Workers ───
+const maxPerMin = Number(process.env.GEMINI_MAX_PER_MIN ?? 30);
+const concurrencyUbiqo = process.env.WORKER_CONCURRENCY ? Number(process.env.WORKER_CONCURRENCY) : 2;
+const concurrencyPlanogram = process.env.WORKER_CONCURRENCY ? Number(process.env.WORKER_CONCURRENCY) : 1;
 
 // ─── Worker de Procesamiento Ubiqo ───
 const ubiqoWorker = new Worker(
@@ -160,7 +167,11 @@ const ubiqoWorker = new Worker(
       throw err;
     }
   },
-  { connection, concurrency: 2 }
+  {
+    connection,
+    concurrency: concurrencyUbiqo,
+    limiter: { max: maxPerMin, duration: 60000 }
+  }
 );
 
 // ─── Worker de Procesamiento Planogramas (Incidencias) ───
@@ -255,7 +266,11 @@ const planogramWorker = new Worker(
       throw err;
     }
   },
-  { connection, concurrency: 1 } // Concurrencia 1 para evitar exceso de llamadas paralelas a Gemini
+  {
+    connection,
+    concurrency: concurrencyPlanogram,
+    limiter: { max: maxPerMin, duration: 60000 }
+  }
 );
 
 // ─── Scheduler Periódico de Ingesta (Auto-Onboarding & Auto-Discovery) ───
