@@ -96,19 +96,17 @@ export const authMiddleware: express.RequestHandler = (req, res, next) => {
   const adminUserBuf = Buffer.from(adminUser);
   const adminPassBuf = Buffer.from(adminPass);
 
-  const userLenMatch = userBuf.length === adminUserBuf.length;
-  const passLenMatch = passBuf.length === adminPassBuf.length;
-
+  // Comparar siempre ambos pares, sin condicionales de longitud que filtren timing
   const userMatch = timingSafeEqual(
-    userLenMatch ? userBuf : adminUserBuf,
+    userBuf.length === adminUserBuf.length ? userBuf : Buffer.alloc(adminUserBuf.length),
     adminUserBuf
   );
   const passMatch = timingSafeEqual(
-    passLenMatch ? passBuf : adminPassBuf,
+    passBuf.length === adminPassBuf.length ? passBuf : Buffer.alloc(adminPassBuf.length),
     adminPassBuf
   );
 
-  if (userLenMatch && passLenMatch && userMatch && passMatch) {
+  if (userBuf.length === adminUserBuf.length && passBuf.length === adminPassBuf.length && userMatch && passMatch) {
     authAttempts.delete(ipStr); // Reset en inicio de sesión exitoso
     next();
     return;

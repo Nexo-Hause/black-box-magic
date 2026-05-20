@@ -87,36 +87,29 @@ Un chat interactivo guiado por IA que permite descubrir las necesidades del clie
 ### 🟢 Cerrado (Completado y Verificado)
 * **WS0 — Reconciliación de Git y Limpieza:** `main` reconciliada con el repositorio remoto. Se eliminaron 15 ramas locales obsoletas. Higiene de código y tests funcionando.
 * **WS-D — specs de Planograma y Tenencia:** Definición formal del modelo de tenencia (en [docs/tenancy-model.md](file:///c:/Users/gleon/Projects/black-box-magic/docs/tenancy-model.md)) y resolución de decisiones de diseño en [spec/02-reference-comparison.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/02-reference-comparison.md) (como la asignación planograma-formulario, zonas horarias y estructura de retorno de incidencias).
+* **WS1 — Worker BullMQ en VPS ([spec/03-ws1-pipeline-bullmq.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/03-ws1-pipeline-bullmq.md)):** Pipeline de procesamiento BullMQ desacoplado en `/src/lib/pipeline/*`, repeatable jobs scheduler, control de presupuesto y panel Express Bull Board implementados y probados.
+* **WS-MT — Fundación Multi-Tenant ([spec/04-ws-mt-multitenant.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/04-ws-mt-multitenant.md)):** Jerarquía canónica en base de datos (`bbm_accounts`, `bbm_clients`, `bbm_users`), control de acceso de 3 roles, y helper centralizado `scopedQuery` para aislamiento estricto a nivel aplicación.
+* **WS-H — Hardening de Producción ([spec/05-ws-h-hardening.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/05-ws-h-hardening.md)):** Taxonomía y clasificación de errores de Gemini Vision, retry policy por tipo de error (permanente vs transitorio), tope de costo por variables de entorno y job reconciliador automático de jobs estancados en BullMQ.
+* **PR #21 Resuelto (Branch `session/2026-05-18-ws0-reorder`):** Integrado mediante la Opción A de manera exitosa y limpia.
 * **Spec 00 — Integración base con Ubiqo Evidence:** Descubrimiento, descarga con protección SSRF y análisis incremental del pipeline de Evidence completamente implementados en `main`.
 * **Spec 01 — Engine v3:** Motor multi-industria con configuración Zod, scoring determinista en servidor, triggers de escalación y UI/Voz de onboarding conversacional completada y funcional.
 * **Spec 02 (Fase 0+1) — Comparación vs Planogramas:** Lógica central de comparación multi-imagen implementada en `main`. Base de datos e ingesta de incidencias estructurada.
-* **Migraciones Supabase (001 a 008):** Todas las migraciones iniciales aplicadas de manera exitosa en Supabase, incluyendo tablas de capturas, planogramas, incidencias y códigos de onboarding.
+* **Migraciones Supabase (001 a 010):** Todas las migraciones aplicadas de manera exitosa en Supabase, incluyendo la tabla de multi-tenancy (009) y los campos de `error_kind` / `bullmq_job_id` (010).
 
 ### 🟡 En Proceso (Activo en esta sesión)
-* **PR #21 en Conflicto (Branch `session/2026-05-18-ws0-reorder`):** Esta rama contiene los specs escritos y pre-auditados para las fases subsecuentes del MVP (BullMQ, Multi-tenant, Hardening, Dashboard, Export). Tiene conflictos git con `main` debido a un squash merge previo de la rama de reconciliación (PR #20). **La resolución de este conflicto y merge es el paso activo inmediato.**
+* **Polishing y Review Final:** Cerrando la última ronda de review automático de Kimi en el branch `session/ws-mt-multitenant` para garantizar estabilidad absoluta del código y alineación de la documentación.
 
 ### 🔵 Pendiente (Próximos Workstreams en el Roadmap TP)
 La secuencia estricta de ejecución aprobada y auditada es:
-1. **WS1 — Worker BullMQ en VPS ([spec/03-ws1-pipeline-bullmq.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/03-ws1-pipeline-bullmq.md)):**
-   * Mover lógica de procesamiento de fotos a un pipeline compartido en `/src/lib/pipeline/`.
-   * Montar un worker BullMQ independiente en el VPS con reintentos y jobs repetibles de ingest para eliminar las limitaciones de timeout de 60 segundos de Vercel.
-2. **WS-MT — Fundación Multi-Tenant ([spec/04-ws-mt-multitenant.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/04-ws-mt-multitenant.md)):**
-   * Crear la jerarquía formal en base de datos (`bbm_accounts`, `bbm_clients`, `bbm_users`).
-   * Implementar control de accesos para 3 roles (BBM, reseller-admin, client-user).
-   * Crear el helper centralizado de tenant-scoping en la capa de aplicación (necesario ya que la service-role key de Supabase ignora las políticas RLS).
-3. **WS-H — Hardening de Producción ([spec/05-ws-h-hardening.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/05-ws-h-hardening.md)):**
-   * Taxonomía y políticas de error específicas de Gemini Vision (distinguir fallos transitorios de definitivos o bloqueos por seguridad).
-   * Límites de cuotas y tope de costo operativo. Runbook de rotación del token de Ubiqo.
-4. **WS2 — Dashboard FOTL ([spec/02-ws2-dashboard.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/02-ws2-dashboard.md)):**
+1. **WS2 — Dashboard FOTL ([spec/02-ws2-dashboard.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/02-ws2-dashboard.md)):**
    * Endpoint de consulta de incidencias con scope de tenant.
    * Interfaz del Dashboard para visualización de cumplimiento de planogramas y selector de cliente según el rol del usuario.
-5. **WS3 — Export Excel ([spec/02-ws3-export.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/02-ws3-export.md)):**
+2. **WS3 — Export Excel ([spec/02-ws3-export.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/02-ws3-export.md)):**
    * Descarga de reporte Excel estructurado en 4 pestañas para incidencias filtradas por tenant.
-6. **WS4 — Validación E2E:** Pruebas controladas del pipeline E2E completo con fotos reales de campo (dependiente de que Ubiqo/FOTL provea imágenes).
-7. **WS5 — Webhook Ubiqo (Post-MVP):** Migración del pipeline de polling/cron a una arquitectura guiada por eventos vía webhook.
+3. **WS4 — Validación E2E:** Pruebas controladas del pipeline E2E completo con fotos reales de campo (dependiente de que Ubiqo/FOTL provea imágenes).
+4. **WS5 — Webhook Ubiqo (Post-MVP):** Migración del pipeline de polling/cron a una arquitectura guiada por eventos vía webhook.
 
 ### 🔴 Abierto (Bloqueos o Impedimentos Activos)
-* **Conflicto en PR #21:** Impide fusionar la documentación y planeación en `main`. Requiere resolver la divergencia de historia git.
 * **Higiene en PR #18:** Requiere que Gonzalo cierre manualmente el PR en GitHub (cuenta `gonzalodev-ops` es de solo lectura).
 * **Worker VPS y Redis no configurados:** El pipeline no se puede desplegar hasta aprovisionar Redis y pm2 en el VPS.
 * **Falta de fotos reales de Fruit of the Loom:** Bloquea las pruebas de precisión del planograma (WS4), pero no impide el desarrollo de los módulos de software.

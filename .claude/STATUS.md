@@ -19,27 +19,27 @@
 
 ## Handoff — próxima sesión (leer esto primero)
 
-**Dónde estamos:** WS0, WS-D y WS1 cerrados. Branch de sesión: `session/roadmap-tp-execution` con los cambios listos y validados. PR del review automático corregido tras dos rondas completas (Gemini budget robustness, PM2 compiled relative path y tokens column verification).
+**Dónde estamos:** WS0, WS-D, WS1, WS-MT y WS-H cerrados. Branch de sesión: `session/ws-mt-multitenant` con los cambios listos y validados. PR del review automático corregido tras cuatro rondas completas (Gemini budget robustness, in-flight cost projection, timing safety en Basic Auth, normalización de IP, y reconciliación).
 
 **Specs y Estado de Código:**
 - `docs/tenancy-model.md` — modelo de tenencia formal (timezone §O1 agregado).
 - `spec/02-reference-comparison.md` § WS-D — C11/O1/O3/O4/design-system cerrados.
 - `spec/03-ws1-pipeline-bullmq.md` — WS1 completamente ejecutado en el código.
-- `spec/04-ws-mt-multitenant.md` — tablas canónicas + auth 3 roles + scoping helper.
-- `spec/05-ws-h-hardening.md` — taxonomía error Gemini + token Ubiqo + reconcile.
+- `spec/04-ws-mt-multitenant.md` — WS-MT completamente ejecutado en el código (tablas canónicas, RLS, 3 roles y helper de scoping).
+- `spec/05-ws-h-hardening.md` — WS-H completamente ejecutado en el código (taxonomía de error Gemini, retry policies, reconciliación y timing safety).
 - `spec/02-ws2-dashboard.md` — dashboard tenant-scoped.
 - `spec/02-ws3-export.md` — export Excel tenant-scoped.
 
-**Siguiente acción concreta:** Ejecutar por dependencias WS-MT → WS-H → WS2 → WS3. WS-MT (auth/aislamiento) y WS-H (error policy) = superficie de riesgo, requieren revisión Opus en `/accept`.
+**Siguiente acción concreta:** Ejecutar WS2 (Dashboard FOTL tenant-scoped) y WS3 (Export Excel).
 
 **Contexto que NO está en el código (no perder):**
 - Objetivo = MVP comercializable, no solo ordenar. Modelo B2B2B (Ubiqo reseller + FOTL).
 - Procesamiento por **BullMQ en VPS** (módulo de pipeline puramente desacoplado, listo para deploy por el operador; Express Bull Board con Basic Auth listo).
 - Tenencia: **tablas canónicas** `bbm_accounts/clients/users`; reseller-admin en el MVP; multi-cuenta = schema-ready. Aislamiento por helper app-layer.
 
-**Acciones de Gonzalo pendientes:** PR #18 cerrado en GitHub, PR #20 mergeado, PR #21 resuelto mediante Option A (rama `session/roadmap-tp-execution`).
+**Acciones de Gonzalo pendientes:** PR #18 cerrado en GitHub, PR #23 (esta rama `session/ws-mt-multitenant`) mergeado después de la revisión limpia de Kimi.
 
-**Branches conservadas:** `main`, `demo/qsr-guillermo` (hold estratégico), `session/roadmap-tp-execution` (rama activa de entrega de WS1).
+**Branches conservadas:** `main`, `demo/qsr-guillermo` (hold estratégico), `session/ws-mt-multitenant` (rama activa de entrega de WS-MT y WS-H).
 
 ---
 
@@ -61,8 +61,8 @@
 | WS0 | Reconciliación, limpieza, docs fiel | **Completo** |
 | WS1 | Worker BullMQ en VPS (reemplaza cron-job.org) | **Completo** (código puro, scheduler de autodescubrimiento, control de costos, Express Bull Board, PM2 config y manual de operador) |
 | WS-D | Cierre de specs + modelo de tenencia (Opus) | **Completo** (`docs/tenancy-model.md` + `spec/02` § WS-D, auditado) |
-| WS-MT | Fundación multi-tenant (tablas canónicas, 3 roles, helper de scoping) | Spec `spec/04` **escrita + auditada** — lista para ejecución |
-| WS-H | Endurecimiento prod (timeout, tope costo, observabilidad, token) | Spec `spec/05` **escrita + auditada** — lista para ejecución |
+| WS-MT | Fundación multi-tenant (tablas canónicas, 3 roles, helper de scoping) | **Completo** (tablas 009, 3 roles y helper centralizado `scopedQuery`) |
+| WS-H | Endurecimiento prod (timeout, tope costo, observabilidad, token) | **Completo** (taxonomía de error Gemini, retry policies, reconciliación 010 y timing safety) |
 | WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | Spec `spec/02-ws2` **escrita + auditada** — lista |
 | WS3 | Export Excel Fase 3 (tenant-scoped) | Spec `spec/02-ws3` **escrita + auditada** — lista |
 | WS4 | Validación E2E con fotos reales FOTL | Pendiente (bloqueado por terceros) |
