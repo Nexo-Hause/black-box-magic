@@ -39,10 +39,10 @@ UBIQO_QSR_CUSTOM_RULES="Reglas personalizadas..."
 # ─── Configuración de Colas (Redis) ───
 REDIS_URL=redis://127.0.0.1:6379
 
-# ─── Configuración del Dashboard Bull Board ───
+# ─── Configuración del Dashboard Bull Board (REQUERIDO, sin valores por defecto) ───
 WORKER_PORT=3005
 WORKER_ADMIN_USER=admin
-WORKER_ADMIN_PASS=bbm-secret-pass-2026
+WORKER_ADMIN_PASS=tu-contrasena-segura-aqui
 
 # ─── Opcionales: Form IDs por defecto ───
 UBIQO_DEFAULT_FORM_IDS=30143
@@ -89,8 +89,8 @@ pm2 startup
 Una vez que el worker está corriendo en PM2, puedes acceder al **Bull Board** desde tu navegador en la URL:
 `http://<IP-DE-TU-VPS>:<WORKER_PORT>/admin/queues`
 
-* **Usuario por defecto:** `admin` (configurable en `WORKER_ADMIN_USER`).
-* **Contraseña por defecto:** `bbm-secret-pass-2026` (configurable en `WORKER_ADMIN_PASS`).
+* **Usuario:** Configurado en la variable de entorno `WORKER_ADMIN_USER`.
+* **Contraseña:** Configurada en la variable de entorno `WORKER_ADMIN_PASS` (REQUERIDO, sin valor por defecto por motivos de seguridad).
 
 Desde este panel podrás:
 - Ver jobs procesados con éxito, fallidos o pendientes.
