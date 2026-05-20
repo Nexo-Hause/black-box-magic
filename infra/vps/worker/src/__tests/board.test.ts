@@ -235,5 +235,24 @@ describe('Seguridad y Rate Limiting del Panel de Control (board.ts)', () => {
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockNext).not.toHaveBeenCalled();
     });
+
+    it('debe retornar 400 si las credenciales en la cabecera superan el límite de tamaño', () => {
+      // Generar un string extremadamente largo (más de 1024 caracteres)
+      const longCreds = 'a'.repeat(1100);
+      const encodedCreds = Buffer.from(longCreds).toString('base64');
+      const req = {
+        ip: '127.0.0.1',
+        headers: {
+          authorization: `Basic ${encodedCreds}`,
+        },
+        socket: {},
+      } as unknown as express.Request;
+
+      authMiddleware(req, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.send).toHaveBeenCalledWith('Credentials too long');
+      expect(mockNext).not.toHaveBeenCalled();
+    });
   });
 });

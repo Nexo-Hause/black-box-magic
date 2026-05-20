@@ -83,35 +83,41 @@ export const authMiddleware: express.RequestHandler = (req, res, next) => {
     return;
   }
 
-  const credentials = Buffer.from(parts[1], 'base64').toString().split(':');
-  if (credentials.length !== 2) {
+  const MAX_CREDENTIAL_LEN = 1024; // Límite razonable para usuario:password en base64
+
+  if (parts[1].length > MAX_CREDENTIAL_LEN * 4 / 3) { // Factor de expansión base64
+    res.status(400).send('Credentials too long');
+    return;
+  }
+
+  const credentialsStr = Buffer.from(parts[1], 'base64').toString();
+  if (credentialsStr.length > MAX_CREDENTIAL_LEN) {
+    res.status(400).send('Credentials too long');
+    return;
+  }
+
+  const colonIndex = credentialsStr.indexOf(':');
+  if (colonIndex === -1 || colonIndex === 0 || colonIndex === credentialsStr.length - 1) {
     res.setHeader('WWW-Authenticate', 'Basic realm="BBM Worker Dashboard"');
     res.status(401).send('Invalid credentials format');
     return;
   }
 
-  const user = credentials[0];
-  const pass = credentials[1];
+  const user = credentialsStr.slice(0, colonIndex);
+  const pass = credentialsStr.slice(colonIndex + 1);
 
-  // Mitigar ataques de timing mediante comparación timing-safe con buffers de igual longitud
-  const userBuf = Buffer.from(user);
-  const passBuf = Buffer.from(pass);
-  const adminUserBuf = Buffer.from(adminUser);
-  const adminPassBuf = Buffer.from(adminPass);
+  // Mitigar ataques de timing mediante comparación con buffers de longitud fija (MAX_CREDENTIAL_LEN)
+  const userBuf = Buffer.alloc(MAX_CREDENTIAL_LEN);
+  const passBuf = Buffer.alloc(MAX_CREDENTIAL_LEN);
+  userBuf.write(user);
+  passBuf.write(pass);
 
-  // Si las longitudes difieren, la comparación falla de inmediato sin exponer timing ni lanzar excepciones en timingSafeEqual
-  if (userBuf.length !== adminUserBuf.length || passBuf.length !== adminPassBuf.length) {
-    // Incrementar intentos fallidos
-    authAttempts.set(ipStr, {
-      count: (attempts?.count || 0) + 1,
-      lastAttempt: now
-    });
-    res.setHeader('WWW-Authenticate', 'Basic realm="BBM Worker Dashboard"');
-    res.status(401).send('Invalid credentials');
-    return;
-  }
+  const adminUserBuf = Buffer.alloc(MAX_CREDENTIAL_LEN);
+  const adminPassBuf = Buffer.alloc(MAX_CREDENTIAL_LEN);
+  adminUserBuf.write(adminUser);
+  adminPassBuf.write(adminPass);
 
-  // Ahora timingSafeEqual es completamente seguro porque las longitudes de los buffers coinciden
+  // timingSafeEqual siempre compara exactamente MAX_CREDENTIAL_LEN bytes, mitigando cualquier leak de longitud
   const userMatch = timingSafeEqual(userBuf, adminUserBuf);
   const passMatch = timingSafeEqual(passBuf, adminPassBuf);
 

@@ -117,14 +117,6 @@ const ubiqoWorker = new Worker(
     }
 
     console.log(`[Ubiqo Worker] Procesando job ${job.id} para captura ${captureId}`);
-    
-    // Verificación de límite de presupuesto
-    const budget = await checkGeminiDailyBudgetLimit();
-    if (budget.exceeded) {
-      const msg = `[Budget Exceeded] Límite diario de Gemini alcanzado: $${budget.cost.toFixed(2)} / $${budget.limit.toFixed(2)} USD.`;
-      console.warn(msg);
-      throw new Error(msg); // Lanza error para que BullMQ reintente/pause el job
-    }
 
     if (!supabase) throw new Error('Supabase cliente no disponible');
 
@@ -149,11 +141,24 @@ const ubiqoWorker = new Worker(
       };
     }
 
-    // Marcar en proceso
+    // Marcar en proceso PRIMERO (para reservar/anunciar nuestro job in-flight de forma atómica en DB)
     await supabase
       .from('bbm_ubiqo_captures')
       .update({ status: 'processing', updated_at: new Date().toISOString() })
       .eq('id', capture.id);
+
+    // Ahora verificar presupuesto (incluyendo nuestro propio job que ya está registrado como 'processing')
+    const budget = await checkGeminiDailyBudgetLimit();
+    if (budget.exceeded) {
+      const msg = `[Budget Exceeded] Límite diario de Gemini alcanzado: $${budget.cost.toFixed(2)} / $${budget.limit.toFixed(2)} USD.`;
+      console.warn(msg);
+      // Revertir a pending para reintento seguro
+      await supabase
+        .from('bbm_ubiqo_captures')
+        .update({ status: 'pending', updated_at: new Date().toISOString() })
+        .eq('id', capture.id);
+      throw new Error(msg); // Lanza error para que BullMQ reintente/pause el job
+    }
 
     // Inyectar dependencias reales
     const deps = {
@@ -225,14 +230,6 @@ const planogramWorker = new Worker(
 
     console.log(`[Planogram Worker] Procesando job ${job.id} para incidencia ${incidenceId}`);
 
-    // Verificación de límite de presupuesto
-    const budget = await checkGeminiDailyBudgetLimit();
-    if (budget.exceeded) {
-      const msg = `[Budget Exceeded] Límite diario de Gemini alcanzado: $${budget.cost.toFixed(2)} / $${budget.limit.toFixed(2)} USD.`;
-      console.warn(msg);
-      throw new Error(msg);
-    }
-
     if (!supabase) throw new Error('Supabase cliente no disponible');
 
     // Cargar la fila de la incidencia
@@ -256,11 +253,24 @@ const planogramWorker = new Worker(
       };
     }
 
-    // Marcar en proceso
+    // Marcar en proceso PRIMERO (para reservar/anunciar nuestro job in-flight de forma atómica en DB)
     await supabase
       .from('bbm_incidences')
       .update({ status: 'processing', updated_at: new Date().toISOString() })
       .eq('id', incidence.id);
+
+    // Ahora verificar presupuesto (incluyendo nuestro propio job que ya está registrado como 'processing')
+    const budget = await checkGeminiDailyBudgetLimit();
+    if (budget.exceeded) {
+      const msg = `[Budget Exceeded] Límite diario de Gemini alcanzado: $${budget.cost.toFixed(2)} / $${budget.limit.toFixed(2)} USD.`;
+      console.warn(msg);
+      // Revertir a pending para reintento seguro
+      await supabase
+        .from('bbm_incidences')
+        .update({ status: 'pending', updated_at: new Date().toISOString() })
+        .eq('id', incidence.id);
+      throw new Error(msg);
+    }
 
     // Inyectar dependencias reales
     const deps = {
