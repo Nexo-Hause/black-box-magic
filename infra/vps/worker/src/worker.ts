@@ -418,6 +418,58 @@ async function runPeriodicIngest() {
   }
 }
 
+// ─── Worker de Reconciliación de Estado ───
+const reconcileWorker = new Worker(
+  'reconcile',
+  async (job: Job) => {
+    console.log(`[Reconcile Worker] Iniciando reconciliación desde el job ${job.id}`);
+    if (!supabase) {
+      throw new Error('Supabase cliente no disponible');
+    }
+    try {
+      const result = await reconcileProcessingJobs({
+        supabase,
+        ubiqoQueue: ubiqoProcessQueue,
+        planogramQueue: planogramProcessQueue,
+      });
+      return result;
+    } catch (err: any) {
+      console.error('[Reconcile Worker] Error durante la reconciliación:', err.message);
+      throw err;
+    }
+  },
+  { connection, concurrency: 1 }
+);
+
+// Programar la reconciliación cada 10 minutos como repeatable job en BullMQ
+async function setupReconcileRepeatableJob() {
+  try {
+    // Limpiar cualquier repeatable job anterior para evitar duplicaciones
+    const repeatableJobs = await reconcileQueue.getRepeatableJobs();
+    for (const job of repeatableJobs) {
+      await reconcileQueue.removeRepeatableByKey(job.key);
+    }
+
+    // Registrar el repeatable job (por defecto cada 10 minutos o configurable)
+    const intervalMinutes = process.env.RECONCILE_INTERVAL_MINUTES 
+      ? parseInt(process.env.RECONCILE_INTERVAL_MINUTES, 10) 
+      : 10;
+      
+    await reconcileQueue.add(
+      'reconcile-jobs',
+      {},
+      {
+        repeat: {
+          pattern: `*/${intervalMinutes} * * * *`,
+        },
+      }
+    );
+    console.log(`[Scheduler] Programado el repeatable job de reconciliación en BullMQ (cada ${intervalMinutes} min)`);
+  } catch (err: any) {
+    console.error('[Scheduler] Error registrando el repeatable job de reconciliación:', err.message);
+  }
+}
+
 // ─── Inicialización y Bucle Principal ───
 console.log('🚀 Iniciando Worker de Black Box Magic...');
 
@@ -426,6 +478,7 @@ const gracefulShutdown = async () => {
   console.log('Shutting down gracefully...');
   await ubiqoWorker.close();
   await planogramWorker.close();
+  await reconcileWorker.close();
   await connection.quit();
   process.exit(0);
 };
@@ -440,3 +493,6 @@ import './board';
 runPeriodicIngest();
 const INGEST_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
 setInterval(runPeriodicIngest, INGEST_INTERVAL_MS);
+
+// Configurar repeatable job de reconciliación
+setupReconcileRepeatableJob();

@@ -96,3 +96,34 @@ Desde este panel podrás:
 - Ver jobs procesados con éxito, fallidos o pendientes.
 - Inspeccionar payloads y logs de error detallados.
 - Reintentar trabajos fallidos de manera manual con un simple clic.
+
+---
+
+## 📘 Runbook — Rotación de Token de Ubiqo
+
+### 1. ¿Cómo detectar un fallo del token?
+Si el token de Ubiqo expira, es revocado o es inválido, el worker registrará el error y no podrá continuar con la ingesta. Lo detectarás mediante:
+* **Logs del Worker:** Buscar el mensaje de alerta crítico `[UBIQO_AUTH_FAILURE]` en los logs de PM2 corriendo:
+  ```bash
+  pm2 logs bbm-worker --lines 100
+  ```
+* **Base de Datos (Supabase):** Las capturas (`bbm_ubiqo_captures`) e incidencias (`bbm_incidences`) afectadas se marcarán con estado `'failed'` y la columna `error_kind` tendrá el valor `'ubiqo_auth'`. El campo `error_log` detallará el error de autorización HTTP 401/403.
+
+### 2. ¿Dónde reside el token?
+* **Respaldo Seguro:** El token maestro está almacenado de forma segura en **1Password** (bajo el elemento "Ubiqo API Production Token").
+* **Entorno del VPS:** Se encuentra configurado en la variable de entorno `UBIQO_API_TOKEN` en el archivo `.env` del worker (o de la raíz del proyecto).
+
+### 3. Procedimiento de Rotación y Actualización
+Sigue estos pasos en orden para actualizar el token de forma segura sin interrupciones severas:
+1. **Obtener el Token:** Genera o copia el nuevo token API de la consola de administración de Ubiqo.
+2. **Actualizar 1Password:** Reemplaza el token antiguo en 1Password para mantener la documentación interna actualizada.
+3. **Modificar el `.env`:** Accede al VPS vía SSH, abre el archivo `.env` del worker y actualiza el valor:
+   ```env
+   UBIQO_API_TOKEN=tu_nuevo_token_aqui
+   ```
+4. **Reiniciar PM2 de forma segura:** Para asegurar que PM2 cargue el nuevo archivo `.env` y lo aplique a los procesos en ejecución, debes usar la bandera `--update-env`:
+   ```bash
+   pm2 restart bbm-worker --update-env
+   ```
+5. **Verificación:** Monitorea los logs con `pm2 logs bbm-worker` para validar que el siguiente ciclo de ingesta e inicio de jobs se ejecute correctamente (HTTP 200) sin arrojar errores de autenticación.
+
