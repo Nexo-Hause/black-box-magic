@@ -445,16 +445,19 @@ grep -nE "import .* from '@/lib/(supabase|gemini|analyze)'" src/lib/pipeline/ubi
 
 ### Hallazgos críticos (resueltos)
 
-1. **`analyzePhoto` no recibe la API key por parámetro** (lee `process.env`
-   directo). `PipelineEnv`/`deps.env` era incompatible → **eliminado** de
-   `PipelineDeps`; Step 4 explícito.
-2. **`typeof supabase` es nullable** → tipado como `NonNullable` con nota de que el
-   route valida `!supabase → 503` antes de llamar al pipeline.
-3. **Bloques extraídos retornan `NextResponse`** sin contrato de conversión →
-   `ProcessResult` definido con todos los campos; nota de contrato route↔pipeline;
-   early-returns del ingest → `throw`/`IngestResult` (Tarea 3).
-4. **Import path del worker ambiguo** → fijado: `tsx` + `tsconfig` con
-   `paths @/* → ../../src/*` (no copiar código).
+1. **`analyzePhoto` no recibe la API key por parámetro** (lee `process.env` directo). `PipelineEnv`/`deps.env` era incompatible → **eliminado** de `PipelineDeps`; Step 4 explícito.
+2. **`typeof supabase` es nullable** → tipado como `NonNullable` con nota de que el route valida `!supabase → 503` antes de llamar al pipeline.
+3. **Bloques extraídos retornan `NextResponse`** sin contrato de conversión → `ProcessResult` definido con todos los campos; nota de contrato route↔pipeline; early-returns del ingest → `throw`/`IngestResult` (Tarea 3).
+4. **Import path del worker ambiguo** → fijado: `tsx` + `tsconfig` con `paths @/* → ../../src/*` (no copiar código).
+5. **Acoplamiento de dependencias en Planogramas (`PlanogramPipelineDeps`):**
+   - *Hallazgo:* `PlanogramPipelineDeps` extendía de `PipelineDeps`, heredando campos obligatorios de Ubiqo (`analyzePhoto`, `decryptFirma`) que no se usan en planogramas, rompiendo la compilación del worker.
+   - *Resolución:* Rediseñamos el tipo para que sea 100% desacoplado y autónomo en `src/lib/pipeline/types.ts`.
+6. **Iteración de Sets en compilaciones ES5:**
+   - *Hallazgo:* `for (const id of set)` causaba errores de compilador al iterar sobre Sets en `worker.ts` sin el flag de downlevel iteration.
+   - *Resolución:* Modificamos las iteraciones para usar `Array.from(set)`.
+7. **Archivos transpilados residuales y control de Git:**
+   - *Hallazgo:* Ejecuciones previas de `tsc` generaban archivos `.js` residuales en `src/` que rompían la suite de tests locales de Vitest.
+   - *Resolución:* Limpiamos la carpeta `src/` y creamos un `.gitignore` local en `infra/vps/worker/` para evitar que `node_modules/` o `dist/` ensucien el repositorio.
 
 ### Observaciones (decisión)
 
