@@ -6,6 +6,8 @@ import type { downloadPlanogram } from '@/lib/planogram/storage';
 import type { buildIncidencePrompt } from '@/lib/planogram/incidence-prompt';
 import type { analyzeWithReferences } from '@/lib/gemini';
 import type { parseIncidenceResponse } from '@/lib/planogram/incidence-parser';
+import type { fetchCaptures, extractPhotos, buildPhotoUrl } from '@/lib/ubiqo/client';
+import type { encryptFirma } from '@/lib/ubiqo/crypto';
 
 type SupabaseClient = NonNullable<typeof SupabaseClientOrNull>;
 
@@ -23,6 +25,27 @@ export interface PlanogramPipelineDeps extends PipelineDeps {
   parseIncidenceResponse: typeof parseIncidenceResponse;
 }
 
+export interface IngestParams {
+  form_id: string | number;
+  from: string;
+  to: string;
+  tz: string;
+}
+
+export interface UbiqoIngestDeps {
+  fetchCaptures: typeof fetchCaptures;
+  extractPhotos: typeof extractPhotos;
+  encryptFirma: typeof encryptFirma;
+  supabase: SupabaseClient;
+}
+
+export interface PlanogramIngestDeps {
+  fetchCaptures: typeof fetchCaptures;
+  extractPhotos: typeof extractPhotos;
+  buildPhotoUrl: typeof buildPhotoUrl;
+  supabase: SupabaseClient;
+}
+
 export interface ProcessResult {
   status: 'completed';
   captureId: string;
@@ -36,4 +59,15 @@ export interface IngestResult {
   discovered: number;
   alreadyProcessed: number;
   pending: number;
+}
+
+export interface PlanogramIngestResult {
+  success: boolean;
+  skipped?: 'no planogram assignment' | 'planogram inactive or deleted';
+  form_id: string | number;
+  planogram_id?: string;
+  captures_found?: number;
+  discovered?: number;
+  skipped_count?: number;
+  pending?: number;
 }
