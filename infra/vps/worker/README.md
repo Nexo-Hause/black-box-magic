@@ -30,7 +30,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
 # ─── Configuración de IA (Gemini) ───
 GOOGLE_AI_API_KEY=your-gemini-api-key
-GEMINI_DAILY_BUDGET_LIMIT=50.0 # Límite diario en USD (ej: 50.00 USD)
+GEMINI_DAILY_BUDGET_LIMIT=50.0 # Límite diario en USD (Debe ser un número puro positivo, ej: 50.0)
 
 # ─── Configuración de Integración Ubiqo ───
 UBIQO_API_TOKEN=your-ubiqo-api-token

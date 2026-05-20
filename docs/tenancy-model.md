@@ -201,3 +201,7 @@ Implicación de esquema (corrige el crítico de aislamiento):
 - **RLS no es barrera primaria:** si el helper se omite en una query futura, RLS es
   la única red. Lint/review debe rechazar queries directas a tablas de datos fuera
   del helper.
+
+### Timezone (§O1)
+- Render fijo: `America/Mexico_City` (FOTL y Ubiqo operan en México).
+- Almacenamiento: UTC (`TIMESTAMPTZ`). Formateo en cliente.

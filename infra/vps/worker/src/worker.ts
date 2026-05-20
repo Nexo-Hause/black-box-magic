@@ -21,7 +21,12 @@ const DEFAULT_BUDGET_LIMIT = 50.0; // $50 USD por defecto si no se configura
 // ─── Control de Costos de Gemini ───
 export async function checkGeminiDailyBudgetLimit(): Promise<{ exceeded: boolean; cost: number; limit: number }> {
   const limitStr = process.env.GEMINI_DAILY_BUDGET_LIMIT;
-  const limit = limitStr ? parseFloat(limitStr) : DEFAULT_BUDGET_LIMIT;
+  let limit = limitStr ? parseFloat(limitStr) : DEFAULT_BUDGET_LIMIT;
+
+  if (isNaN(limit) || limit < 0) {
+    console.error(`[Budget] GEMINI_DAILY_BUDGET_LIMIT inválido: "${limitStr}". Usando default: ${DEFAULT_BUDGET_LIMIT}`);
+    limit = DEFAULT_BUDGET_LIMIT;
+  }
 
   if (!supabase) {
     console.warn('[Budget] Supabase no configurado, omitiendo validación de presupuesto.');
