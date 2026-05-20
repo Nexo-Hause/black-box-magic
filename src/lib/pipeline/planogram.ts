@@ -148,7 +148,7 @@ export async function processIncidence(
   };
 }
 
-import type { IngestParams, PlanogramIngestDeps, PlanogramIngestResult } from './types';
+import type { IngestParams, PlanogramIngestDeps, PlanogramIngestResult, TenantInfo } from './types';
 
 export async function ingestPlanogramCaptures(
   params: IngestParams,
@@ -206,6 +206,12 @@ export async function ingestPlanogramCaptures(
     };
   }
 
+  // Resolve tenant from planogram's client_id
+  let tenantInfo: TenantInfo | null = null;
+  if (deps.resolveTenantFromFormId) {
+    tenantInfo = await deps.resolveTenantFromFormId(String(form_id), supabase);
+  }
+
   // 7. Group photos by capture (ubiqo_grupo)
   let discovered = 0;
   let skippedCount = 0;
@@ -240,6 +246,10 @@ export async function ingestPlanogramCaptures(
           photo_captured_at: captura.fecha || null,
           field_photo_paths: fieldPhotoUrls,
           status: 'pending',
+          ...(tenantInfo ? {
+            account_id: tenantInfo.accountId,
+            client_id: tenantInfo.clientId,
+          } : {}),
         },
         {
           onConflict: 'ubiqo_capture_id',

@@ -200,5 +200,53 @@ describe('ingestPlanogramCaptures', () => {
     expect(r.pending).toBe(1);
     expect(upsertMock).toHaveBeenCalledOnce();
   });
+
+  it('estampa account_id y client_id en incidencias cuando tenantInfo está disponible', async () => {
+    const fetchCaptures = vi.fn(async () => [
+      { grupo: 'g1', folioEvidence: 'f1', alias: 'a1', username: 'u1', estatus: 'Completa', fecha: '2026-05-19', urlBase: 'https://cdn', firma: 'f1' }
+    ]);
+    const extractPhotos = vi.fn(() => [{ url: 'photo1.jpg' }]);
+    const buildPhotoUrl = vi.fn(() => 'https://cdn/photo1.jpg');
+    const resolveTenantFromFormId = vi.fn(async () => ({ accountId: 'acc-1', clientId: 'cli-1' }));
+    const upsertMock = vi.fn(async () => ({ error: null }));
+
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === 'bbm_planogram_assignments') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(async () => ({ data: { planogram_id: 'p1' }, error: null }))
+              }))
+            }))
+          };
+        }
+        if (table === 'bbm_planograms') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  maybeSingle: vi.fn(async () => ({ data: { id: 'p1' }, error: null }))
+                }))
+              }))
+            }))
+          };
+        }
+        if (table === 'bbm_incidences') {
+          return { upsert: upsertMock };
+        }
+        return {} as any;
+      })
+    } as any;
+
+    const deps: any = { fetchCaptures, extractPhotos, buildPhotoUrl, supabase, resolveTenantFromFormId };
+    const r = await ingestPlanogramCaptures({ form_id: 123, from: '2026-05-19', to: '2026-05-20', tz: 'UTC' }, deps);
+
+    expect(r.success).toBe(true);
+    expect(upsertMock).toHaveBeenCalledOnce();
+    const upsertArg = upsertMock.mock.calls[0][0];
+    expect(upsertArg.account_id).toBe('acc-1');
+    expect(upsertArg.client_id).toBe('cli-1');
+  });
 });
 

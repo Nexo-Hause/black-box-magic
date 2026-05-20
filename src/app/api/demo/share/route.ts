@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCookie, COOKIE_NAME } from '@/lib/cookie';
 import { generateShareToken } from '@/lib/share-token';
-
-function isAllowedEmail(email: string): boolean {
-  const allowlist = process.env.DASHBOARD_ALLOWED_EMAILS || '';
-  if (!allowlist) return true;
-  return allowlist.split(',').map(e => e.trim().toLowerCase()).includes(email.toLowerCase());
-}
+import { resolveSession } from '@/lib/auth/session';
+import { supabase } from '@/lib/supabase';
 
 /**
  * POST /api/demo/share
@@ -27,9 +23,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!isAllowedEmail(payload.email)) {
+  // Resolve tenant session (replaces DASHBOARD_ALLOWED_EMAILS)
+  if (!supabase) {
     return NextResponse.json(
-      { error: 'No autorizado para generar links compartibles' },
+      { error: 'Servicio no disponible' },
+      { status: 503 }
+    );
+  }
+  const session = await resolveSession(payload.email, supabase);
+  if (!session) {
+    return NextResponse.json(
+      { error: 'Acceso no autorizado. Si consideras que es un error, por favor contacta al administrador de tu cuenta.' },
       { status: 403 }
     );
   }

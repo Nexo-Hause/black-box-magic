@@ -111,5 +111,100 @@ describe('ingestUbiqoCaptures', () => {
     expect(r.alreadyProcessed).toBe(0);
     expect(r.pending).toBe(0);
   });
+
+  it('estampa account_id y client_id cuando resolveTenantFromFormId está configurado', async () => {
+    const fetchCaptures = vi.fn(async () => [
+      { grupo: 'g1', folioEvidence: 'f1', alias: 'a1', username: 'u1', estatus: 'Completa', fecha: '2026-05-19', urlBase: 'https://cdn', firma: 'f1' },
+    ]);
+    const extractPhotos = vi.fn(() => [
+      { url: 'photo1.jpg', latitud: '1.2', longitud: '3.4', descripcion: 'desc1' }
+    ]);
+    const encryptFirma = vi.fn((f: string) => `enc_${f}`);
+    const resolveTenantFromFormId = vi.fn(async () => ({ accountId: 'acc-1', clientId: 'cli-1' }));
+
+    let callCount = 0;
+    const createMockChain = (countVal: number) => {
+      const result = { count: countVal, error: null };
+      const chain: any = {
+        eq: vi.fn(() => chain),
+        then: (resolve: any) => resolve(result)
+      };
+      return chain;
+    };
+
+    const selectMock = vi.fn(() => {
+      callCount++;
+      if (callCount === 1) return createMockChain(0);
+      if (callCount === 2) return createMockChain(1);
+      return createMockChain(0);
+    });
+
+    const upsertMock = vi.fn(async () => ({ error: null }));
+
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === 'bbm_ubiqo_captures') {
+          return { select: selectMock, upsert: upsertMock };
+        }
+        return {} as any;
+      })
+    } as any;
+
+    const deps: any = { fetchCaptures, extractPhotos, encryptFirma, supabase, resolveTenantFromFormId };
+    await ingestUbiqoCaptures({ form_id: 123, from: '2026-05-19', to: '2026-05-20', tz: 'UTC' }, deps);
+
+    // Verify tenant fields were included in the upsert
+    expect(upsertMock).toHaveBeenCalledOnce();
+    const upsertArg = upsertMock.mock.calls[0][0];
+    expect(upsertArg.account_id).toBe('acc-1');
+    expect(upsertArg.client_id).toBe('cli-1');
+  });
+
+  it('marca status unmapped cuando resolveTenantFromFormId retorna null', async () => {
+    const fetchCaptures = vi.fn(async () => [
+      { grupo: 'g1', folioEvidence: 'f1', alias: 'a1', username: 'u1', estatus: 'Completa', fecha: '2026-05-19', urlBase: 'https://cdn', firma: 'f1' },
+    ]);
+    const extractPhotos = vi.fn(() => [
+      { url: 'photo1.jpg', latitud: '1.2', longitud: '3.4', descripcion: 'desc1' }
+    ]);
+    const encryptFirma = vi.fn((f: string) => `enc_${f}`);
+    const resolveTenantFromFormId = vi.fn(async () => null);
+
+    let callCount = 0;
+    const createMockChain = (countVal: number) => {
+      const result = { count: countVal, error: null };
+      const chain: any = {
+        eq: vi.fn(() => chain),
+        then: (resolve: any) => resolve(result)
+      };
+      return chain;
+    };
+
+    const selectMock = vi.fn(() => {
+      callCount++;
+      if (callCount === 1) return createMockChain(0);
+      if (callCount === 2) return createMockChain(1);
+      return createMockChain(0);
+    });
+
+    const upsertMock = vi.fn(async () => ({ error: null }));
+
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === 'bbm_ubiqo_captures') {
+          return { select: selectMock, upsert: upsertMock };
+        }
+        return {} as any;
+      })
+    } as any;
+
+    const deps: any = { fetchCaptures, extractPhotos, encryptFirma, supabase, resolveTenantFromFormId };
+    await ingestUbiqoCaptures({ form_id: 123, from: '2026-05-19', to: '2026-05-20', tz: 'UTC' }, deps);
+
+    expect(upsertMock).toHaveBeenCalledOnce();
+    const upsertArg = upsertMock.mock.calls[0][0];
+    expect(upsertArg.status).toBe('unmapped');
+    expect(upsertArg.account_id).toBeUndefined();
+  });
 });
 

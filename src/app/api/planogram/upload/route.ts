@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCookie, COOKIE_NAME } from '@/lib/cookie';
 import { supabase } from '@/lib/supabase';
+import { resolveSession } from '@/lib/auth/session';
 
 export const maxDuration = 30;
-
-// ─── Helpers ───
-
-function isAllowedEmail(email: string): boolean {
-  const allowlist = process.env.DASHBOARD_ALLOWED_EMAILS || '';
-  if (!allowlist) return true; // If not configured, allow all authenticated users
-  return allowlist.split(',').map(e => e.trim().toLowerCase()).includes(email.toLowerCase());
-}
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -37,19 +30,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 2. Allowlist check
-  if (!isAllowedEmail(cookiePayload.email)) {
-    return NextResponse.json(
-      { error: 'No tienes permisos para gestionar planogramas.', status: 403 },
-      { status: 403 },
-    );
-  }
-
-  // 3. Supabase required for this endpoint
+  // 2. Supabase required for this endpoint
   if (!supabase) {
     return NextResponse.json(
       { error: 'Supabase no configurado. No se pueden gestionar planogramas.', status: 503 },
       { status: 503 },
+    );
+  }
+
+  // 3. Resolve tenant session (replaces DASHBOARD_ALLOWED_EMAILS)
+  const session = await resolveSession(cookiePayload.email, supabase);
+  if (!session) {
+    return NextResponse.json(
+      { error: 'Acceso no autorizado. Si consideras que es un error, por favor contacta al administrador de tu cuenta.', status: 403 },
+      { status: 403 },
     );
   }
 

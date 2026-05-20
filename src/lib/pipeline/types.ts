@@ -34,11 +34,17 @@ export interface IngestParams {
   tz?: string;
 }
 
+export interface TenantInfo {
+  accountId: string;
+  clientId: string;
+}
+
 export interface UbiqoIngestDeps {
   fetchCaptures: typeof fetchCaptures;
   extractPhotos: typeof extractPhotos;
   encryptFirma: typeof encryptFirma;
   supabase: SupabaseClient;
+  resolveTenantFromFormId?: (formId: string, supabase: any) => Promise<TenantInfo | null>;
 }
 
 export interface PlanogramIngestDeps {
@@ -46,6 +52,7 @@ export interface PlanogramIngestDeps {
   extractPhotos: typeof extractPhotos;
   buildPhotoUrl: typeof buildPhotoUrl;
   supabase: SupabaseClient;
+  resolveTenantFromFormId?: (formId: string, supabase: any) => Promise<TenantInfo | null>;
 }
 
 export interface ProcessResult {

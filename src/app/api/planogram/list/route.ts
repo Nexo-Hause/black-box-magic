@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCookie, COOKIE_NAME } from '@/lib/cookie';
 import { supabase } from '@/lib/supabase';
+import { resolveSession } from '@/lib/auth/session';
+import { scopedQuery } from '@/lib/tenant/scope';
 
 export const maxDuration = 10;
-
-// ─── Helpers ───
-
-function isAllowedEmail(email: string): boolean {
-  const allowlist = process.env.DASHBOARD_ALLOWED_EMAILS || '';
-  if (!allowlist) return true; // If not configured, allow all authenticated users
-  return allowlist.split(',').map(e => e.trim().toLowerCase()).includes(email.toLowerCase());
-}
 
 // ─── Route handler ───
 
@@ -25,15 +19,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 2. Allowlist check
-  if (!isAllowedEmail(cookiePayload.email)) {
-    return NextResponse.json(
-      { error: 'No tienes permisos para ver planogramas.', status: 403 },
-      { status: 403 },
-    );
-  }
-
-  // 3. Supabase required for this endpoint
+  // 2. Supabase required for this endpoint
   if (!supabase) {
     return NextResponse.json(
       { error: 'Supabase no configurado. No se pueden listar planogramas.', status: 503 },
@@ -41,12 +27,23 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // 3. Resolve tenant session (replaces DASHBOARD_ALLOWED_EMAILS)
+  const session = await resolveSession(cookiePayload.email, supabase);
+  if (!session) {
+    return NextResponse.json(
+      { error: 'Acceso no autorizado. Si consideras que es un error, por favor contacta al administrador de tu cuenta.', status: 403 },
+      { status: 403 },
+    );
+  }
+
   try {
     // 4. Query active planograms
-    const { data: planograms, error: queryErr } = await supabase
+    let builder = supabase
       .from('bbm_planograms')
       .select('*')
-      .eq('active', true)
+      .eq('active', true);
+    builder = scopedQuery(builder, session, {});
+    const { data: planograms, error: queryErr } = await builder
       .order('created_at', { ascending: false });
 
     if (queryErr) {

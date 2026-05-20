@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCookie, COOKIE_NAME } from '@/lib/cookie';
 import { supabase } from '@/lib/supabase';
+import { resolveSession } from '@/lib/auth/session';
+import { scopedQuery } from '@/lib/tenant/scope';
 
 export const maxDuration = 10;
-
-// ─── Helpers ───
-
-function isAllowedEmail(email: string): boolean {
-  const allowlist = process.env.DASHBOARD_ALLOWED_EMAILS || '';
-  if (!allowlist) return true; // If not configured, allow all authenticated users
-  return allowlist.split(',').map(e => e.trim().toLowerCase()).includes(email.toLowerCase());
-}
 
 // ─── Route handler ───
 
@@ -25,15 +19,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 2. Allowlist check
-  if (!isAllowedEmail(cookiePayload.email)) {
-    return NextResponse.json(
-      { error: 'No tienes permisos para ver el estado de planogramas.', status: 403 },
-      { status: 403 },
-    );
-  }
-
-  // 3. Supabase required for this endpoint
+  // 2. Supabase required for this endpoint
   if (!supabase) {
     return NextResponse.json(
       { error: 'Supabase no configurado. No se puede consultar el estado.', status: 503 },
@@ -41,11 +27,20 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // 3. Resolve tenant session (replaces DASHBOARD_ALLOWED_EMAILS)
+  const session = await resolveSession(cookiePayload.email, supabase);
+  if (!session) {
+    return NextResponse.json(
+      { error: 'Acceso no autorizado. Si consideras que es un error, por favor contacta al administrador de tu cuenta.', status: 403 },
+      { status: 403 },
+    );
+  }
+
   try {
     // 4. Query incidence counts grouped by status
-    const { data: statusCounts, error: countErr } = await supabase
-      .from('bbm_incidences')
-      .select('status');
+    let statusBuilder = supabase.from('bbm_incidences').select('status');
+    statusBuilder = scopedQuery(statusBuilder, session, {});
+    const { data: statusCounts, error: countErr } = await statusBuilder;
 
     if (countErr) {
       console.error('Error al consultar incidencias:', countErr.message);
@@ -70,10 +65,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Query last completed timestamp
-    const { data: lastCompletedRow, error: lastErr } = await supabase
-      .from('bbm_incidences')
-      .select('processed_at')
-      .eq('status', 'completed')
+    let lastBuilder = supabase.from('bbm_incidences').select('processed_at').eq('status', 'completed');
+    lastBuilder = scopedQuery(lastBuilder, session, {});
+    const { data: lastCompletedRow, error: lastErr } = await lastBuilder
       .order('processed_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -85,10 +79,9 @@ export async function GET(request: NextRequest) {
     const lastCompleted = lastCompletedRow?.processed_at || null;
 
     // 6. Query active planogram count
-    const { count: activePlanograms, error: planogramErr } = await supabase
-      .from('bbm_planograms')
-      .select('id', { count: 'exact', head: true })
-      .eq('active', true);
+    let planogramBuilder = supabase.from('bbm_planograms').select('id', { count: 'exact', head: true }).eq('active', true);
+    planogramBuilder = scopedQuery(planogramBuilder, session, {});
+    const { count: activePlanograms, error: planogramErr } = await planogramBuilder;
 
     if (planogramErr) {
       console.error('Error al contar planogramas activos:', planogramErr.message);

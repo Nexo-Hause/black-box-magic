@@ -86,7 +86,7 @@ export async function processUbiqoCapture(
   };
 }
 
-import type { IngestParams, UbiqoIngestDeps, IngestResult } from './types';
+import type { IngestParams, UbiqoIngestDeps, IngestResult, TenantInfo } from './types';
 
 export async function ingestUbiqoCaptures(
   params: IngestParams,
@@ -98,6 +98,12 @@ export async function ingestUbiqoCaptures(
   // Fetch captures from Ubiqo API
   const numericFormId = typeof form_id === 'number' ? form_id : parseInt(form_id, 10);
   const captures = await fetchCaptures(numericFormId, from, to, tz);
+
+  // Resolve tenant from form_id → assignment → planogram → client → account
+  let tenantInfo: TenantInfo | null = null;
+  if (deps.resolveTenantFromFormId) {
+    tenantInfo = await deps.resolveTenantFromFormId(String(form_id), supabase);
+  }
 
   // Filter only completed captures and extract photos
   const completedCaptures = captures.filter(c => c.estatus === 'Completa');
@@ -116,6 +122,12 @@ export async function ingestUbiqoCaptures(
     for (const photo of photos) {
       discovered++;
 
+      const tenantFields = deps.resolveTenantFromFormId
+        ? (tenantInfo
+          ? { account_id: tenantInfo.accountId, client_id: tenantInfo.clientId }
+          : { status: 'unmapped' as const })
+        : {};
+
       const { error } = await supabase
         .from('bbm_ubiqo_captures')
         .upsert(
@@ -133,6 +145,7 @@ export async function ingestUbiqoCaptures(
             photo_captured_at: capture.fecha,
             url_base: capture.urlBase,
             firma: encryptFirma(capture.firma),
+            ...tenantFields,
           },
           { onConflict: 'ubiqo_grupo,photo_path', ignoreDuplicates: true }
         );
