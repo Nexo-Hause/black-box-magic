@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { processIncidence } from '@/lib/pipeline/planogram';
+import { processIncidence, ingestPlanogramCaptures } from '@/lib/pipeline/planogram';
+import type { PlanogramIngestDeps } from '@/lib/pipeline/types';
 
 function makeDeps(over = {}) {
   const maybeSingleMock = vi.fn(async () => ({
@@ -79,3 +80,125 @@ describe('processIncidence', () => {
     await expect(processIncidence(row as any, deps as any)).rejects.toThrow('No active planogram found');
   });
 });
+
+describe('ingestPlanogramCaptures', () => {
+  it('retorna skipped si no hay asignacion de planograma', async () => {
+    const fetchCaptures = vi.fn(async () => [
+      { grupo: 'g1', folioEvidence: 'f1', alias: 'a1', username: 'u1', estatus: 'Completa', fecha: '2026-05-19', urlBase: 'https://cdn', firma: 'f1' }
+    ]);
+    const extractPhotos = vi.fn(() => [{ url: 'photo1.jpg' }]);
+    const buildPhotoUrl = vi.fn(() => 'https://cdn/photo1.jpg');
+
+    const supabase = {
+      from: vi.fn((table) => {
+        if (table === 'bbm_planogram_assignments') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(async () => ({ data: null, error: null }))
+              }))
+            }))
+          };
+        }
+        return {} as any;
+      })
+    } as any;
+
+    const deps: PlanogramIngestDeps = { fetchCaptures, extractPhotos, buildPhotoUrl, supabase };
+    const r = await ingestPlanogramCaptures({ form_id: 123, from: '2026-05-19', to: '2026-05-20', tz: 'UTC' }, deps);
+
+    expect(r.success).toBe(true);
+    expect(r.skipped).toBe('no planogram assignment');
+    expect(r.captures_found).toBe(1);
+  });
+
+  it('retorna skipped si el planograma esta inactivo o borrado', async () => {
+    const fetchCaptures = vi.fn(async () => [
+      { grupo: 'g1', folioEvidence: 'f1', alias: 'a1', username: 'u1', estatus: 'Completa', fecha: '2026-05-19', urlBase: 'https://cdn', firma: 'f1' }
+    ]);
+    const extractPhotos = vi.fn(() => [{ url: 'photo1.jpg' }]);
+    const buildPhotoUrl = vi.fn(() => 'https://cdn/photo1.jpg');
+
+    const supabase = {
+      from: vi.fn((table) => {
+        if (table === 'bbm_planogram_assignments') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(async () => ({ data: { planogram_id: 'p1' }, error: null }))
+              }))
+            }))
+          };
+        }
+        if (table === 'bbm_planograms') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  maybeSingle: vi.fn(async () => ({ data: null, error: null }))
+                }))
+              }))
+            }))
+          };
+        }
+        return {} as any;
+      })
+    } as any;
+
+    const deps: PlanogramIngestDeps = { fetchCaptures, extractPhotos, buildPhotoUrl, supabase };
+    const r = await ingestPlanogramCaptures({ form_id: 123, from: '2026-05-19', to: '2026-05-20', tz: 'UTC' }, deps);
+
+    expect(r.success).toBe(true);
+    expect(r.skipped).toBe('planogram inactive or deleted');
+    expect(r.planogram_id).toBe('p1');
+  });
+
+  it('inserta incidencias si el planograma esta activo', async () => {
+    const fetchCaptures = vi.fn(async () => [
+      { grupo: 'g1', folioEvidence: 'f1', alias: 'a1', username: 'u1', estatus: 'Completa', fecha: '2026-05-19', urlBase: 'https://cdn', firma: 'f1' }
+    ]);
+    const extractPhotos = vi.fn(() => [{ url: 'photo1.jpg' }]);
+    const buildPhotoUrl = vi.fn(() => 'https://cdn/photo1.jpg');
+    const upsertMock = vi.fn(async () => ({ error: null }));
+
+    const supabase = {
+      from: vi.fn((table) => {
+        if (table === 'bbm_planogram_assignments') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(async () => ({ data: { planogram_id: 'p1' }, error: null }))
+              }))
+            }))
+          };
+        }
+        if (table === 'bbm_planograms') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  maybeSingle: vi.fn(async () => ({ data: { id: 'p1' }, error: null }))
+                }))
+              }))
+            }))
+          };
+        }
+        if (table === 'bbm_incidences') {
+          return {
+            upsert: upsertMock
+          };
+        }
+        return {} as any;
+      })
+    } as any;
+
+    const deps: PlanogramIngestDeps = { fetchCaptures, extractPhotos, buildPhotoUrl, supabase };
+    const r = await ingestPlanogramCaptures({ form_id: 123, from: '2026-05-19', to: '2026-05-20', tz: 'UTC' }, deps);
+
+    expect(r.success).toBe(true);
+    expect(r.discovered).toBe(1);
+    expect(r.pending).toBe(1);
+    expect(upsertMock).toHaveBeenCalledOnce();
+  });
+});
+

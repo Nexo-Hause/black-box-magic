@@ -147,3 +147,121 @@ export async function processIncidence(
     severity_high: parsed.severityHigh,
   };
 }
+
+import type { IngestParams, PlanogramIngestDeps, PlanogramIngestResult } from './types';
+
+export async function ingestPlanogramCaptures(
+  params: IngestParams,
+  deps: PlanogramIngestDeps
+): Promise<PlanogramIngestResult> {
+  const { form_id, from, to, tz } = params;
+  const { fetchCaptures, extractPhotos, buildPhotoUrl, supabase } = deps;
+
+  // 4. Fetch captures from Ubiqo
+  const captures = await fetchCaptures(form_id, from, to, tz);
+
+  // 5. Lookup planogram assignment for this form_id
+  const { data: assignment, error: assignErr } = await supabase
+    .from('bbm_planogram_assignments')
+    .select('planogram_id')
+    .eq('form_id', String(form_id))
+    .maybeSingle();
+
+  if (assignErr) {
+    throw new Error(`Error al buscar asignacion: ${assignErr.message}`);
+  }
+
+  // 6. No assignment = skip
+  if (!assignment) {
+    return {
+      success: true,
+      skipped: 'no planogram assignment',
+      form_id,
+      captures_found: captures.length,
+    };
+  }
+
+  const planogramId = assignment.planogram_id;
+
+  // 5b. Verify planogram is still active
+  const { data: planogramCheck, error: planogramCheckErr } = await supabase
+    .from('bbm_planograms')
+    .select('id')
+    .eq('id', planogramId)
+    .eq('active', true)
+    .maybeSingle();
+
+  if (planogramCheckErr) {
+    throw new Error(`Error al verificar planograma: ${planogramCheckErr.message}`);
+  }
+
+  if (!planogramCheck) {
+    return {
+      success: true,
+      skipped: 'planogram inactive or deleted',
+      form_id,
+      planogram_id: planogramId,
+      captures_found: captures.length,
+    };
+  }
+
+  // 7. Group photos by capture (ubiqo_grupo)
+  let discovered = 0;
+  let skippedCount = 0;
+  let pending = 0;
+
+  for (const captura of captures) {
+    const photos = extractPhotos(captura);
+    if (photos.length === 0) {
+      skippedCount++;
+      continue;
+    }
+
+    discovered++;
+
+    // Build full URLs for all photos in this capture
+    const fieldPhotoUrls = photos.map((photo) =>
+      buildPhotoUrl(
+        { urlBase: captura.urlBase, firma: captura.firma },
+        { url: photo.url },
+      )
+    );
+
+    // 8. INSERT into bbm_incidences with dedup on ubiqo_capture_id.
+    const { error: insertErr } = await supabase
+      .from('bbm_incidences')
+      .upsert(
+        {
+          planogram_id: planogramId,
+          ubiqo_capture_id: captura.grupo,
+          promoter_name: captura.alias || null,
+          store_name: captura.alias || null,
+          photo_captured_at: captura.fecha || null,
+          field_photo_paths: fieldPhotoUrls,
+          status: 'pending',
+        },
+        {
+          onConflict: 'ubiqo_capture_id',
+          ignoreDuplicates: true,
+        },
+      );
+
+    if (insertErr) {
+      console.error(`Error inserting incidence for capture ${captura.grupo}:`, insertErr.message);
+      skippedCount++;
+      continue;
+    }
+
+    pending++;
+  }
+
+  return {
+    success: true,
+    form_id,
+    planogram_id: planogramId,
+    discovered,
+    skipped_count: skippedCount,
+    pending,
+  };
+}
+

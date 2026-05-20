@@ -85,3 +85,82 @@ export async function processUbiqoCapture(
     severity,
   };
 }
+
+import type { IngestParams, UbiqoIngestDeps, IngestResult } from './types';
+
+export async function ingestUbiqoCaptures(
+  params: IngestParams,
+  deps: UbiqoIngestDeps
+): Promise<IngestResult> {
+  const { form_id, from, to, tz } = params;
+  const { fetchCaptures, extractPhotos, encryptFirma, supabase } = deps;
+
+  // Fetch captures from Ubiqo API
+  const captures = await fetchCaptures(form_id, from, to, tz);
+
+  // Filter only completed captures and extract photos
+  const completedCaptures = captures.filter(c => c.estatus === 'Completa');
+
+  let discovered = 0;
+
+  // Snapshot total rows for this form before upsert to compute alreadyProcessed.
+  const { count: countBefore } = await supabase
+    .from('bbm_ubiqo_captures')
+    .select('*', { count: 'exact', head: true })
+    .eq('ubiqo_form_id', String(form_id));
+
+  for (const capture of completedCaptures) {
+    const photos = extractPhotos(capture);
+
+    for (const photo of photos) {
+      discovered++;
+
+      const { error } = await supabase
+        .from('bbm_ubiqo_captures')
+        .upsert(
+          {
+            ubiqo_grupo: capture.grupo,
+            ubiqo_folio: capture.folioEvidence,
+            ubiqo_form_id: String(form_id),
+            ubiqo_alias: capture.alias,
+            ubiqo_username: capture.username,
+            ubiqo_estatus: capture.estatus,
+            photo_path: photo.url,
+            photo_lat: photo.latitud ? parseFloat(photo.latitud) : null,
+            photo_lon: photo.longitud ? parseFloat(photo.longitud) : null,
+            photo_description: photo.descripcion || null,
+            photo_captured_at: capture.fecha,
+            url_base: capture.urlBase,
+            firma: encryptFirma(capture.firma),
+          },
+          { onConflict: 'ubiqo_grupo,photo_path', ignoreDuplicates: true }
+        );
+
+      if (error) {
+        console.error('Supabase upsert error:', error.message);
+      }
+    }
+  }
+
+  // alreadyProcessed = photos in this batch that already existed in DB
+  const { count: countAfter } = await supabase
+    .from('bbm_ubiqo_captures')
+    .select('*', { count: 'exact', head: true })
+    .eq('ubiqo_form_id', String(form_id));
+
+  const actuallyInserted = (countAfter || 0) - (countBefore || 0);
+  const alreadyProcessed = Math.max(0, discovered - actuallyInserted);
+
+  const { count: pendingCount } = await supabase
+    .from('bbm_ubiqo_captures')
+    .select('*', { count: 'exact', head: true })
+    .eq('ubiqo_form_id', String(form_id))
+    .eq('status', 'pending');
+
+  return {
+    discovered,
+    alreadyProcessed,
+    pending: pendingCount || 0,
+  };
+}
+
