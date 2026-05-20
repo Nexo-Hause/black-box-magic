@@ -18,11 +18,13 @@ export interface PipelineDeps {
   supabase: SupabaseClient;
 }
 
-export interface PlanogramPipelineDeps extends PipelineDeps {
+export interface PlanogramPipelineDeps {
   downloadPlanogram: typeof downloadPlanogram;
+  downloadPhoto: typeof downloadPhoto;
   buildIncidencePrompt: typeof buildIncidencePrompt;
   analyzeWithReferences: typeof analyzeWithReferences;
   parseIncidenceResponse: typeof parseIncidenceResponse;
+  supabase: SupabaseClient;
 }
 
 export interface IngestParams {
