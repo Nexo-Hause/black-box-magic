@@ -1,4 +1,4 @@
-import { Worker, Job } from 'bullmq';
+import { Worker, Job, UnrecoverableError } from 'bullmq';
 import { connection, ubiqoProcessQueue, planogramProcessQueue } from './queues';
 import { supabase } from '@/lib/supabase';
 import { downloadPhoto } from '@/lib/ubiqo/ssrf';
@@ -11,6 +11,7 @@ import { parseIncidenceResponse } from '@/lib/planogram/incidence-parser';
 import { analyzeWithReferences } from '@/lib/gemini';
 import { processUbiqoCapture, ingestUbiqoCaptures } from '@/lib/pipeline/ubiqo';
 import { processIncidence, ingestPlanogramCaptures } from '@/lib/pipeline/planogram';
+import { classifyError } from '@/lib/pipeline/errors';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -122,9 +123,21 @@ const ubiqoWorker = new Worker(
     } catch (err: any) {
       console.error(`[Ubiqo Worker] Error procesando captura ${capture.id}:`, err.message);
       
-      // Incrementar contador de reintentos y marcar fallido
+      const classified = classifyError(err);
       const currentRetry = (capture.retry_count || 0) + 1;
-      const newStatus = currentRetry >= 3 ? 'failed' : 'pending';
+      
+      let newStatus = 'pending';
+      let errorKind: string = classified.kind;
+      if (classified.reason === 'ubiqo_auth') {
+        errorKind = 'ubiqo_auth';
+      }
+
+      const isFinalAttempt = currentRetry >= 2 || (job.attemptsMade + 1) >= (job.opts.attempts || 2);
+      const isUnrecoverable = classified.kind === 'permanent' || classified.kind === 'safety_block';
+
+      if (isUnrecoverable || isFinalAttempt) {
+        newStatus = 'failed';
+      }
 
       await supabase
         .from('bbm_ubiqo_captures')
@@ -132,9 +145,17 @@ const ubiqoWorker = new Worker(
           status: newStatus,
           retry_count: currentRetry,
           error_log: err.message,
+          error_kind: errorKind,
           updated_at: new Date().toISOString(),
         })
         .eq('id', capture.id);
+
+      if (isUnrecoverable) {
+        if (classified.reason === 'ubiqo_auth') {
+          console.error(`[UBIQO_AUTH_FAILURE] Fallo de autenticación crítico en Ubiqo para captura ${capture.id}: ${err.message}`);
+        }
+        throw new UnrecoverableError(err.message);
+      }
 
       throw err;
     }
@@ -197,8 +218,21 @@ const planogramWorker = new Worker(
     } catch (err: any) {
       console.error(`[Planogram Worker] Error procesando incidencia ${incidence.id}:`, err.message);
       
+      const classified = classifyError(err);
       const currentRetry = (incidence.retry_count || 0) + 1;
-      const newStatus = currentRetry >= 3 ? 'failed' : 'pending';
+      
+      let newStatus = 'pending';
+      let errorKind: string = classified.kind;
+      if (classified.reason === 'ubiqo_auth') {
+        errorKind = 'ubiqo_auth';
+      }
+
+      const isFinalAttempt = currentRetry >= 2 || (job.attemptsMade + 1) >= (job.opts.attempts || 2);
+      const isUnrecoverable = classified.kind === 'permanent' || classified.kind === 'safety_block';
+
+      if (isUnrecoverable || isFinalAttempt) {
+        newStatus = 'failed';
+      }
 
       await supabase
         .from('bbm_incidences')
@@ -206,9 +240,17 @@ const planogramWorker = new Worker(
           status: newStatus,
           retry_count: currentRetry,
           error_log: err.message,
+          error_kind: errorKind,
           updated_at: new Date().toISOString(),
         })
         .eq('id', incidence.id);
+
+      if (isUnrecoverable) {
+        if (classified.reason === 'ubiqo_auth') {
+          console.error(`[UBIQO_AUTH_FAILURE] Fallo de autenticación crítico en Ubiqo para incidencia ${incidence.id}: ${err.message}`);
+        }
+        throw new UnrecoverableError(err.message);
+      }
 
       throw err;
     }
@@ -279,8 +321,14 @@ async function runPeriodicIngest() {
 
           if (pendingCaptures) {
             for (const capture of pendingCaptures) {
-              await ubiqoProcessQueue.add(`ubiqo-${capture.id}`, { captureId: capture.id });
+              const job = await ubiqoProcessQueue.add(`ubiqo-${capture.id}`, { captureId: capture.id });
               console.log(`[Scheduler] Encolado job ubiqo-process para captura ${capture.id}`);
+              
+              // Stamp job id in database capture for reconciliation (WS-H)
+              await supabase
+                .from('bbm_ubiqo_captures')
+                .update({ bullmq_job_id: job.id })
+                .eq('id', capture.id);
             }
           }
         }
@@ -334,8 +382,14 @@ async function runPeriodicIngest() {
 
           if (pendingIncidences) {
             for (const incidence of pendingIncidences) {
-              await planogramProcessQueue.add(`planogram-${incidence.id}`, { incidenceId: incidence.id });
+              const job = await planogramProcessQueue.add(`planogram-${incidence.id}`, { incidenceId: incidence.id });
               console.log(`[Scheduler] Encolado job planogram-process para incidencia ${incidence.id}`);
+              
+              // Stamp job id in database incidence for reconciliation (WS-H)
+              await supabase
+                .from('bbm_incidences')
+                .update({ bullmq_job_id: job.id })
+                .eq('id', incidence.id);
             }
           }
         }

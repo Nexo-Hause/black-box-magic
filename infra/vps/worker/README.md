@@ -5,7 +5,7 @@ Este directorio contiene el esqueleto independiente para el **Worker BullMQ** di
 ## 🚀 Características Clave
 
 1. **Auto-Onboarding & Auto-Descubrimiento:** No requiere que registres formularios manualmente. El repeatable job periódicamente auto-descubre qué formularios (`form_id`) procesar consultando la base de datos de capturas y asignaciones, ejecutando su ingesta de forma incremental automática.
-2. **Control de Presupuesto Diario de Gemini:** Limita dinámicamente el costo de la API de Gemini basándose en una estimación de tokens diarios consumidos. Si se alcanza el umbral en `GEMINI_DAILY_BUDGET_LIMIT`, se pausan temporalmente los análisis para proteger tus costos.
+2. **Control de Presupuesto Diario de Gemini:** Limita dinámicamente el costo de la API de Gemini basándose en una estimación de tokens diarios consumidos. Si se alcanza el umbral en `GEMINI_DAILY_BUDGET_LIMIT`, se pausan temporalmente los análisis para proteger tus costos. Si esta variable está ausente, no es válida o es negativa, se utilizará un fallback de seguridad predeterminado de **$50 USD diarios**.
 3. **Panel Visual de Monitoreo (Bull Board):** Servidor Express integrado con Basic Auth para supervisar, reintentar y auditar trabajos en tiempo real en la dirección `/admin/queues`.
 4. **Reutilización de Código sin Duplicados:** Mediante TypeScript Paths, el worker consume la lógica Next.js y el pipeline centralizado sin necesidad de copiar código.
 
@@ -25,12 +25,12 @@ Crea un archivo `.env` en la raíz del repositorio o dentro de este directorio (
 
 ```env
 # ─── Configuración de Base de Datos ───
-NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-url.supabase.co
+SUPABASE_URL=https://your-supabase-url.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
 # ─── Configuración de IA (Gemini) ───
 GOOGLE_AI_API_KEY=your-gemini-api-key
-GEMINI_DAILY_BUDGET_LIMIT=50.0 # Límite diario en USD (Debe ser un número puro positivo, ej: 50.0)
+GEMINI_DAILY_BUDGET_LIMIT=50.0 # Límite diario en USD. Si está ausente, es inválido o negativo, se usa un fallback de $50.0 USD.
 
 # ─── Configuración de Integración Ubiqo ───
 UBIQO_API_TOKEN=your-ubiqo-api-token
