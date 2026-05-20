@@ -198,7 +198,13 @@ tools, live-session), y `analyze`/`auth`. Configuración en `vitest.config.ts`.
 |------|--------|--------|
 | `spec/00-ubiqo-integration.md` | Integración BBM × Ubiqo (Evidence/Gather) | **Implementado** — Fase 0+1 en `main` (PR #14). Webhook post-MVP |
 | `spec/01-engine-v3.md` | Engine v3 — Motor multi-industria con onboarding conversacional | **Implementado** — Fases 0-4 (PRs #5-#6) |
-| `spec/02-reference-comparison.md` | Comparación contra Planograma (Producción Beta) | **En implementación** — Fase 0+1 en `main`; Fase 2-3 + WS-MT/WS-H pendientes. Ver `docs/roadmap-2026-05.md` |
+| `spec/02-reference-comparison.md` | Comparación contra Planograma (Producción Beta) | **En implementación** — Fase 0+1 en `main`; Fase 2-3 + WS-MT/WS-H pendientes. Ver `docs/roadmap-2026-05.md`. § WS-D cierra C11/O1/O3/O4/design-system |
+| `spec/03-ws1-pipeline-bullmq.md` | WS1 — pipeline compartido + worker BullMQ | **Escrita + auditada** — pendiente ejecución |
+| `spec/04-ws-mt-multitenant.md` | WS-MT — fundación multi-tenant (3 roles, scoping) | **Escrita + auditada** — pendiente ejecución |
+| `spec/05-ws-h-hardening.md` | WS-H — endurecimiento de producción | **Escrita + auditada** — pendiente ejecución |
+| `spec/02-ws2-dashboard.md` | WS2 — dashboard FOTL tenant-scoped | **Escrita + auditada** — pendiente ejecución |
+| `spec/02-ws3-export.md` | WS3 — export Excel tenant-scoped | **Escrita + auditada** — pendiente ejecución |
+| `docs/tenancy-model.md` | Modelo de tenencia formal (entrada de WS-MT) | Diseño cerrado |
 
 ---
 

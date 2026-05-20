@@ -2,8 +2,7 @@
  * Server-side PDF generation for email attachments.
  * Uses jspdf without image embedding (no canvas in Node).
  */
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import type jsPDF from 'jspdf';
 
 const TERRACOTA = '#D35230';
 const NAVY = '#1A1A2E';
@@ -73,7 +72,23 @@ export async function generatePDFBuffer(resultJson: Record<string, unknown>): Pr
   const meta = resultJson.meta as Record<string, unknown> | undefined;
   if (!analysis) throw new Error('No analysis data');
 
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  // Polyfill server-side globals for jsPDF and jspdf-autotable to prevent errors on Vercel
+  if (typeof window === 'undefined') {
+    (global as any).window = {
+      document: {
+        createElementNS: () => ({}),
+      },
+      navigator: {},
+    };
+    (global as any).navigator = {};
+    (global as any).btoa = (str: string) => Buffer.from(str, 'binary').toString('base64');
+  }
+
+  // Dynamic import jsPDF and jspdf-autotable to ensure polyfills are initialized
+  const { default: jsPDFClass } = await import('jspdf');
+  const { default: autoTableFunc } = await import('jspdf-autotable');
+
+  const doc = new jsPDFClass({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   let y = PAGE_MARGIN;
 
   // Title
@@ -111,7 +126,7 @@ export async function generatePDFBuffer(resultJson: Record<string, unknown>): Pr
     doc.setTextColor(...hexToRGB(BODY_COLOR));
     doc.text(`Total SKUs: ${inv.total_skus_detected}`, PAGE_MARGIN, y);
     y += 5;
-    autoTable(doc, {
+    autoTableFunc(doc, {
       startY: y,
       margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
       head: [['Producto', 'Marca', 'Cantidad']],
@@ -129,7 +144,7 @@ export async function generatePDFBuffer(resultJson: Record<string, unknown>): Pr
   const pricing = analysis.pricing as { prices_found?: Array<{ item: string; price: number; currency?: string; type?: string }> } | undefined;
   if (pricing?.prices_found?.length) {
     y = sectionHeader(doc, y, 'Precios Detectados');
-    autoTable(doc, {
+    autoTableFunc(doc, {
       startY: y,
       margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
       head: [['Producto', 'Precio', 'Tipo']],
