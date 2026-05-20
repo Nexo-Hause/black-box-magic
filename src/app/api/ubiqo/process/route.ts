@@ -4,6 +4,7 @@ import { downloadPhoto } from '@/lib/ubiqo/ssrf';
 import { decryptFirma } from '@/lib/ubiqo/crypto';
 import { analyzePhoto } from '@/lib/analyze';
 import { supabase } from '@/lib/supabase';
+import { processUbiqoCapture } from '@/lib/pipeline/ubiqo';
 
 export const maxDuration = 60;
 
@@ -67,67 +68,25 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Reconstruct photo URL: url_base + photo_path + firma
-      // Decrypt firma (no-op if stored as plaintext / key not configured).
-      const decryptedFirma = decryptFirma(row.firma);
-      const urlBase = row.url_base.endsWith('/') ? row.url_base : row.url_base + '/';
-      const photoPath = row.photo_path.startsWith('/') ? row.photo_path.slice(1) : row.photo_path;
-      const firma = decryptedFirma.startsWith('?') ? decryptedFirma : '?' + decryptedFirma;
-      const photoUrl = urlBase + photoPath + firma;
+      const realDeps = {
+        downloadPhoto,
+        analyzePhoto,
+        decryptFirma,
+        supabase,
+      };
 
-      // Download with SSRF protection
-      const { buffer, contentType } = await downloadPhoto(photoUrl);
-
-      // Convert to base64
-      const base64 = buffer.toString('base64');
-
-      // Analyze with legacy 2-pass engine
-      const customRules = process.env.UBIQO_QSR_CUSTOM_RULES || undefined;
-      const result = await analyzePhoto(base64, contentType, customRules);
-
-      // Extract key fields from analysis
-      // The Gemini response may include fields beyond the TS type definition
-      const analysis = result.analysis;
-      const analysisRaw = analysis as unknown as Record<string, unknown>;
-      const executionScore = typeof analysisRaw.execution_score === 'number'
-        ? analysisRaw.execution_score
-        : null;
-      const photoType = analysis.photo_type || null;
-      const severity = analysis.severity || null;
-
-      // Update row with results
-      const { error: updateError } = await supabase
-        .from('bbm_ubiqo_captures')
-        .update({
-          status: 'completed',
-          retry_count: 0, // Reset on success
-          analysis_result: analysis,
-          execution_score: executionScore,
-          photo_type: photoType,
-          severity,
-          escalated: result.meta.escalated,
-          model: result.meta.model,
-          tokens_total: result.meta.tokens.total,
-          processing_time_ms: result.meta.processing_time_ms,
-          analyzed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', row.id);
-
-      if (updateError) {
-        console.error('Failed to update completed capture:', updateError.message);
-      }
+      const result = await processUbiqoCapture(row, realDeps);
 
       return NextResponse.json({
         success: true,
-        id: row.id,
-        status: 'completed',
-        execution_score: executionScore,
-        photo_type: photoType,
-        severity,
-        escalated: result.meta.escalated,
-        model: result.meta.model,
-        processing_time_ms: result.meta.processing_time_ms,
+        id: result.captureId,
+        status: result.status,
+        execution_score: result.execution_score,
+        photo_type: result.photo_type,
+        severity: result.severity,
+        escalated: result.escalated,
+        model: result.model,
+        processing_time_ms: result.processingTimeMs,
       });
     } catch (error) {
       // Processing failed — retry or mark as failed
