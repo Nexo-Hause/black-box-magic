@@ -46,6 +46,7 @@ export interface PlanogramRecord {
 export interface IncidenceRecord {
   id: string;
   planogram_id: string;
+  client_id?: string | null;
   ubiqo_capture_id: string | null;
   promoter_name: string | null;
   store_name: string | null;
@@ -86,6 +87,8 @@ export interface IncidenceFilters {
   status?: string;
   limit?: number;
   offset?: number;
+  clientId?: string;
+  sort?: 'captured_desc' | 'captured_asc';
 }
 
 // Raw LLM response for incidence detection
