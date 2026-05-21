@@ -66,7 +66,7 @@ describe('GET /api/planogram/clients', () => {
       clientId: 'cli-fotl',
     });
 
-    const mockClients = [{ id: 'cli-fotl', name: 'Fruit of the Loom', account_id: 'acc-ubiqo' }];
+    const mockClients = [{ id: 'cli-fotl', name: 'Fruit of the Loom', client_key: 'fotl', account_id: 'acc-ubiqo' }];
     const query = mockSupabaseQuery(mockClients);
     vi.mocked(supabase!.from).mockReturnValue(query as any);
 
@@ -79,7 +79,7 @@ describe('GET /api/planogram/clients', () => {
     expect(body.clients).toHaveLength(1);
     expect(body.clients[0].id).toBe('cli-fotl');
     expect(supabase!.from).toHaveBeenCalledWith('bbm_clients');
-    expect(query.select).toHaveBeenCalledWith('id, name, account_id');
+    expect(query.select).toHaveBeenCalledWith('id, name, client_key, account_id');
     expect(query.eq).toHaveBeenCalledWith('id', 'cli-fotl');
   });
 
@@ -93,8 +93,8 @@ describe('GET /api/planogram/clients', () => {
     });
 
     const mockClients = [
-      { id: 'cli-fotl', name: 'Fruit of the Loom', account_id: 'acc-ubiqo' },
-      { id: 'cli-other', name: 'Other Client', account_id: 'acc-ubiqo' },
+      { id: 'cli-fotl', name: 'Fruit of the Loom', client_key: 'fotl', account_id: 'acc-ubiqo' },
+      { id: 'cli-other', name: 'Other Client', client_key: 'other', account_id: 'acc-ubiqo' },
     ];
     const query = mockSupabaseQuery(mockClients);
     vi.mocked(supabase!.from).mockReturnValue(query as any);
@@ -107,7 +107,7 @@ describe('GET /api/planogram/clients', () => {
     const body = await res.json();
     expect(body.clients).toHaveLength(2);
     expect(supabase!.from).toHaveBeenCalledWith('bbm_clients');
-    expect(query.select).toHaveBeenCalledWith('id, name, account_id');
+    expect(query.select).toHaveBeenCalledWith('id, name, client_key, account_id');
     expect(query.eq).toHaveBeenCalledWith('account_id', 'acc-ubiqo');
   });
 
@@ -121,8 +121,8 @@ describe('GET /api/planogram/clients', () => {
     });
 
     const mockClients = [
-      { id: 'cli-fotl', name: 'Fruit of the Loom', account_id: 'acc-ubiqo' },
-      { id: 'cli-other', name: 'Other Client', account_id: 'acc-other' },
+      { id: 'cli-fotl', name: 'Fruit of the Loom', client_key: 'fotl', account_id: 'acc-ubiqo' },
+      { id: 'cli-other', name: 'Other Client', client_key: 'other', account_id: 'acc-other' },
     ];
     const query = mockSupabaseQuery(mockClients);
     vi.mocked(supabase!.from).mockReturnValue(query as any);
@@ -135,7 +135,7 @@ describe('GET /api/planogram/clients', () => {
     const body = await res.json();
     expect(body.clients).toHaveLength(2);
     expect(supabase!.from).toHaveBeenCalledWith('bbm_clients');
-    expect(query.select).toHaveBeenCalledWith('id, name, account_id');
+    expect(query.select).toHaveBeenCalledWith('id, name, client_key, account_id');
     expect(query.eq).not.toHaveBeenCalled();
   });
 });

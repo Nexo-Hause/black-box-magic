@@ -5,7 +5,7 @@ import type { AnalysisResponse } from '@/types/analysis';
  * Sanitize a cell value against CSV injection.
  * Any value starting with =, +, -, @, \t, or \r is prefixed with a single quote.
  */
-function sanitize(value: unknown): string | number {
+export function sanitize(value: unknown): string | number {
   if (value == null) return '';
   if (typeof value === 'number') return value;
 

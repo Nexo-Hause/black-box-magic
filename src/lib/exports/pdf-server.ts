@@ -135,7 +135,7 @@ export async function generatePDFBuffer(resultJson: Record<string, unknown>): Pr
       bodyStyles: { textColor: hexToRGB(BODY_COLOR), fontSize: 8 },
       alternateRowStyles: { fillColor: hexToRGB(LAVANDA) },
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line
     y = (doc as any).lastAutoTable?.finalY ?? y + 20;
     y += 4;
   }
@@ -153,7 +153,7 @@ export async function generatePDFBuffer(resultJson: Record<string, unknown>): Pr
       bodyStyles: { textColor: hexToRGB(BODY_COLOR), fontSize: 8 },
       alternateRowStyles: { fillColor: hexToRGB(LAVANDA) },
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line
     y = (doc as any).lastAutoTable?.finalY ?? y + 20;
     y += 4;
   }

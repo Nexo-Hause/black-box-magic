@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // 4. Query clients with appropriate tenant scoping
-    let builder = supabase.from('bbm_clients').select('id, name, account_id');
+    let builder = supabase.from('bbm_clients').select('id, name, client_key, account_id');
 
     if (session.role === 'client_user') {
       // client_user is locked to their specific client ID (which maps to id in bbm_clients)

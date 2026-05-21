@@ -4,6 +4,7 @@ import { IncidenceFilters, IncidenceRecord } from '@/types/incidence';
 interface Client {
   id: string;
   name: string;
+  client_key?: string;
 }
 
 export function useDashboard() {

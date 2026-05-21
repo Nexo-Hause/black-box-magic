@@ -168,3 +168,83 @@ html, body {
   padding: 0.75rem 1rem; font-size: 0.85rem; line-height: 1.5;
   color: var(--text);
 }
+
+/* Estilos avanzados de tabla (Tarea 7) */
+.table tbody tr {
+  transition: background-color 0.1s ease;
+}
+.table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+  cursor: pointer;
+}
+.table th {
+  position: sticky;
+  top: 0;
+  background-color: var(--bg-white);
+  z-index: 1;
+}
+
+/* Estilos de Modal Premium (Tarea 7) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-card {
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  background-color: var(--bg-white);
+  border: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.25s ease-out;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 2px solid var(--border);
+  background-color: var(--bg-white);
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  background-color: var(--bg);
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 2px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  background-color: var(--bg-white);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+

@@ -1,7 +1,7 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-05-21 (Sesión 17 — Completado el 100% del Backend de WS2: clientes, incidencias paginadas, detalle firmado y asignación de formulario, hook de React useDashboard verificado con 242/242 tests en verde y 0 errores de compilación tsc. Diseñado y aprobado plan de implementación unificado con la Fase 3 - Export Excel). Roadmap TP: `docs/roadmap-2026-05.md`.
+> Última actualización: 2026-05-21 (Sesión 18 — Completado el 100% de WS2 y WS3: Dashboard Frontend y Exportador Excel tenant-scoped con control de inyección de fórmulas CSV, tope defensivo OOM de 5,000 filas, y hook de React useDashboard verificado con 252/252 tests en verde y 0 errores de compilación tsc o linter). Roadmap TP: `docs/roadmap-2026-05.md`.
 
 ---
 
@@ -9,24 +9,27 @@
 
 **Objetivo:** MVP **comercializable atado a Ubiqo Evidence**, robusto en producción, para comercializar con clientes (Fruit of the Loom).
 **Secuencia estricta:** `WS0 ─► WS1 ─► WS-D ─► WS-MT ─► WS-H ─► WS2 ─► WS3 ─► WS4`
-*   **WS2 Backend:** ✅ 100% completado (endpoints `clients`, `incidences`, `incidences/[id]`, `assign` y hook `useDashboard` con tests).
-*   **Siguiente:** WS2 Frontend (UI del Dashboard `/dashboard` y `/dashboard/planograms`) y WS3 (Export Excel tenant-scoped) unificados en una sola entrega para optimizar pruebas manuales.
+*   **WS2 Backend & Frontend:** ✅ 100% completado (endpoints de catálogo/incidencias/asignación, hook `useDashboard` y pantallas `/dashboard` y `/dashboard/planograms` con drag&drop y asignación).
+*   **WS3 Export Excel:** ✅ 100% completado (generador multi-hoja con pivots, sanitización de celdas contra inyección CSV/DDE, tope de 5,000 registros para evitar OOM, endpoint `/api/planogram/export` y botón de descarga interactivo).
+*   **Siguiente:** WS4 (Validación E2E en campo con fotos reales FOTL).
 
 ---
 
 ## Handoff — próxima sesión (leer esto primero)
 
-**Dónde estamos:** El backend del Dashboard (WS2) y toda la lógica de filtrado, paginación, firmado seguro de imágenes y asignación de planogramas a formularios 1:1 ya están completamente implementados, integrados y testeados. Además, se redactó el **Plan de Implementación Unificado (`spec/implementation_plan.md`)** que cubre de forma conjunta el Frontend del Dashboard (WS2) y el Exportador a Excel (WS3) con sus respectivas auditorías pre-implementación completadas (incluyendo Fase 3: Puntos Ciegos).
+**Dónde estamos:** WS2 (Dashboard Frontend) y WS3 (Export Excel) se encuentran 100% completados de extremo a extremo, integrados y testeados. Todo compila de forma extremadamente limpia sin advertencias de ESLint y con TypeScript libre de errores. La suite de pruebas de Vitest cuenta con 252/252 tests pasando de forma exitosa.
 
 **Specs y Estado de Código:**
-*   `spec/implementation_plan.md` — Plan de diseño y QA unificado para WS2 Frontend y WS3.
-*   `spec/task.md` — Lista de tareas detallada con seguimiento y estado actual del trabajo.
-*   `src/app/api/planogram/assign/route.ts` — Asignación 1:1 con prevención de duplicados HTTP 409 y cross-tenant HTTP 404.
-*   `src/hooks/useDashboard.ts` — Hook React para el manejo de estados de filtros, paginación y detalle de incidencias.
+*   `spec/implementation_plan.md` — Plan de diseño y QA unificado para WS2 Frontend y WS3 cerrado.
+*   `spec/task.md` — Lista de tareas detallada con el 100% de las tareas marcadas como completadas.
+*   `src/app/api/planogram/export/route.ts` — Endpoint de exportación con control de OOM (límite de 5,000 registros) y `scopedQuery`.
+*   `src/app/api/planogram/__tests__/export.test.ts` — Pruebas de integración de la exportación (5/5 en verde).
+*   `src/hooks/useDashboard.ts` — Actualizado con type-safety para la propiedad `client_key`.
+*   `.eslintrc.json` — Creado y configurado para unificar flujos de lint.
 
 **Siguiente acción concreta:**
-1.  Obtener la confirmación de Gonzalo para fusionar el PR de esta sesión (`session/ws2-ws3-dashboard`) una vez aprobado el review automático de IA.
-2.  Iniciar en una nueva sesión limpia el desarrollo de las vistas del Frontend (`/dashboard` y `/dashboard/planograms`) e implementar la capa de Exportación a Excel (WS3) conforme a la Tarea 8 del `spec/task.md`.
+1.  Proceder con el despliegue / merge de la rama `session/ws2-ws3-dashboard`.
+2.  Iniciar WS4 (Validación E2E en campo con fotos reales de FOTL).
 
 ---
 
@@ -36,7 +39,7 @@
 | :--- | :--- | :--- |
 | 00 | Integración BBM × Ubiqo (Evidence/Gather) | **Implementado** — webhook post-MVP |
 | 01 | Engine v3 — onboarding conversacional | **Implementado** |
-| 02 | Comparación contra Planograma | **En implementación** — Backend completado, plan de frontend e implementación de export unificados en `spec/implementation_plan.md` |
+| 02 | Comparación contra Planograma | **Implementado** — Backend, Frontend y Export Excel completados y testeados con éxito. |
 | 03 | Worker BullMQ en VPS | **Implementado** (BullMQ + Express Bull Board) |
 | 04 | Fundación Multi-tenant | **Implementado** (Tablas canónicas + `scopedQuery`) |
 | 05 | Hardening de Producción | **Implementado** (Retry, taxonomía de error Gemini y robustez Basic Auth) |
@@ -52,8 +55,8 @@
 | WS-D | Cierre de specs + modelo de tenencia | **Completo** |
 | WS-MT | Fundación multi-tenant (3 roles, RLS) | **Completo** |
 | WS-H | Hardening de producción | **Completo** |
-| WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | **Backend completado y testeado** (Falta UI / Frontend) |
-| WS3 | Export Excel Fase 3 (tenant-scoped) | **Spec escrita + plan de ejecución unificado** |
+| WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | **Completo** |
+| WS3 | Export Excel Fase 3 (tenant-scoped) | **Completo** |
 | WS4 | Validación E2E con fotos reales FOTL | Pendiente |
 | WS5 | Webhook Ubiqo | **Post-MVP** |
 
@@ -65,10 +68,10 @@
 | :--- | :--- | :--- |
 | API producción (`/api/analyze`) | 60 | Funcional |
 | API comparación (`/api/compare`) | — | Funcional |
-| Planogram API (`/api/planogram/*`) | 21 | Funcional — upload, clients, incidences, detail, assign |
+| Planogram API (`/api/planogram/*`) | 26 | Funcional — upload, clients, incidences, detail, assign, export |
 | Ubiqo pipeline (`/api/ubiqo/*`) | 58 | Funcional |
 | Hook Dashboard (`useDashboard`) | 3 | Funcional |
-| **Total** | **242 / 242** | Runner: **Vitest ^4.1.2** (100% pass) |
+| **Total** | **252 / 252** | Runner: **Vitest ^4.1.2** (100% pass) |
 
 ---
 

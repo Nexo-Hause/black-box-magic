@@ -44,21 +44,21 @@
   - [x] Paso 2: Crear suite de tests `src/hooks/__tests__/useDashboard.test.ts` con fetch mockeado.
   - [x] Paso 3: Validar que `npm test` y `tsc` compilen al 100%.
   - [x] Paso 4: Hacer commit local.
-- [ ] **Tarea 5:** Vista principal `/dashboard` (gate de login, selector de clientes por rol, tabla con row-hover, modal detalle, 3 empty states y paginación).
-- [ ] **Tarea 6:** Vista `/dashboard/planograms` (grid de planogramas con thumbnails seguros, drag&drop de subida, y formulario de asignación de `form_id`).
-- [ ] **Tarea 7:** Estilos CSS avanzados (sticky headers, table row hover) en `src/app/globals.css`.
+- [x] **Tarea 5:** Vista principal `/dashboard` (gate de login, selector de clientes por rol, tabla con row-hover, modal detalle, 3 empty states y paginación).
+- [x] **Tarea 6:** Vista `/dashboard/planograms` (grid de planogramas con thumbnails seguros, drag&drop de subida, y formulario de asignación de `form_id`).
+- [x] **Tarea 7:** Estilos CSS avanzados (sticky headers, table row hover) en `src/app/globals.css`.
 
 ## Fase 4: Exportación de Reportes a Excel (WS3)
-- [ ] **Tarea 8:** Builder de Excel con 4 hojas (`src/lib/exports/incidences-excel.ts`) + tests.
-  - [ ] Paso 1: Crear suite de pruebas `src/lib/exports/__tests__/incidences-excel.test.ts` (nombres de hojas, pivotes y sanitización de celdas).
-  - [ ] Paso 2: Exportar la función `sanitize` en `src/lib/exports/excel.ts`.
-  - [ ] Paso 3: Codificar el generador de libro `buildIncidencesWorkbook` importando y sanitizando celdas de texto.
-  - [ ] Paso 4: Ejecutar tests y validar exit 0.
-- [ ] **Tarea 9:** Endpoint `GET /api/planogram/export` + tests.
-  - [ ] Paso 1: Crear suite de pruebas `src/app/api/planogram/__tests__/export.test.ts` (restricción por tenant, tope de 5,000 registros, cabeceras del archivo).
-  - [ ] Paso 2: Implementar la ruta `/api/planogram/export/route.ts` con `resolveSession` y `scopedQuery`.
-  - [ ] Paso 3: Ejecutar y verificar pruebas.
-- [ ] **Tarea 10:** Integración de descarga en la UI del Dashboard.
-  - [ ] Paso 1: Añadir el botón "Exportar Excel" en la barra de filtros de `/dashboard/page.tsx`.
-  - [ ] Paso 2: Construir los query params en el click usando `URLSearchParams` y redirigir el href de descarga.
-  - [ ] Paso 3: Probar manual de extremo a extremo en el navegador y adjuntar evidencias.
+- [x] **Tarea 8:** Builder de Excel con 4 hojas (`src/lib/exports/incidences-excel.ts`) + tests.
+  - [x] Paso 1: Crear suite de pruebas `src/lib/exports/__tests__/incidences-excel.test.ts` (nombres de hojas, pivotes y sanitización de celdas).
+  - [x] Paso 2: Exportar la función `sanitize` en `src/lib/exports/excel.ts`.
+  - [x] Paso 3: Codificar el generador de libro `buildIncidencesWorkbook` importando y sanitizando celdas de texto.
+  - [x] Paso 4: Ejecutar tests y validar exit 0.
+- [x] **Tarea 9:** Endpoint `GET /api/planogram/export` + tests.
+  - [x] Paso 1: Crear suite de pruebas `src/app/api/planogram/__tests__/export.test.ts` (restricción por tenant, tope de 5,000 registros, cabeceras del archivo).
+  - [x] Paso 2: Implementar la ruta `/api/planogram/export/route.ts` con `resolveSession` y `scopedQuery`.
+  - [x] Paso 3: Ejecutar y verificar pruebas.
+- [x] **Tarea 10:** Integración de descarga en la UI del Dashboard.
+  - [x] Paso 1: Añadir el botón "Exportar Excel" en la barra de filtros de `/dashboard/page.tsx`.
+  - [x] Paso 2: Construir los query params en el click usando `URLSearchParams` y redirigir el href de descarga.
+  - [x] Paso 3: Probar manual de extremo a extremo en el navegador y adjuntar evidencias.
