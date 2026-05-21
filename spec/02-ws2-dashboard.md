@@ -93,6 +93,17 @@ El contrato O3 usa `clientId` y `sort` y proyecta `client_id`, pero
   git commit -m "feat(dashboard): extiende IncidenceFilters/IncidenceRecord (contrato O3)"
   ```
 
+### Tarea 0b: Stamping de `client_id` en upload (Crítico resuelto)
+
+- [x] **Step 1: Resolver `client_id` en upload.** Modificar `src/app/api/planogram/upload/route.ts` para que resuelva el `client_id` del cliente a partir de `clientKey` y valide que el usuario tenga acceso a dicho cliente según su rol y scope (`session.clientId` o `session.accountId`).
+- [x] **Step 2: Estampar `client_id` en inserciones y actualizaciones.** Modificar las operaciones de base de datos en `upload/route.ts` para que graben `client_id` al insertar el nuevo planograma y al desactivar los planogramas anteriores.
+- [x] **Step 3: Ejecutar `npm test` y verificar exit 0.**
+- [x] **Step 4: Commit local.**
+  ```bash
+  git add src/app/api/planogram/upload/route.ts
+  git commit -m "fix(planogram): stamp client_id and enforce tenancy validation on upload"
+  ```
+
 ### Tarea 1: `GET /api/planogram/incidences` (TDD)
 
 Contract exacto = `spec/02-reference-comparison.md` § "WS-D … O3".

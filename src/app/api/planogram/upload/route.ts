@@ -101,6 +101,37 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 7.5. Resolve client and validate tenancy access
+  const { data: clientRow, error: clientErr } = await supabase
+    .from('bbm_clients')
+    .select('id, account_id')
+    .eq('client_key', clientKey.trim())
+    .maybeSingle();
+
+  if (clientErr || !clientRow) {
+    return NextResponse.json(
+      { error: 'Cliente no encontrado o no autorizado.', status: 404 },
+      { status: 404 },
+    );
+  }
+
+  // Check tenancy restrictions
+  if (session.role === 'client_user') {
+    if (session.clientId !== clientRow.id) {
+      return NextResponse.json(
+        { error: 'Cliente no encontrado o no autorizado.', status: 404 },
+        { status: 404 },
+      );
+    }
+  } else if (session.role === 'reseller_admin') {
+    if (session.accountId !== clientRow.account_id) {
+      return NextResponse.json(
+        { error: 'Cliente no encontrado o no autorizado.', status: 404 },
+        { status: 404 },
+      );
+    }
+  }
+
   try {
     // 8. Generate storage path
     const ext = extFromMime(file.type);
@@ -125,10 +156,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 10. Deactivate previous active planogram for this clientKey
+    // 10. Deactivate previous active planogram for this clientKey and client_id
     const { error: deactivateErr } = await supabase
       .from('bbm_planograms')
       .update({ active: false })
+      .eq('client_id', clientRow.id)
       .eq('client_key', clientKey.trim())
       .eq('active', true);
 
@@ -137,12 +169,13 @@ export async function POST(request: NextRequest) {
       // Continue — new planogram should still be inserted
     }
 
-    // 11. Insert new planogram record
+    // 11. Insert new planogram record with client_id
     const planogramId = crypto.randomUUID();
     const { data: planogram, error: insertErr } = await supabase
       .from('bbm_planograms')
       .insert({
         id: planogramId,
+        client_id: clientRow.id,
         client_key: clientKey.trim(),
         name: name.trim(),
         section: section?.trim() || null,
