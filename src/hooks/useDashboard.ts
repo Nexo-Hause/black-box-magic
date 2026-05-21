@@ -115,12 +115,18 @@ export function useDashboard() {
 
   // Actions
   const setFilters = useCallback((newFilters: Partial<IncidenceFilters>) => {
-    setFiltersState((prev) => ({
-      ...prev,
-      ...newFilters,
-    }));
-    setPage(1); // reset to page 1 on filter changes
-  }, []);
+    setFiltersState((prev) => {
+      const next = { ...prev, ...newFilters };
+      // Validate date range if both present to prevent empty queries
+      if (next.dateFrom && next.dateTo && next.dateFrom > next.dateTo) {
+        // Swap or clamp based on which was just set
+        if (newFilters.dateFrom) next.dateFrom = next.dateTo;
+        else next.dateTo = next.dateFrom;
+      }
+      return next;
+    });
+    setPageSafe(1); // reset to page 1 on filter changes
+  }, [setPageSafe]);
 
   const openDetail = useCallback(async (id: string) => {
     setIsDetailLoading(true);
@@ -144,6 +150,10 @@ export function useDashboard() {
     setDetail(null);
   }, []);
 
+  const clearError = useCallback(() => {
+    setError('');
+  }, []);
+
   // Derive active client name for empty states
   const selectedClientName = clients.find((c) => c.id === selectedClientId)?.name || '';
 
@@ -152,6 +162,7 @@ export function useDashboard() {
     total,
     loading,
     error,
+    clearError,
     filters,
     setFilters,
     page,
