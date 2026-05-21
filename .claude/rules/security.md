@@ -27,3 +27,24 @@
 - **Broken Auth**: Validar cookies/tokens en cada request, no solo en la primera.
 - **Sensitive Data Exposure**: `.env.local` nunca en git. Supabase service role key solo server-side.
 - **Security Misconfiguration**: Headers de seguridad en producción (CORS, CSP).
+
+## Manejo de Secretos por Agentes IA
+
+> **Incidente real (sesión 17, 2026-05-21):** Un agente IA hizo `view_file` de `.env.local` y expuso
+> todos los secretos (API keys, service role keys, tokens) en el contexto de la conversación.
+> Después usó los valores literales en comandos de terminal. Se tuvo que rotar `BBM_COOKIE_SECRET`,
+> `BBM_API_KEYS`, y quedan pendientes de rotación manual los tokens de terceros.
+
+**Reglas inquebrantables:**
+
+1. **NUNCA leer `.env.local`, `.env`, `.env.production` ni ningún archivo `.env*` con datos reales.**
+   Para verificar qué variables existen, leer `.env.example` (que solo tiene placeholders).
+2. **NUNCA mostrar, copiar ni usar valores de secretos en texto plano** — ni en respuestas, ni en
+   argumentos de comandos, ni en archivos temporales.
+3. **Para agregar variables a Vercel u otro servicio:** usar scripts que lean los valores internamente
+   sin exponerlos en stdout. Nunca pasar `--value "valor-literal"` en un comando visible.
+4. **Para verificar si una variable existe en un servicio:** usar el listado de nombres (ej.
+   `vercel env ls`), nunca pedir el valor.
+5. **Si por error se expone un secreto:** rotar inmediatamente todos los secretos afectados,
+   no "recomendar" al usuario que lo haga.
+

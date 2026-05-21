@@ -17,6 +17,7 @@
 | 13 | 2026-05-18 | session/2026-05-18-ws0-reorder | Retoma: auditoría profunda, reencuadre a MVP comercializable multi-tenant B2B2B, roadmap-2026-05, WS0 completo (15 branches purgadas, main reconciliada, STATUS/CLAUDE fieles), pivote BullMQ/VPS | #20 |
 | 14 | 2026-05-18 | session/2026-05-18-ws0-reorder | Reencuadre y especificación de specs (auditorías completas de 6 specs aprobadas) | — |
 | 16 | 2026-05-20 | session/ws-mt-multitenant | Ejecución completa de WS-MT y WS-H, scoping de tenencia en endpoints, RLS, 223 tests verdes, resueltas 7 rondas review Kimi | #23 |
+| 17 | 2026-05-21 | session/ws2-ws3-dashboard | Backend de WS2 completo, hook useDashboard y plan unificado WS2+WS3 en spec con 242 tests en verde | #24 |
 
 
 ### Sesión 3 (2026-03-28)
@@ -103,4 +104,7 @@ Resolución definitiva del conflicto en el PR #21 (Opción A). Ejecución comple
 
 ### Sesión 16 (2026-05-20)
 Ejecución completa de los workstreams WS-MT (Fundación Multi-tenant) y WS-H (Hardening de Seguridad). Se implementaron las tablas canónicas, scoping dinámico en consultas a través de `scopedQuery`, autenticación timing-safe robusta con buffers estáticos de 1024 bytes en basic auth contra ataques DoS, y prevención atómica de race conditions de presupuesto diario de Gemini en los workers. Suite de tests en 223/223 verde con 7 rondas de AI PR Review de Kimi AI resueltas.
+
+### Sesión 17 (2026-05-21)
+Completada la implementación del 100% del Backend de WS2 (endpoints `clients`, `incidences`, `incidences/[id]`, `assign`), verificación de calidad en Vitest (242/242 tests en verde) y compilación limpia (`tsc --noEmit`). Diseñado, auditado y redactado el **Plan de Implementación Unificado (`spec/implementation_plan.md`)** y checklist detallado (`spec/task.md`) para el desarrollo conjunto del Frontend del Dashboard (WS2) y el Exportador a Excel (WS3) con mitigaciones robustas (sanitización, límite de 5,000 filas HTTP 413, scoping estricto). PR #24 creado y review de IA resuelta.
 

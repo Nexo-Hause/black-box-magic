@@ -322,6 +322,15 @@ Ejecutar todo secuencialmente cuando no hay dependencias es incorrecto.
 - NUNCA acciones que afecten producción (deploy, delete branches, modificar DB prod)
 - PR listo de sesión anterior → reportar estado y esperar instrucciones, no actuar
 
+## Secretos — NUNCA exponer
+
+- **NUNCA leer `.env.local`, `.env`, ni archivos `.env*` con datos reales.** Usar `.env.example` para ver qué variables existen.
+- **NUNCA mostrar valores de secretos** en respuestas, comandos, argumentos, logs ni archivos temporales.
+- **Para configurar variables en servicios:** escribir scripts que lean internamente sin exponer valores en stdout.
+- **Si se expone un secreto por error:** rotarlo inmediatamente, no "recomendar" que el usuario lo haga.
+
+> **Lección (sesión 17):** un `view_file` de `.env.local` expuso todas las credenciales del proyecto. Se rotaron `BBM_COOKIE_SECRET` y `BBM_API_KEYS`. Los tokens de terceros quedaron pendientes de rotación manual. Ver `.claude/rules/security.md` § Manejo de Secretos por Agentes IA.
+
 ---
 
 ## Costos y prerequisitos

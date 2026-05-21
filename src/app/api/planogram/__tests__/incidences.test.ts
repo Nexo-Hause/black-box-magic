@@ -58,7 +58,7 @@ describe('GET /api/planogram/incidences', () => {
   });
 
   it('debe retornar 403 si el usuario no tiene sesión válida', async () => {
-    vi.mocked(verifyCookie).mockReturnValue({ email: 'ghost@x.com' });
+    vi.mocked(verifyCookie).mockReturnValue({ email: 'ghost@x.com', timestamp: Date.now() });
     vi.mocked(resolveSession).mockResolvedValue(null);
 
     const req = new NextRequest('http://localhost/api/planogram/incidences', {
@@ -69,7 +69,7 @@ describe('GET /api/planogram/incidences', () => {
   });
 
   it('client_user -> debe retornar solo incidencias de su client_id', async () => {
-    vi.mocked(verifyCookie).mockReturnValue({ email: 'carlos@fotl.com' });
+    vi.mocked(verifyCookie).mockReturnValue({ email: 'carlos@fotl.com', timestamp: Date.now() });
     vi.mocked(resolveSession).mockResolvedValue({
       email: 'carlos@fotl.com',
       role: 'client_user',
@@ -79,7 +79,7 @@ describe('GET /api/planogram/incidences', () => {
 
     const mockRows = [{ id: 'inc-1', client_id: 'cli-fotl' }];
     const query = mockSupabaseQuery(mockRows, 1);
-    vi.mocked(supabase.from).mockReturnValue(query as any);
+    vi.mocked(supabase!.from).mockReturnValue(query as any);
 
     const req = new NextRequest('http://localhost/api/planogram/incidences?clientId=cli-AJENA', {
       headers: { cookie: 'bbm_email_session=token' },
@@ -93,7 +93,7 @@ describe('GET /api/planogram/incidences', () => {
   });
 
   it('debe aplicar filtros adicionales y paginación con clamping de limit', async () => {
-    vi.mocked(verifyCookie).mockReturnValue({ email: 'gonzalo@x.com' });
+    vi.mocked(verifyCookie).mockReturnValue({ email: 'gonzalo@x.com', timestamp: Date.now() });
     vi.mocked(resolveSession).mockResolvedValue({
       email: 'gonzalo@x.com',
       role: 'bbm_admin',
@@ -102,7 +102,7 @@ describe('GET /api/planogram/incidences', () => {
     });
 
     const query = mockSupabaseQuery([], 0);
-    vi.mocked(supabase.from).mockReturnValue(query as any);
+    vi.mocked(supabase!.from).mockReturnValue(query as any);
 
     const req = new NextRequest(
       'http://localhost/api/planogram/incidences?promoter=Jose&store=Oxxo&minSeverity=high&status=completed&limit=500&offset=10&sort=captured_asc',
@@ -132,7 +132,7 @@ describe('GET /api/planogram/incidences/[id]', () => {
   });
 
   it('debe retornar 404 si la incidencia no existe o pertenece a otro tenant (leak prevention)', async () => {
-    vi.mocked(verifyCookie).mockReturnValue({ email: 'carlos@fotl.com' });
+    vi.mocked(verifyCookie).mockReturnValue({ email: 'carlos@fotl.com', timestamp: Date.now() });
     vi.mocked(resolveSession).mockResolvedValue({
       email: 'carlos@fotl.com',
       role: 'client_user',
@@ -141,7 +141,7 @@ describe('GET /api/planogram/incidences/[id]', () => {
     });
 
     const query = mockSupabaseQuery(null); // maybeSingle retorna null
-    vi.mocked(supabase.from).mockReturnValue(query as any);
+    vi.mocked(supabase!.from).mockReturnValue(query as any);
 
     const req = new NextRequest('http://localhost/api/planogram/incidences/inc-AJENO', {
       headers: { cookie: 'bbm_email_session=token' },
@@ -152,7 +152,7 @@ describe('GET /api/planogram/incidences/[id]', () => {
   });
 
   it('debe retornar detalle completo con signed URLs si pertenece al scope', async () => {
-    vi.mocked(verifyCookie).mockReturnValue({ email: 'carlos@fotl.com' });
+    vi.mocked(verifyCookie).mockReturnValue({ email: 'carlos@fotl.com', timestamp: Date.now() });
     vi.mocked(resolveSession).mockResolvedValue({
       email: 'carlos@fotl.com',
       role: 'client_user',
@@ -170,8 +170,8 @@ describe('GET /api/planogram/incidences/[id]', () => {
     };
 
     const query = mockSupabaseQuery(mockIncidence);
-    vi.mocked(supabase.from).mockReturnValue(query as any);
-    vi.mocked(getSignedUrls).mockResolvedValue(['signed1', 'signed2']);
+    vi.mocked(supabase!.from).mockReturnValue(query as any);
+    vi.mocked(getSignedUrls).mockResolvedValue({ 'path1.jpg': 'signed1', 'path2.jpg': 'signed2' });
     vi.mocked(getSignedUrl).mockResolvedValue('signed-ref');
 
     const req = new NextRequest('http://localhost/api/planogram/incidences/inc-123', {

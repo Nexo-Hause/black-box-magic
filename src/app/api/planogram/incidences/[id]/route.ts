@@ -71,7 +71,7 @@ export async function GET(
     // 6. Generate signed URLs on-the-fly for photos (TTL 1800s)
     let fieldPhotoUrls: string[] = [];
     if (incidenceRow.field_photo_paths && incidenceRow.field_photo_paths.length > 0) {
-      fieldPhotoUrls = await getSignedUrls(incidenceRow.field_photo_paths, 1800);
+      fieldPhotoUrls = Object.values(await getSignedUrls(incidenceRow.field_photo_paths, 1800));
     }
 
     let planogramUrl: string | null = null;

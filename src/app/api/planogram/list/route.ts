@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     // 4. Query active planograms
     let builder = supabase
       .from('bbm_planograms')
-      .select('*')
+      .select('*, bbm_planogram_assignments(form_id)')
       .eq('active', true);
     builder = scopedQuery(builder, session, {});
     const { data: planograms, error: queryErr } = await builder
@@ -58,15 +58,30 @@ export async function GET(request: NextRequest) {
     // supabase is guaranteed non-null here (checked above), but TS doesn't narrow in closures
     const sb = supabase;
     const planogramsWithUrls = await Promise.all(
-      (planograms || []).map(async (p) => {
+      (planograms || []).map(async (p: any) => {
         const bucket = p.storage_bucket || 'planograms';
         const { data: signedData } = await sb.storage
           .from(bucket)
           .createSignedUrl(p.storage_path, 3600); // 1 hour expiry
 
+        const assignments = p.bbm_planogram_assignments;
+        const formId = Array.isArray(assignments) && assignments.length > 0 ? assignments[0].form_id : null;
+
         return {
-          ...p,
+          id: p.id,
+          client_id: p.client_id,
+          client_key: p.client_key,
+          name: p.name,
+          section: p.section,
+          storage_path: p.storage_path,
+          storage_bucket: p.storage_bucket,
+          file_type: p.file_type,
+          file_size_bytes: p.file_size_bytes,
+          uploaded_by: p.uploaded_by,
+          active: p.active,
+          created_at: p.created_at,
           signedUrl: signedData?.signedUrl || null,
+          form_id: formId,
         };
       }),
     );

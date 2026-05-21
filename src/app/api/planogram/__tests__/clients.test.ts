@@ -45,7 +45,7 @@ describe('GET /api/planogram/clients', () => {
   });
 
   it('debe retornar 403 si la sesión no es válida (resolveSession -> null)', async () => {
-    vi.mocked(verifyCookie).mockReturnValue({ email: 'ghost@fotl.com' });
+    vi.mocked(verifyCookie).mockReturnValue({ email: 'ghost@fotl.com', timestamp: Date.now() });
     vi.mocked(resolveSession).mockResolvedValue(null);
 
     const req = new NextRequest('http://localhost/api/planogram/clients', {
@@ -58,7 +58,7 @@ describe('GET /api/planogram/clients', () => {
   });
 
   it('client_user -> debe retornar solo su propio cliente', async () => {
-    vi.mocked(verifyCookie).mockReturnValue({ email: 'carlos@fotl.com' });
+    vi.mocked(verifyCookie).mockReturnValue({ email: 'carlos@fotl.com', timestamp: Date.now() });
     vi.mocked(resolveSession).mockResolvedValue({
       email: 'carlos@fotl.com',
       role: 'client_user',
@@ -68,7 +68,7 @@ describe('GET /api/planogram/clients', () => {
 
     const mockClients = [{ id: 'cli-fotl', name: 'Fruit of the Loom', account_id: 'acc-ubiqo' }];
     const query = mockSupabaseQuery(mockClients);
-    vi.mocked(supabase.from).mockReturnValue(query as any);
+    vi.mocked(supabase!.from).mockReturnValue(query as any);
 
     const req = new NextRequest('http://localhost/api/planogram/clients', {
       headers: { cookie: 'bbm_email_session=token' },
@@ -78,13 +78,13 @@ describe('GET /api/planogram/clients', () => {
     const body = await res.json();
     expect(body.clients).toHaveLength(1);
     expect(body.clients[0].id).toBe('cli-fotl');
-    expect(supabase.from).toHaveBeenCalledWith('bbm_clients');
+    expect(supabase!.from).toHaveBeenCalledWith('bbm_clients');
     expect(query.select).toHaveBeenCalledWith('id, name, account_id');
     expect(query.eq).toHaveBeenCalledWith('id', 'cli-fotl');
   });
 
   it('reseller_admin -> debe retornar todos los clientes de su account_id', async () => {
-    vi.mocked(verifyCookie).mockReturnValue({ email: 'enrique@ubiqo.com' });
+    vi.mocked(verifyCookie).mockReturnValue({ email: 'enrique@ubiqo.com', timestamp: Date.now() });
     vi.mocked(resolveSession).mockResolvedValue({
       email: 'enrique@ubiqo.com',
       role: 'reseller_admin',
@@ -97,7 +97,7 @@ describe('GET /api/planogram/clients', () => {
       { id: 'cli-other', name: 'Other Client', account_id: 'acc-ubiqo' },
     ];
     const query = mockSupabaseQuery(mockClients);
-    vi.mocked(supabase.from).mockReturnValue(query as any);
+    vi.mocked(supabase!.from).mockReturnValue(query as any);
 
     const req = new NextRequest('http://localhost/api/planogram/clients', {
       headers: { cookie: 'bbm_email_session=token' },
@@ -106,13 +106,13 @@ describe('GET /api/planogram/clients', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.clients).toHaveLength(2);
-    expect(supabase.from).toHaveBeenCalledWith('bbm_clients');
+    expect(supabase!.from).toHaveBeenCalledWith('bbm_clients');
     expect(query.select).toHaveBeenCalledWith('id, name, account_id');
     expect(query.eq).toHaveBeenCalledWith('account_id', 'acc-ubiqo');
   });
 
   it('bbm_admin -> debe retornar todos los clientes globales (sin filtrar account_id)', async () => {
-    vi.mocked(verifyCookie).mockReturnValue({ email: 'gonzalo@x.com' });
+    vi.mocked(verifyCookie).mockReturnValue({ email: 'gonzalo@x.com', timestamp: Date.now() });
     vi.mocked(resolveSession).mockResolvedValue({
       email: 'gonzalo@x.com',
       role: 'bbm_admin',
@@ -125,7 +125,7 @@ describe('GET /api/planogram/clients', () => {
       { id: 'cli-other', name: 'Other Client', account_id: 'acc-other' },
     ];
     const query = mockSupabaseQuery(mockClients);
-    vi.mocked(supabase.from).mockReturnValue(query as any);
+    vi.mocked(supabase!.from).mockReturnValue(query as any);
 
     const req = new NextRequest('http://localhost/api/planogram/clients', {
       headers: { cookie: 'bbm_email_session=token' },
@@ -134,7 +134,7 @@ describe('GET /api/planogram/clients', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.clients).toHaveLength(2);
-    expect(supabase.from).toHaveBeenCalledWith('bbm_clients');
+    expect(supabase!.from).toHaveBeenCalledWith('bbm_clients');
     expect(query.select).toHaveBeenCalledWith('id, name, account_id');
     expect(query.eq).not.toHaveBeenCalled();
   });
