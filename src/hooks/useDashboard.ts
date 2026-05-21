@@ -118,9 +118,13 @@ export function useDashboard() {
     setFiltersState((prev) => {
       const next = { ...prev, ...newFilters };
       // Validate date range if both present to prevent empty queries
-      if (next.dateFrom && next.dateTo && next.dateFrom > next.dateTo) {
-        next.dateTo = '';
-        setError('La fecha final debe ser posterior a la fecha inicial.');
+      if (next.dateFrom && next.dateTo) {
+        const fromDate = new Date(next.dateFrom);
+        const toDate = new Date(next.dateTo);
+        if (fromDate > toDate) {
+          next.dateTo = '';
+          setError('La fecha final debe ser posterior a la fecha inicial.');
+        }
       }
       return next;
     });

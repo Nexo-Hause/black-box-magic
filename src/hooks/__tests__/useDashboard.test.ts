@@ -50,6 +50,7 @@ describe('useDashboard Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (React as any)._resetMockReact();
+    (React as any)._resetStateIndex();
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ clients: [], rows: [], total: 0 }),
