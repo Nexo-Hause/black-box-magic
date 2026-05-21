@@ -32,6 +32,9 @@ vi.mock('react', async (importOriginal) => {
       stateMap.clear();
       stateIndex = 0;
     },
+    _resetStateIndex: () => {
+      stateIndex = 0;
+    },
   };
 
   return {
@@ -89,5 +92,23 @@ describe('useDashboard Hook', () => {
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/planogram/incidences')
     );
+  });
+
+  it('debe limpiar dateTo y setear un error si se pasa un rango de fechas inválido', () => {
+    const hook = useDashboard();
+    
+    // Proporcionar un rango inválido
+    hook.setFilters({
+      dateFrom: '2026-05-21',
+      dateTo: '2026-05-20',
+    });
+
+    // Como es un mock síncrono de React, podemos llamar al hook de nuevo
+    // para obtener una instantánea con el estado actualizado tras re-linear el índice.
+    (React as any)._resetStateIndex();
+    const updatedHook = useDashboard();
+
+    expect(updatedHook.filters.dateTo).toBe('');
+    expect(updatedHook.error).toBe('La fecha final debe ser posterior a la fecha inicial.');
   });
 });

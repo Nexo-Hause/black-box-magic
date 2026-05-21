@@ -119,9 +119,8 @@ export function useDashboard() {
       const next = { ...prev, ...newFilters };
       // Validate date range if both present to prevent empty queries
       if (next.dateFrom && next.dateTo && next.dateFrom > next.dateTo) {
-        // Swap or clamp based on which was just set
-        if (newFilters.dateFrom) next.dateFrom = next.dateTo;
-        else next.dateTo = next.dateFrom;
+        next.dateTo = '';
+        setError('La fecha final debe ser posterior a la fecha inicial.');
       }
       return next;
     });

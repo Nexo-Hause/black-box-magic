@@ -68,16 +68,25 @@ export async function GET(
       );
     }
 
-    // 6. Generate signed URLs on-the-fly for photos (TTL 1800s)
+    // 6. Generate signed URLs on-the-fly for photos (TTL 1800s) with try-catch for resilience
     let fieldPhotoUrls: string[] = [];
     if (incidenceRow.field_photo_paths && incidenceRow.field_photo_paths.length > 0) {
-      fieldPhotoUrls = Object.values(await getSignedUrls(incidenceRow.field_photo_paths, 1800));
+      try {
+        const signedMap = await getSignedUrls(incidenceRow.field_photo_paths, 1800);
+        fieldPhotoUrls = Object.values(signedMap);
+      } catch (signedErr: any) {
+        console.error(`Error al generar signed URLs para fotos de campo: ${signedErr.message}`);
+      }
     }
 
     let planogramUrl: string | null = null;
     const planogramPath = incidenceRow.bbm_planograms?.storage_path;
     if (planogramPath) {
-      planogramUrl = await getSignedUrl(planogramPath, 1800);
+      try {
+        planogramUrl = await getSignedUrl(planogramPath, 1800);
+      } catch (signedErr: any) {
+        console.error(`Error al generar signed URL para planograma: ${signedErr.message}`);
+      }
     }
 
     // 7. Structure clean response without exposing raw storage paths
