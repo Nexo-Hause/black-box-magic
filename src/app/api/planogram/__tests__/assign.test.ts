@@ -66,7 +66,7 @@ describe('POST /api/planogram/assign', () => {
     expect(res.status).toBe(400);
   });
 
-  it('debe retornar 404 si el planograma no existe o pertenece a otra tenencia (enumeración protejida)', async () => {
+  it('debe retornar 404 si el planograma no existe o pertenece a otra tenencia (enumeración protegida)', async () => {
     vi.mocked(verifyCookie).mockReturnValue({ email: 'carlos@fotl.com', timestamp: Date.now() });
     vi.mocked(resolveSession).mockResolvedValue({
       email: 'carlos@fotl.com',

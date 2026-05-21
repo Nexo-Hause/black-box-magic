@@ -15,7 +15,7 @@ export function useDashboard() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [detail, setDetail] = useState<any | null>(null);
-  const [detailLoading, setDetailLoading] = useState<boolean>(false);
+  const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
 
   const [filters, setFiltersState] = useState<IncidenceFilters>({
     dateFrom: '',
@@ -28,6 +28,12 @@ export function useDashboard() {
   });
 
   const limit = 20;
+
+  // Clamped setPage to prevent negative or zero page offsets
+  const setPageSafe = useCallback((newPage: number) => {
+    const clamped = Math.max(1, Math.floor(newPage));
+    setPage(clamped);
+  }, []);
 
   // 1. Fetch available clients on mount
   useEffect(() => {
@@ -117,7 +123,7 @@ export function useDashboard() {
   }, []);
 
   const openDetail = useCallback(async (id: string) => {
-    setDetailLoading(true);
+    setIsDetailLoading(true);
     setError('');
     try {
       const res = await fetch(`/api/planogram/incidences/${id}`);
@@ -130,7 +136,7 @@ export function useDashboard() {
     } catch (err: any) {
       setError(err.message || 'Error al obtener detalle de la incidencia.');
     } finally {
-      setDetailLoading(false);
+      setIsDetailLoading(false);
     }
   }, []);
 
@@ -149,13 +155,13 @@ export function useDashboard() {
     filters,
     setFilters,
     page,
-    setPage,
+    setPage: setPageSafe,
     clients,
     selectedClientId,
     setSelectedClientId,
     selectedClientName,
     detail,
-    detailLoading,
+    isDetailLoading,
     openDetail,
     closeDetail,
     limit,

@@ -227,8 +227,6 @@ Contract exacto = `spec/02-reference-comparison.md` § "WS-D … O3".
   ```bash
   git add src/hooks/useDashboard.ts src/hooks/__tests__/useDashboard.test.ts
   git commit -m "feat(dashboard): hook useDashboard (filtros, paginación, detalle)"
-  ```board.test.ts
-  git commit -m "feat(dashboard): hook useDashboard (filtros, paginación, detalle)"
   ```
 
 ### Tarea 5: UI `/dashboard`
