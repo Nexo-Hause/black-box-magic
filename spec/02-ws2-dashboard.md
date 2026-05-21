@@ -360,7 +360,7 @@ git diff --name-only main..HEAD | grep -E '\.env|secrets|credentials' && echo "V
 
 ### Fase 1: Auditoría Técnica Multi-Dimensional
 - **Arquitectura:** ✅ OK. Coherente con WS-MT y WS-H usando `scopedQuery` y `resolveSession`.
-- **Ingeniería:** ✅ OK. Diseño alinedado al stack actual, zero external libraries, zero Tailwind CSS.
+- **Ingeniería:** ✅ OK. Diseño alineado al stack actual, zero external libraries, zero Tailwind CSS.
 - **Seguridad:** ✅ **CRÍTICO 1: Asignaciones y planogramas huérfanos de tenencia [RESUELTO].** En `POST /api/planogram/assign`, se forzó el `planogram_id` consultado a pertenecer a la tenencia actual mediante `scopedQuery`. Si es ajeno, retorna **HTTP 404** (enumeración protegida).
 - **Seguridad:** ✅ **CRÍTICO 2: Conflicto de asignación 1:1 [RESUELTO].** En `POST /api/planogram/assign`, se verifica si un `form_id` ya está asignado a otro planograma activo en `bbm_planogram_assignments` y se retorna **HTTP 409** con el nombre del planograma conflictivo.
 - **Frontend / UX:** ✅ OK. Patrones visuales heredados de `/demo` garantizan la estética de BBM.

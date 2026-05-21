@@ -137,7 +137,7 @@ npm run lint
 4. Comprobar que los empty states funcionen si no hay registros.
 5. Aplicar filtros de tienda/promotor, presionar "Exportar Excel" y comprobar la descarga del archivo.
 6. Abrir el archivo `.xlsx` en Microsoft Excel o visor web y verificar las 4 hojas sanitizadas.
-7. Loguearse como `enrique@ubiqo.com` (reseller_admin) and verificar que se muestre el selector de clientes con las opciones de tenencia correctas.
+7. Loguearse como `enrique@ubiqo.com` (reseller_admin) y verificar que se muestre el selector de clientes con las opciones de tenencia correctas.
 8. Acceder a `/dashboard/planograms` y validar subida de planograma y asignación de `form_id` con badges.
 
 ---
