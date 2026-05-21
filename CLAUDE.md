@@ -329,7 +329,8 @@ Ejecutar todo secuencialmente cuando no hay dependencias es incorrecto.
 - **Para configurar variables en servicios:** escribir scripts que lean internamente sin exponer valores en stdout.
 - **Si se expone un secreto por error:** rotarlo inmediatamente, no "recomendar" que el usuario lo haga.
 
-> **Lección (sesión 17):** un `view_file` de `.env.local` expuso todas las credenciales del proyecto. Se rotaron `BBM_COOKIE_SECRET` y `BBM_API_KEYS`. Los tokens de terceros quedaron pendientes de rotación manual. Ver `.claude/rules/security.md` § Manejo de Secretos por Agentes IA.
+> **Lección (sesión 17):** un `view_file` de `.env.local` expuso todas las credenciales del proyecto. Se rotaron `BBM_COOKIE_SECRET` and `BBM_API_KEYS`. Los tokens de terceros quedaron pendientes de rotación manual. Ver `.claude/rules/security.md` § Manejo de Secretos por Agentes IA.
+> **Lección (sesión 18):** El archivo `cierre.md` en la raíz del proyecto (CRMD) es un skill estático con instrucciones y NUNCA debe ser modificado por agentes IA. El estado del proyecto y el handoff solo se actualizan en `.claude/STATUS.md` y `.claude/SESSION_LOG.md`.
 
 ---
 
