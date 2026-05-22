@@ -117,13 +117,68 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
-  return NextResponse.json(
-    {
-      error: 'Use POST with a JSON body containing { industry }',
-      docs: '/api/health',
-      status: 405,
-    },
-    { status: 405 }
-  );
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const industry = searchParams.get('industry');
+
+  if (!industry || !industry.trim()) {
+    return NextResponse.json(
+      {
+        message: '¡Bienvenido al Playground del Onboarding de Black Box Magic!',
+        tip: 'Para realizar una demostración rápida directamente en tu navegador, añade la industria en la URL.',
+        example: '/api/onboarding/guide?industry=Hospitales y Clínicas',
+        status: 200
+      },
+      { status: 200 }
+    );
+  }
+
+  const sanitizedIndustry = industry.trim().slice(0, 100);
+
+  // Obtain API Key
+  const apiKey = process.env.GOOGLE_AI_API_KEY;
+  if (!apiKey) {
+    console.error('[onboarding/guide] GOOGLE_AI_API_KEY no está configurada.');
+    return NextResponse.json({ questions: FALLBACK_QUESTIONS });
+  }
+
+  // Call Gemini 3.5 Flash
+  try {
+    const userPrompt = `Genera las 4 preguntas guía para la industria o sector: "${sanitizedIndustry}"`;
+    const response = await callGeminiChatWithRetry(
+      'gemini-3.5-flash',
+      GUIDE_SYSTEM_INSTRUCTION,
+      [
+        {
+          role: 'user',
+          parts: [{ text: userPrompt }],
+        },
+      ],
+      apiKey,
+      undefined,
+      1 // 1 retry
+    );
+
+    const rawText = response.text?.trim() ?? '';
+    if (!rawText) {
+      throw new Error('Gemini retornó un texto vacío.');
+    }
+
+    const stripped = rawText
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/i, '')
+      .trim();
+
+    const parsed = JSON.parse(stripped);
+
+    if (Array.isArray(parsed) && parsed.length === 4 && parsed.every(q => typeof q === 'string')) {
+      return NextResponse.json({ questions: parsed });
+    } else {
+      console.warn('[onboarding/guide] Formato inválido en demo GET. Usando fallbacks.');
+      return NextResponse.json({ questions: FALLBACK_QUESTIONS });
+    }
+  } catch (error) {
+    console.error('[onboarding/guide] Error en demo GET:', error);
+    return NextResponse.json({ questions: FALLBACK_QUESTIONS });
+  }
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { POST } from '../route';
+import { POST, GET } from '../route';
 import { requireOnboardingAuth } from '@/lib/onboarding/auth';
 import { callGeminiChatWithRetry } from '@/lib/gemini-chat';
 
@@ -153,5 +153,47 @@ describe('POST /api/onboarding/guide', () => {
     const body = await res.json();
     expect(body.questions).toHaveLength(4);
     expect(body.questions[0]).toContain('¿Cuáles son las áreas o zonas más importantes');
+  });
+});
+
+describe('GET /api/onboarding/guide', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.GOOGLE_AI_API_KEY = 'test-api-key';
+  });
+
+  it('debe retornar mensaje de bienvenida si se llama GET sin parametro industry', async () => {
+    const req = new NextRequest('http://localhost/api/onboarding/guide', {
+      method: 'GET',
+    });
+
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.message).toContain('Playground');
+    expect(body.tip).toBeDefined();
+  });
+
+  it('debe retornar las 4 preguntas de Gemini si se provee ?industry=... con JSON valido', async () => {
+    const mockQuestions = [
+      '¿Hospital 1?',
+      '¿Hospital 2?',
+      '¿Hospital 3?',
+      '¿Hospital 4?'
+    ];
+
+    vi.mocked(callGeminiChatWithRetry).mockResolvedValue({
+      text: JSON.stringify(mockQuestions),
+      tokens: { input: 10, output: 10, total: 20 },
+    });
+
+    const req = new NextRequest('http://localhost/api/onboarding/guide?industry=Clinicas', {
+      method: 'GET',
+    });
+
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.questions).toEqual(mockQuestions);
   });
 });
