@@ -72,10 +72,23 @@ export async function GET(
     let fieldPhotoUrls: string[] = [];
     if (incidenceRow.field_photo_paths && incidenceRow.field_photo_paths.length > 0) {
       try {
-        const signedMap = await getSignedUrls(incidenceRow.field_photo_paths, 1800);
-        fieldPhotoUrls = Object.values(signedMap);
+        // External URLs starting with http:// or https:// do not need Supabase storage signing.
+        const pathsToSign = incidenceRow.field_photo_paths.filter(
+          (p: string) => p && !p.startsWith('http://') && !p.startsWith('https://')
+        );
+        const alreadyFullUrls = incidenceRow.field_photo_paths.filter(
+          (p: string) => p && (p.startsWith('http://') || p.startsWith('https://'))
+        );
+
+        if (pathsToSign.length > 0) {
+          const signedMap = await getSignedUrls(pathsToSign, 1800);
+          fieldPhotoUrls = [...alreadyFullUrls, ...Object.values(signedMap)];
+        } else {
+          fieldPhotoUrls = alreadyFullUrls;
+        }
       } catch (signedErr: any) {
         console.error(`Error al generar signed URLs para fotos de campo: ${signedErr.message}`);
+        fieldPhotoUrls = incidenceRow.field_photo_paths;
       }
     }
 

@@ -40,7 +40,7 @@ function formatDate(dateStr: string | null | undefined) {
 
 export default function DashboardPage() {
   const gate = useEmailGate();
-  const dashboard = useDashboard();
+  const dashboard = useDashboard(gate.email);
   
   // Local state to track planograms of the selected client (for Empty State #1 and #2)
   const [planograms, setPlanograms] = useState<any[]>([]);

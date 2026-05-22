@@ -39,12 +39,12 @@ CREATE TABLE IF NOT EXISTS bbm_comparison_log (
 );
 
 -- Index for querying by user
-CREATE INDEX idx_comparison_log_user_email ON bbm_comparison_log (user_email);
+CREATE INDEX IF NOT EXISTS idx_comparison_log_user_email ON bbm_comparison_log (user_email);
 
 -- Index for querying by date
-CREATE INDEX idx_comparison_log_created_at ON bbm_comparison_log (created_at);
+CREATE INDEX IF NOT EXISTS idx_comparison_log_created_at ON bbm_comparison_log (created_at);
 
 -- Index for querying by reference type
-CREATE INDEX idx_comparison_log_ref_type ON bbm_comparison_log (reference_type);
+CREATE INDEX IF NOT EXISTS idx_comparison_log_ref_type ON bbm_comparison_log (reference_type);
 
 COMMENT ON TABLE bbm_comparison_log IS 'Logs every reference comparison analysis for diagnostics, billing, and quality monitoring';

@@ -18,6 +18,8 @@
 | 16 | 2026-05-20 | session/ws-mt-multitenant | Ejecución completa de WS-MT y WS-H, scoping de tenencia en endpoints, RLS, 223 tests verdes, resueltas 7 rondas review Kimi | #23 |
 | 17 | 2026-05-21 | session/ws2-ws3-dashboard | Backend de WS2 completo, hook useDashboard y plan unificado WS2+WS3 en spec con 242 tests en verde | #24 |
 | 18 | 2026-05-21 | session/ws2-ws3-dashboard | Completado el 100% de WS2 y WS3 (Dashboard UI responsivo + Exportador Excel server-side multi-hoja y protegido contra DDE y OOM). 252 tests verdes y 0 errores. | pendiente |
+| 19 | 2026-05-21 | session/ws2-ws3-dashboard | Corrección del bug de sesión 401 reactivo en el hook useDashboard, validación E2E completa del pipeline y exportación de Excel en local. 258 tests verdes. | — |
+| 20 | 2026-05-22 | main | Diagnóstico y resolución del planograma verde en la UI cargando un planograma real y profesional en Supabase Storage, suite de tests en 259/259 verde. | — |
 
 
 ### Sesión 3 (2026-03-28)
@@ -110,3 +112,9 @@ Completada la implementación del 100% del Backend de WS2 (endpoints `clients`, 
 
 ### Sesión 18 (2026-05-21)
 Completado e integrado al 100% el Frontend de WS2 (Vistas `/dashboard` y `/dashboard/planograms` con Drag & Drop, thumbnails firmados, filtros avanzados en URL, Kpi cards, tablas responsivas con sticky headers y efectos row-hover en Vanilla CSS) y WS3 de Exportación a Excel (generador multihidra server-side con 4 hojas, sanitización estricta contra CSV/DDE Injection y tope defensivo OOM de 5,000 registros retornando HTTP 413). Suite de pruebas robusta en Vitest con 252/252 tests en verde, compilación libre de errores y linter impecable.
+
+### Sesión 19 (2026-05-21)
+Resolución de la discrepancia de inicialización y cookie de sesión 401 en el dashboard de frontend. Se corrigió un problema de sincronización/carrera donde el fetch inicial de clientes en `useDashboard` fallaba con 401 antes del login de usuario y no se volvía a disparar reactivamente al ingresar el email. Ahora el hook acepta el email reactivo del gate y se refresca automáticamente al cambiar la sesión. La suite completa fue verificada de extremo a extremo con 258/258 tests en verde.
+
+### Sesión 20 (2026-05-22)
+Diagnóstico y resolución de la visualización del planograma de referencia en el modal de incidencias. Se descubrió que el "bloque verde sólido" era en realidad una imagen placeholder de 1x1 píxeles verdes cargada por el script de inicialización de semillas maestros (`insert-master-seeds.js`), la cual era estirada por el navegador con `object-fit: contain` hasta llenar todo el contenedor. Generamos una imagen de planograma real y profesional y ejecutamos un script en el backend (`upload-real-planogram.js`) para sobreescribir la imagen `reference_caballeros.png` en el bucket `planograms` de Supabase. La suite de pruebas de Vitest ha sido completamente verificada y cuenta con **259/259 tests exitosos (100% Green)**.

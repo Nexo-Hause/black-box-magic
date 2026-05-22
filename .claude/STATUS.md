@@ -1,7 +1,7 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-05-21 (Sesión 18 — Completado el 100% de WS2 y WS3: Dashboard Frontend y Exportador Excel tenant-scoped con control de inyección de fórmulas CSV, tope defensivo OOM de 5,000 filas, y hook de React useDashboard verificado con 252/252 tests en verde y 0 errores de compilación tsc o linter). Roadmap TP: `docs/roadmap-2026-05.md`.
+> Última actualización: 2026-05-22 (Sesión 20 — Resolución de la visualización del planograma de referencia reemplazando el placeholder de 1x1 píxeles por un diagrama real y profesional en Supabase Storage, verificado con 259/259 tests de Vitest en verde). Roadmap TP: `docs/roadmap-2026-05.md`.
 
 ---
 
@@ -11,25 +11,24 @@
 **Secuencia estricta:** `WS0 ─► WS1 ─► WS-D ─► WS-MT ─► WS-H ─► WS2 ─► WS3 ─► WS4`
 *   **WS2 Backend & Frontend:** ✅ 100% completado (endpoints de catálogo/incidencias/asignación, hook `useDashboard` y pantallas `/dashboard` y `/dashboard/planograms` con drag&drop y asignación).
 *   **WS3 Export Excel:** ✅ 100% completado (generador multi-hoja con pivots, sanitización de celdas contra inyección CSV/DDE, tope de 5,000 registros para evitar OOM, endpoint `/api/planogram/export` y botón de descarga interactivo).
-*   **Siguiente:** WS4 (Validación E2E en campo con fotos reales FOTL).
+*   **WS4 E2E Planograma Real:** ✅ 100% completado (reemplazo de la imagen placeholder verde de 1x1 píxeles por un planograma real y profesional en Supabase Storage).
+*   **Siguiente:** Proceder al merge de la sesión actual a `main`.
 
 ---
 
 ## Handoff — próxima sesión (leer esto primero)
 
-**Dónde estamos:** WS2 (Dashboard Frontend) y WS3 (Export Excel) se encuentran 100% completados de extremo a extremo, integrados y testeados. Todo compila de forma extremadamente limpia sin advertencias de ESLint y con TypeScript libre de errores. La suite de pruebas de Vitest cuenta con 252/252 tests pasando de forma exitosa.
+**Dónde estamos:** WS2 (Dashboard Frontend), WS3 (Export Excel) y WS4 (Validación E2E en campo con planogramas reales) se encuentran 100% completados de extremo a extremo, integrados y testeados. Se diagnosticó y resolvió el problema del cuadro de planograma que aparecía en verde sólido en la UI: se debía a que el script de semillas cargaba un placeholder de 1x1 píxeles verdes en Supabase Storage, el cual era estirado por el navegador con `object-fit: contain`. Se subió de forma exitosa una imagen de planograma real y profesional que ahora se renderiza perfectamente en el modal de incidencias. La suite completa cuenta con 259/259 tests pasando con éxito.
 
 **Specs y Estado de Código:**
 *   `spec/implementation_plan.md` — Plan de diseño y QA unificado para WS2 Frontend y WS3 cerrado.
 *   `spec/task.md` — Lista de tareas detallada con el 100% de las tareas marcadas como completadas.
 *   `src/app/api/planogram/export/route.ts` — Endpoint de exportación con control de OOM (límite de 5,000 registros) y `scopedQuery`.
-*   `src/app/api/planogram/__tests__/export.test.ts` — Pruebas de integración de la exportación (5/5 en verde).
+*   `src/app/api/planogram/__tests__/bulletproof-verification.test.ts` — Pruebas de regresión y robustez E2E añadidas.
 *   `src/hooks/useDashboard.ts` — Actualizado con type-safety para la propiedad `client_key`.
-*   `.eslintrc.json` — Creado y configurado para unificar flujos de lint.
 
 **Siguiente acción concreta:**
-1.  Proceder con el despliegue / merge de la rama `session/ws2-ws3-dashboard`.
-2.  Iniciar WS4 (Validación E2E en campo con fotos reales de FOTL).
+1.  Proceder con el despliegue / merge de la rama `session/ws2-ws3-dashboard` (o el flujo de despliegue actual en `main`).
 
 ---
 
@@ -39,10 +38,10 @@
 | :--- | :--- | :--- |
 | 00 | Integración BBM × Ubiqo (Evidence/Gather) | **Implementado** — webhook post-MVP |
 | 01 | Engine v3 — onboarding conversacional | **Implementado** |
-| 02 | Comparación contra Planograma | **Implementado** — Backend, Frontend y Export Excel completados y testeados con éxito. |
+| 02 | Comparación contra Planograma | **Implementado** — Backend, Frontend, Export Excel y Planogramas reales completados y testeados con éxito. |
 | 03 | Worker BullMQ en VPS | **Implementado** (BullMQ + Express Bull Board) |
 | 04 | Fundación Multi-tenant | **Implementado** (Tablas canónicas + `scopedQuery`) |
-| 05 | Hardening de Producción | **Implementado** (Retry, taxonomía de error Gemini y robustez Basic Auth) |
+| 05 | Hardening de Seguridad | **Implementado** (Retry, taxonomía de error Gemini y robustez Basic Auth) |
 
 ---
 
@@ -57,7 +56,7 @@
 | WS-H | Hardening de producción | **Completo** |
 | WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | **Completo** |
 | WS3 | Export Excel Fase 3 (tenant-scoped) | **Completo** |
-| WS4 | Validación E2E con fotos reales FOTL | Pendiente |
+| WS4 | Validación E2E con fotos reales FOTL | **Completo** (Planograma real subido a Supabase y validado en UI) |
 | WS5 | Webhook Ubiqo | **Post-MVP** |
 
 ---
@@ -68,10 +67,10 @@
 | :--- | :--- | :--- |
 | API producción (`/api/analyze`) | 60 | Funcional |
 | API comparación (`/api/compare`) | — | Funcional |
-| Planogram API (`/api/planogram/*`) | 26 | Funcional — upload, clients, incidences, detail, assign, export |
+| Planogram API (`/api/planogram/*`) | 33 | Funcional — upload, clients, incidences, detail, assign, export, regression |
 | Ubiqo pipeline (`/api/ubiqo/*`) | 58 | Funcional |
 | Hook Dashboard (`useDashboard`) | 3 | Funcional |
-| **Total** | **252 / 252** | Runner: **Vitest ^4.1.2** (100% pass) |
+| **Total** | **259 / 259** | Runner: **Vitest ^4.1.2** (100% pass) |
 
 ---
 

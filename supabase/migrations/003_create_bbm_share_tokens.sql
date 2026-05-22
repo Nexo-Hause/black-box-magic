@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS bbm_share_tokens (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_share_tokens_email ON bbm_share_tokens (email);
-CREATE INDEX idx_share_tokens_expires ON bbm_share_tokens (expires_at);
+CREATE INDEX IF NOT EXISTS idx_share_tokens_email ON bbm_share_tokens (email);
+CREATE INDEX IF NOT EXISTS idx_share_tokens_expires ON bbm_share_tokens (expires_at);
 
 COMMENT ON TABLE bbm_share_tokens IS 'Tokens de corta duración para links compartibles del demo (48h TTL, máximo 10 usos por token)';

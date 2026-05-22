@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS bbm_planograms (
 );
 
 -- Only one active planogram per client_key
-CREATE UNIQUE INDEX idx_planograms_active_client ON bbm_planograms (client_key) WHERE active = true;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_planograms_active_client ON bbm_planograms (client_key) WHERE active = true;
 
-CREATE INDEX idx_planograms_client_key ON bbm_planograms (client_key);
+CREATE INDEX IF NOT EXISTS idx_planograms_client_key ON bbm_planograms (client_key);
 
 COMMENT ON TABLE bbm_planograms IS 'Planogram reference images for shelf comparison';
