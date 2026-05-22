@@ -2,13 +2,18 @@ import type { PlanogramPipelineDeps, ProcessResult } from './types';
 import type { ReferenceData } from '@/types/comparison';
 import type { RawIncidenceResponse } from '@/types/incidence';
 import type { ImageSource } from '@/lib/gemini';
+import { analyzeImage } from '@/lib/gemini';
+import { getActiveConfig } from '@/lib/engine/config';
+import { buildDirectAuditPrompt } from '@/lib/planogram/incidence-prompt';
 
 export interface IncidenceRow {
   id: string;
-  planogram_id: string;
+  planogram_id: string | null;
+  client_id: string;
   field_photo_paths: string[];
   status: string;
 }
+
 
 export interface PlanogramProcessResult extends ProcessResult {
   incidence_count: number;
@@ -29,34 +34,9 @@ export async function processIncidence(
     supabase,
   } = deps;
 
-  // 3. Get planogram record
-  const { data: planogram, error: planogramErr } = await supabase
-    .from('bbm_planograms')
-    .select('*')
-    .eq('id', incidence.planogram_id)
-    .eq('active', true)
-    .maybeSingle();
+  const fnAnalyzeImage = deps.analyzeImage || analyzeImage;
 
-  if (planogramErr) {
-    throw new Error(`Error fetching planogram: ${planogramErr.message}`);
-  }
-
-  if (!planogram) {
-    throw new Error(`No active planogram found for id ${incidence.planogram_id}`);
-  }
-
-  // 4. Download planogram image from Supabase Storage
-  const planogramResult = await downloadPlanogram(planogram.storage_path);
-  if ('error' in planogramResult) {
-    throw new Error(`Failed to download planogram: ${planogramResult.error}`);
-  }
-
-  const planogramBlob = planogramResult.data;
-  const planogramBuffer = Buffer.from(await planogramBlob.arrayBuffer());
-  const planogramBase64 = planogramBuffer.toString('base64');
-  const planogramMimeType = planogram.file_type || 'image/jpeg';
-
-  // 5. Download field photos from stored URLs
+  // 1. Download field photos from stored URLs (needed for both modes)
   const fieldPhotoUrls: string[] = incidence.field_photo_paths || [];
   if (fieldPhotoUrls.length === 0) {
     throw new Error('No field photo paths in incidence record');
@@ -72,39 +52,90 @@ export async function processIncidence(
     });
   }
 
-  // 6. Build reference data from planogram metadata
-  const referenceData: ReferenceData = {
-    type: 'planogram',
-    section: planogram.section || undefined,
-    items: planogram.reference_items || [],
-  };
-
-  // 7. Build prompt
-  const prompt = buildIncidencePrompt(referenceData, fieldImages.length);
-
-  // 8. Call Gemini with multi-image comparison
-  const planogramImage: ImageSource = {
-    base64: planogramBase64,
-    mimeType: planogramMimeType,
-    label: 'reference',
-  };
-
-  const referenceImages: ImageSource[] = [planogramImage];
-  if (fieldImages.length > 1) {
-    referenceImages.push(...fieldImages.slice(0, -1));
-  }
-  const primaryFieldImage = fieldImages[fieldImages.length - 1];
-
+  let result;
   const startTime = Date.now();
   const apiKey = process.env.GOOGLE_AI_API_KEY!;
-  const result = await analyzeWithReferences(
-    primaryFieldImage,
-    referenceImages,
-    prompt,
-    apiKey,
-  );
 
-  // 9. Parse response
+  if (incidence.planogram_id === null) {
+    // === MODO A: Auditoría Directa (Sin Contraste) ===
+    // 2. Fetch active ClientConfig
+    const clientConfig = await getActiveConfig(incidence.client_id);
+    if (!clientConfig) {
+      throw new Error(`No active ClientConfig found for client_id: ${incidence.client_id}`);
+    }
+
+    // 3. Build direct audit prompt
+    const prompt = buildDirectAuditPrompt(clientConfig, fieldImages.length);
+
+    // 4. Call Gemini with primary field image (last one)
+    const primaryFieldImage = fieldImages[fieldImages.length - 1];
+    result = await fnAnalyzeImage(
+      primaryFieldImage.base64,
+      primaryFieldImage.mimeType,
+      prompt,
+      apiKey
+    );
+  } else {
+    // === MODO B: Auditoría Comparativa (Con Contraste) ===
+    // 2. Get planogram record
+    const { data: planogram, error: planogramErr } = await supabase
+      .from('bbm_planograms')
+      .select('*')
+      .eq('id', incidence.planogram_id)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (planogramErr) {
+      throw new Error(`Error fetching planogram: ${planogramErr.message}`);
+    }
+
+    if (!planogram) {
+      throw new Error(`No active planogram found for id ${incidence.planogram_id}`);
+    }
+
+    // 3. Download planogram image from Supabase Storage
+    const planogramResult = await downloadPlanogram(planogram.storage_path);
+    if ('error' in planogramResult) {
+      throw new Error(`Failed to download planogram: ${planogramResult.error}`);
+    }
+
+    const planogramBlob = planogramResult.data;
+    const planogramBuffer = Buffer.from(await planogramBlob.arrayBuffer());
+    const planogramBase64 = planogramBuffer.toString('base64');
+    const planogramMimeType = planogram.file_type || 'image/jpeg';
+
+    // 4. Build reference data from planogram metadata
+    const referenceData: ReferenceData = {
+      type: 'planogram',
+      section: planogram.section || undefined,
+      items: planogram.reference_items || [],
+    };
+
+    // 5. Build prompt
+    const prompt = buildIncidencePrompt(referenceData, fieldImages.length);
+
+    // 6. Call Gemini with multi-image comparison
+    const planogramImage: ImageSource = {
+      base64: planogramBase64,
+      mimeType: planogramMimeType,
+      label: 'reference',
+    };
+
+    const referenceImages: ImageSource[] = [planogramImage];
+    if (fieldImages.length > 1) {
+      referenceImages.push(...fieldImages.slice(0, -1));
+    }
+    const primaryFieldImage = fieldImages[fieldImages.length - 1];
+
+    result = await analyzeWithReferences(
+      primaryFieldImage,
+      referenceImages,
+      prompt,
+      apiKey
+    );
+  }
+
+  // 9. Parse response (same for both modes)
   const rawResponse = result.data as unknown as RawIncidenceResponse;
   const parsed = parseIncidenceResponse(rawResponse);
   const processingTime = Date.now() - startTime;

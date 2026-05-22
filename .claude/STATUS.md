@@ -1,7 +1,7 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-05-22 (Sesión 20 — Resolución de la visualización del planograma de referencia reemplazando el placeholder de 1x1 píxeles por un diagrama real y profesional en Supabase Storage, verificado con 259/259 tests de Vitest en verde). Roadmap TP: `docs/roadmap-2026-05.md`.
+> Última actualización: 2026-05-22 (Sesión 21 — Implementación del Onboarding Automático e Interactivo Self-Serve en Gemini 3.5 Flash, mitigación XML de inyección y endpoint dinámico para guías de industrias personalizadas, verificado con 267/267 tests de Vitest en verde). Roadmap TP: `docs/roadmap-2026-05.md`.
 
 ---
 
@@ -18,17 +18,17 @@
 
 ## Handoff — próxima sesión (leer esto primero)
 
-**Dónde estamos:** WS2 (Dashboard Frontend), WS3 (Export Excel) y WS4 (Validación E2E en campo con planogramas reales) se encuentran 100% completados de extremo a extremo, integrados y testeados. Se diagnosticó y resolvió el problema del cuadro de planograma que aparecía en verde sólido en la UI: se debía a que el script de semillas cargaba un placeholder de 1x1 píxeles verdes en Supabase Storage, el cual era estirado por el navegador con `object-fit: contain`. Se subió de forma exitosa una imagen de planograma real y profesional que ahora se renderiza perfectamente en el modal de incidencias. La suite completa cuenta con 259/259 tests pasando con éxito.
+**Dónde estamos:** El Onboarding Automático e Interactivo Self-Serve está 100% completado, integrado y probado. Migramos el backend del onboarding, síntesis y chat a la familia **Gemini 3.5 Flash**, depreciando la obsoleta familia 2.5. Implementamos mitigaciones de prompt injection encapsulando dictados en tags XML `<user_rules>` e instruyendo tratamiento pasivo. Desarrollamos un endpoint dinámico para guías de industrias personalizadas (`/api/onboarding/guide`) y un selector interactivo Neo-Brutalista con estados del micrófono CSS y un drawer lateral de calibración en caliente para re-síntesis asíncrona. La suite completa cuenta con 267/267 tests pasando con éxito.
 
 **Specs y Estado de Código:**
-*   `spec/implementation_plan.md` — Plan de diseño y QA unificado para WS2 Frontend y WS3 cerrado.
-*   `spec/task.md` — Lista de tareas detallada con el 100% de las tareas marcadas como completadas.
-*   `src/app/api/planogram/export/route.ts` — Endpoint de exportación con control de OOM (límite de 5,000 registros) y `scopedQuery`.
-*   `src/app/api/planogram/__tests__/bulletproof-verification.test.ts` — Pruebas de regresión y robustez E2E añadidas.
-*   `src/hooks/useDashboard.ts` — Actualizado con type-safety para la propiedad `client_key`.
+*   `src/lib/gemini-chat.ts` — Constantes de modelos migradas a `'gemini-3.5-flash'`.
+*   `src/lib/onboarding/synthesis.ts` — Encapsulación XML, descarte de paja ("N/A") y mitigación de inyección.
+*   `src/app/api/onboarding/guide/route.ts` — Endpoint de preguntas guía dinámicas con fallback estructurado.
+*   `src/app/onboarding/onboarding.css` — Estilos Neo-Brutalistas, micrófono pulsante y slide-out calibration drawer.
+*   `src/app/onboarding/page.tsx` — Flujo interactivo de 3 pasos y drawer colapsable.
 
 **Siguiente acción concreta:**
-1.  Proceder con el despliegue / merge de la rama `session/ws2-ws3-dashboard` (o el flujo de despliegue actual en `main`).
+1.  Proceder con el merge del PR actual `session/21-onboarding-interactive` a `main` tras validar que el pipeline en CI esté 100% verde.
 
 ---
 
@@ -70,13 +70,14 @@
 | Planogram API (`/api/planogram/*`) | 33 | Funcional — upload, clients, incidences, detail, assign, export, regression |
 | Ubiqo pipeline (`/api/ubiqo/*`) | 58 | Funcional |
 | Hook Dashboard (`useDashboard`) | 3 | Funcional |
-| **Total** | **259 / 259** | Runner: **Vitest ^4.1.2** (100% pass) |
+| Onboarding API & Synthesis | 13 | Funcional — guide generation, fallback, synthesis, XML injection test |
+| **Total** | **267 / 267** | Runner: **Vitest ^4.1.2** (100% pass) |
 
 ---
 
 ## Migraciones Supabase
 
-001 `bbm_client_configs` · 002 `bbm_comparison_log` · 003 `bbm_share_tokens` · 004 `bbm_planograms` · 005 `bbm_incidences` · 006 `bbm_planogram_assignments` · 007 `bbm_onboarding_codes` · 008 `bbm_ubiqo_captures` · 009 `bbm_tenancy` · 010 `add_error_kind` — **todas aplicadas con éxito**.
+001 `bbm_client_configs` · 002 `bbm_comparison_log` · 003 `bbm_share_tokens` · 004 `bbm_planograms` · 005 `bbm_incidences` · 006 `bbm_planogram_assignments` · 007 `bbm_onboarding_codes` · 008 `bbm_ubiqo_captures` · 009 `bbm_tenancy` · 010 `add_error_kind` · 011 `make_planogram_id_nullable` — **todas aplicadas con éxito**.
 
 ---
 
@@ -89,13 +90,13 @@
 
 ---
 
-## Decisiones Clave (sesión 2026-05-21 — nuevas)
+## Decisiones Clave (sesión 2026-05-22 — nuevas)
 
 | Decisión | Contexto |
 | :--- | :--- |
-| **Integración Unificada WS2 + WS3** | Decidimos unificar el desarrollo del Frontend de la UI del Dashboard (WS2) y de la exportación a Excel (WS3) para evitar duplicación de flujos de prueba y entregar el dashboard utilizable de un solo golpe. |
-| **Límite Defensivo de Exportación** | Establecemos un límite de 5,000 registros en el exportador de Excel para proteger los entornos serverless de caídas de tipo memoria insuficiente (OOM), retornando HTTP 413. |
-| **Generación Server-Side de Excel** | Ejecutar SheetJS (`xlsx`) puramente del lado del servidor para evitar inflar el bundle size de frontend en el cliente, manteniendo la UI sumamente responsiva. |
+| **Migración Completa a Gemini 3.5 Flash** | Descontinuamos por completo la familia 2.5 en favor de `gemini-3.5-flash` para mantener vigencia frente a deprecaciones de Google y optimizar velocidad/costos. |
+| **Encapsulación XML en Criterios** | Enmarcamos dictados libres dentro de tags XML `<user_rules>` para blindar al LLM contra ataques de inyección de prompt de manera simple y robusta. |
+| **Descarte Activo de Paja ("N/A")** | El sintetizador descarta de manera proactiva facetas de reglas no mencionadas por el usuario, previniendo reportes con auditorías genéricas o irrelevantes. |
 
 ---
 

@@ -7,14 +7,23 @@ import {
 } from '@/lib/prompts';
 import { verifyCookie, COOKIE_NAME } from '@/lib/cookie';
 import { supabase } from '@/lib/supabase';
+import { z } from 'zod';
 
 // Hobby plan: 10s hard limit. Pro plan ($20/mo): set maxDuration = 60
 export const maxDuration = 60;
+
+const demoRequestSchema = z.object({
+  image: z.string().min(1, 'Missing image'),
+  mime_type: z.string().optional(),
+  fileName: z.string().optional(),
+  custom_rules: z.string().optional(),
+});
 
 interface DemoRequest {
   image: string;
   mime_type?: string;
   fileName?: string;
+  custom_rules?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -38,17 +47,18 @@ export async function POST(request: NextRequest) {
 
   let body: DemoRequest;
   try {
-    body = await request.json();
+    const rawBody = await request.json();
+    const parseResult = demoRequestSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues.map(e => e.message).join(', '), status: 400 },
+        { status: 400 }
+      );
+    }
+    body = parseResult.data;
   } catch {
     return NextResponse.json(
       { error: 'Invalid JSON body', status: 400 },
-      { status: 400 }
-    );
-  }
-
-  if (!body.image) {
-    return NextResponse.json(
-      { error: 'Missing image', status: 400 },
       { status: 400 }
     );
   }
@@ -71,7 +81,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const prompt = buildSinglePassPrompt();
+    const prompt = buildSinglePassPrompt(body.custom_rules);
     const result = await analyzeImage(imageBase64, mimeType, prompt, geminiKey);
 
     let conditionDetail = null;

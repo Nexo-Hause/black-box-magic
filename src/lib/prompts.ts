@@ -139,14 +139,20 @@ Respond ONLY with valid JSON:
 // ─── Builder functions ───
 
 export function buildSinglePassPrompt(customRules?: string): string {
-  let prompt = SINGLE_PASS_PROMPT;
-
   if (customRules) {
-    prompt += `\n\n## CUSTOM CLIENT RULES\n${customRules}\nInclude evaluation of these custom rules in the compliance section.`;
+    return `CRITICAL INSTRUCTION: The absolute primary objective of this visual analysis is to evaluate and validate the following Custom Client Rules. You MUST prioritize and heavily focus your analysis, summary, compliance, and strategic recommendations on these rules. Do not let general guidelines overshadow them:
+
+## CUSTOM CLIENT RULES
+${customRules}
+
+---
+
+${SINGLE_PASS_PROMPT}
+
+${SINGLE_PASS_SCHEMA}`;
   }
 
-  prompt += `\n\n${SINGLE_PASS_SCHEMA}`;
-  return prompt;
+  return `${SINGLE_PASS_PROMPT}\n\n${SINGLE_PASS_SCHEMA}`;
 }
 
 export function buildConditionEscalationPrompt(): string {

@@ -472,10 +472,20 @@ export default function DashboardPage() {
               </div>
 
               {/* Side-by-side comparison images grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: dashboard.detail.planogramUrl ? 'repeat(auto-fit, minmax(320px, 1fr))' : '1fr', 
+                gap: '1rem', 
+                marginBottom: '1.5rem' 
+              }}>
                 <div className="card" style={{ padding: '0.75rem' }}>
-                  <h3 className="text-xs muted" style={{ fontWeight: 700, marginBottom: '0.5rem', textTransform: 'uppercase' }}>Foto de Campo</h3>
-                  <div style={{ width: '100%', height: '300px', backgroundColor: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 className="text-xs muted" style={{ fontWeight: 700, textTransform: 'uppercase' }}>Foto de Campo</h3>
+                    {!dashboard.detail.planogramUrl && (
+                      <span className="badge badge--blue" style={{ fontSize: '0.65rem' }}>Auditoría Directa de IA</span>
+                    )}
+                  </div>
+                  <div style={{ width: '100%', height: '350px', backgroundColor: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
                     {dashboard.detail.fieldPhotoUrls && dashboard.detail.fieldPhotoUrls.length > 0 ? (
                       <img
                         src={dashboard.detail.fieldPhotoUrls[0]}
@@ -488,20 +498,18 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="card" style={{ padding: '0.75rem' }}>
-                  <h3 className="text-xs muted" style={{ fontWeight: 700, marginBottom: '0.5rem', textTransform: 'uppercase' }}>Planograma de Referencia</h3>
-                  <div style={{ width: '100%', height: '300px', backgroundColor: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
-                    {dashboard.detail.planogramUrl ? (
+                {dashboard.detail.planogramUrl && (
+                  <div className="card" style={{ padding: '0.75rem' }}>
+                    <h3 className="text-xs muted" style={{ fontWeight: 700, marginBottom: '0.5rem', textTransform: 'uppercase' }}>Planograma de Referencia</h3>
+                    <div style={{ width: '100%', height: '300px', backgroundColor: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
                       <img
                         src={dashboard.detail.planogramUrl}
                         alt="Planograma base asignado"
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
-                    ) : (
-                      <span className="text-xs muted">Sin planograma asignado</span>
-                    )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Detailed incidences list table */}

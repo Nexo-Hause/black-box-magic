@@ -124,6 +124,25 @@ export default function AdminPage() {
     }
   }, []);
 
+  // Launch sales workshop for this prospect
+  const handleLaunchWorkshop = useCallback(async (email: string) => {
+    try {
+      setError(null);
+      const res = await fetch('/api/gate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to authenticate');
+      
+      // Redirect to the workshop demo page
+      window.location.href = '/demo';
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al lanzar el taller');
+    }
+  }, []);
+
   // ─── Loading ─────────────────────────────────────────────────────────────
 
   if (gate.loading) {
@@ -299,6 +318,16 @@ export default function AdminPage() {
                     style={{ flexShrink: 0 }}
                   >
                     {copied === link.id ? 'COPIADO' : 'COPIAR'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <button
+                    className="btn btn--small btn--primary"
+                    onClick={() => handleLaunchWorkshop(link.email)}
+                    style={{ flex: 1, fontSize: '0.75rem', gap: '0.25rem' }}
+                  >
+                    🚀 LANZAR TALLER EN VIVO
                   </button>
                 </div>
 
