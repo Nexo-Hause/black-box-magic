@@ -217,6 +217,40 @@ describe('Onboarding Phase 4 Endpoints Integration Tests', () => {
         updated_at: expect.any(String),
       });
     });
+
+    it('debe rechazar solicitudes con más de 100 fotos', async () => {
+      vi.mocked(requireOnboardingAuth).mockResolvedValue({
+        payload: {
+          clientId: 'cli-test',
+          clientName: 'Test Client',
+          email: 'test@example.com',
+        },
+      } as any);
+
+      // Generate 101 mock photos
+      const tooManyPhotos = Array.from({ length: 101 }, (_, i) => ({
+        id: `photo-${i}`,
+        fileName: 'test.jpg',
+        status: 'done' as const,
+        rating: 'ok' as const,
+        feedback: 'Perfect',
+      }));
+
+      const req = new NextRequest('http://localhost/api/onboarding/photos', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer valid-token' },
+        body: JSON.stringify({
+          sessionId: '00000000-0000-4000-8000-000000000000',
+          photos: tooManyPhotos,
+        }),
+      });
+
+      const res = await photosPOST(req);
+      expect(res.status).toBe(400);
+
+      const body = await res.json();
+      expect(body.error).toContain('Invalid request');
+    });
   });
 
   // ─── GET /api/onboarding/session/history ───────────────────────────────────
@@ -276,6 +310,7 @@ describe('Onboarding Phase 4 Endpoints Integration Tests', () => {
       expect(body.history[1].version).toBe(1);
 
       expect(query.eq).toHaveBeenCalledWith('client_id', 'cli-test');
+      expect(query.eq).toHaveBeenCalledWith('created_by', 'test@example.com');
     });
   });
 });

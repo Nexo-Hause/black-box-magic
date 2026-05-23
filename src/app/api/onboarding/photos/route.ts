@@ -10,7 +10,15 @@ const savePhotosRequestSchema = z.object({
     fileName: z.string().max(255).optional(),
     previewUrl: z.string().max(2048).optional(),
     status: z.enum(['pending', 'analyzing', 'done', 'error']),
-    result: z.any().optional().nullable(),
+    result: z.any().optional().nullable().refine(
+      (val) => {
+        if (!val) return true;
+        const str = JSON.stringify(val);
+        // Detect if there are embedded base64 images to prevent bloat
+        return !str.includes('data:image') && str.length < 50000;
+      },
+      { message: 'El resultado no puede contener imágenes base64 embebidas' }
+    ),
     rating: z.enum(['ok', 'no']).optional().nullable(),
     feedback: z.string().max(1000).optional().nullable(),
   })).max(100, 'Maximum 100 photos per request'),

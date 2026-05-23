@@ -24,11 +24,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Query historical client configs for this client_id
+    // Query historical client configs for this client_id and creator to enforce RLS
     const { data: history, error } = await supabase
       .from('bbm_client_configs')
       .select('id, client_id, client_name, status, industry, version, config, partial_config, created_at, updated_at')
       .eq('client_id', payload.clientId)
+      .eq('created_by', payload.email)
       .order('version', { ascending: false });
 
     if (error) {
