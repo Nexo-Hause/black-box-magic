@@ -59,6 +59,16 @@ export async function POST(request: NextRequest) {
 
   const { sessionId, photos, iterationCount } = parsed.data;
 
+  // Validate no duplicate photo IDs
+  const photoIds = photos.map(p => p.id);
+  const uniqueIds = new Set(photoIds);
+  if (uniqueIds.size !== photoIds.length) {
+    return NextResponse.json(
+      { error: 'Duplicate photo IDs detected in request', status: 400 },
+      { status: 400 }
+    );
+  }
+
   // Payload size validation to avoid JSONB database overflow or memory abuse
   const totalPayloadSize = JSON.stringify(photos).length;
   if (totalPayloadSize > 800 * 1024) { // 800KB conservative limit for JSONB

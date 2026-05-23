@@ -24,6 +24,17 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 function checkRateLimit(key: string): boolean {
   const now = Date.now();
 
+  // Cleanup probabilístico de registros expirados (~1% de peticiones)
+  if (rateLimitMap.size > 0 && Math.random() < 0.01) {
+    const expired: string[] = [];
+    rateLimitMap.forEach((entry, k) => {
+      if (now > entry.resetAt) {
+        expired.push(k);
+      }
+    });
+    expired.forEach(k => rateLimitMap.delete(k));
+  }
+
   // Cleanup agresivo si estamos cerca del límite de llaves (50%)
   if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS * 0.5 && !rateLimitMap.has(key)) {
     const expiredKeys: string[] = [];
