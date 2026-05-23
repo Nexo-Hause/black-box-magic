@@ -187,7 +187,7 @@ describe('Onboarding Phase 4 Endpoints Integration Tests', () => {
       vi.mocked(supabase!.from).mockReturnValue(query as any);
 
       const mockPhotos = [
-        { id: 'photo-1', fileName: 'test.jpg', rating: 'ok', feedback: 'Perfect' },
+        { id: 'photo-1', fileName: 'test.jpg', status: 'done', rating: 'ok', feedback: 'Perfect' },
       ];
 
       const req = new NextRequest('http://localhost/api/onboarding/photos', {

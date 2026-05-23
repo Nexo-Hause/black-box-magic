@@ -5,7 +5,15 @@ import { z } from 'zod/v4';
 
 const savePhotosRequestSchema = z.object({
   sessionId: z.string().uuid(),
-  photos: z.array(z.any()).max(100, 'Maximum 100 photos per request'),
+  photos: z.array(z.object({
+    id: z.string(),
+    fileName: z.string().max(255).optional(),
+    previewUrl: z.string().max(2048).optional(),
+    status: z.enum(['pending', 'analyzing', 'done', 'error']),
+    result: z.any().optional().nullable(),
+    rating: z.enum(['ok', 'no']).optional().nullable(),
+    feedback: z.string().max(1000).optional().nullable(),
+  })).max(100, 'Maximum 100 photos per request'),
   iterationCount: z.number().optional(),
 });
 
@@ -36,12 +44,21 @@ export async function POST(request: NextRequest) {
   const parsed = savePhotosRequestSchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Invalid request: sessionId (UUID) and photos (array) required', status: 400 },
+      { error: 'Invalid request: sessionId (UUID) and structured photos (array) required', status: 400 },
       { status: 400 }
     );
   }
 
   const { sessionId, photos, iterationCount } = parsed.data;
+
+  // Payload size validation to avoid JSONB database overflow or memory abuse
+  const totalPayloadSize = JSON.stringify(photos).length;
+  if (totalPayloadSize > 800 * 1024) { // 800KB conservative limit for JSONB
+    return NextResponse.json(
+      { error: 'El tamaño de las fotos es demasiado grande. Reduce la cantidad de imágenes o descripciones.', status: 413 },
+      { status: 413 }
+    );
+  }
 
   if (!supabase) {
     return NextResponse.json(

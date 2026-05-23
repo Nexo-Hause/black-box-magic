@@ -18,6 +18,7 @@ export const maxDuration = 15;
 // In-memory rate limiting store (production should ideally use Redis)
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 5;
+const MAX_RATE_LIMIT_KEYS = 10000;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 // Periodic cleanup every 5 minutes to avoid memory leaks
@@ -34,8 +35,33 @@ if (typeof intervalId !== 'number' && intervalId && 'unref' in intervalId) {
   (intervalId as any).unref();
 }
 
+// Prevent memory leaks / double intervals during Next.js hot-reload in dev
+if (typeof globalThis !== 'undefined') {
+  if ((globalThis as any).__rateLimitInterval) {
+    clearInterval((globalThis as any).__rateLimitInterval);
+  }
+  (globalThis as any).__rateLimitInterval = intervalId;
+}
+
 function checkRateLimit(key: string): boolean {
   const now = Date.now();
+
+  // Evitar crecimiento ilimitado del Map
+  if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS && !rateLimitMap.has(key)) {
+    // Limpiar entradas expiradas agresivamente
+    const expiredKeys: string[] = [];
+    rateLimitMap.forEach((entry, k) => {
+      if (now > entry.resetAt) expiredKeys.push(k);
+    });
+    expiredKeys.forEach(k => rateLimitMap.delete(k));
+
+    // Si aún estamos llenos, rechazar la solicitud para proteger la memoria
+    if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS) {
+      console.warn('[onboarding/resume] Rate limit map full, rejecting request to protect memory');
+      return false;
+    }
+  }
+
   const entry = rateLimitMap.get(key);
 
   if (!entry || now > entry.resetAt) {
@@ -104,9 +130,10 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('[onboarding/resume] Error querying sessions:', error.message);
+        const status = error.message?.includes('connection') || error.message?.includes('fetch') ? 503 : 500;
         return NextResponse.json(
-          { error: 'Failed to query onboarding sessions', status: 500 },
-          { status: 500 }
+          { error: 'Failed to query onboarding sessions', details: error.message, status },
+          { status }
         );
       }
 
@@ -132,9 +159,10 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('[onboarding/resume] Error fetching session:', error.message);
+        const status = error.message?.includes('connection') || error.message?.includes('fetch') ? 503 : 500;
         return NextResponse.json(
-          { error: 'Failed to fetch onboarding session', status: 500 },
-          { status: 500 }
+          { error: 'Failed to fetch onboarding session', details: error.message, status },
+          { status }
         );
       }
 
