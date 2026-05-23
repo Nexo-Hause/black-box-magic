@@ -28,12 +28,12 @@ CREATE TABLE IF NOT EXISTS bbm_incidences (
   processed_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_incidences_status ON bbm_incidences (status);
-CREATE INDEX idx_incidences_planogram ON bbm_incidences (planogram_id);
-CREATE INDEX idx_incidences_promoter ON bbm_incidences (promoter_name);
-CREATE INDEX idx_incidences_store ON bbm_incidences (store_name);
-CREATE INDEX idx_incidences_captured_at ON bbm_incidences (photo_captured_at);
+CREATE INDEX IF NOT EXISTS idx_incidences_status ON bbm_incidences (status);
+CREATE INDEX IF NOT EXISTS idx_incidences_planogram ON bbm_incidences (planogram_id);
+CREATE INDEX IF NOT EXISTS idx_incidences_promoter ON bbm_incidences (promoter_name);
+CREATE INDEX IF NOT EXISTS idx_incidences_store ON bbm_incidences (store_name);
+CREATE INDEX IF NOT EXISTS idx_incidences_captured_at ON bbm_incidences (photo_captured_at);
 -- Prevent reprocessing same Evidence capture
-CREATE UNIQUE INDEX idx_incidences_ubiqo_unique ON bbm_incidences (ubiqo_capture_id) WHERE ubiqo_capture_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_incidences_ubiqo_unique ON bbm_incidences (ubiqo_capture_id) WHERE ubiqo_capture_id IS NOT NULL;
 
 COMMENT ON TABLE bbm_incidences IS 'Planogram comparison results with detected incidences per photo/capture';

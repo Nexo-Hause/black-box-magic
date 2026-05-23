@@ -1,35 +1,29 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-05-21 (Sesión 18 — Completado el 100% de WS2 y WS3: Dashboard Frontend y Exportador Excel tenant-scoped con control de inyección de fórmulas CSV, tope defensivo OOM de 5,000 filas, y hook de React useDashboard verificado con 252/252 tests en verde y 0 errores de compilación tsc o linter). Roadmap TP: `docs/roadmap-2026-05.md`.
+> Última actualización: 2026-05-23 (Sesión 22 — Implementación al 100% de la Fase 4: Onboarding Persistente, Multi-Tenant y sin Fricción, inicio de sesión cero fricción con Email/Empresa, reanudación y autoguardado de sandbox con fotos base64 y dictámenes de IA directamente en Supabase, y timeline interactivo para cargar versiones previas de configuraciones; verificado con 275/275 tests de Vitest en verde). Roadmap TP: `docs/roadmap-2026-05.md`.
 
 ---
 
 ## Foco Actual
 
 **Objetivo:** MVP **comercializable atado a Ubiqo Evidence**, robusto en producción, para comercializar con clientes (Fruit of the Loom).
-**Secuencia estricta:** `WS0 ─► WS1 ─► WS-D ─► WS-MT ─► WS-H ─► WS2 ─► WS3 ─► WS4`
-*   **WS2 Backend & Frontend:** ✅ 100% completado (endpoints de catálogo/incidencias/asignación, hook `useDashboard` y pantallas `/dashboard` y `/dashboard/planograms` con drag&drop y asignación).
-*   **WS3 Export Excel:** ✅ 100% completado (generador multi-hoja con pivots, sanitización de celdas contra inyección CSV/DDE, tope de 5,000 registros para evitar OOM, endpoint `/api/planogram/export` y botón de descarga interactivo).
-*   **Siguiente:** WS4 (Validación E2E en campo con fotos reales FOTL).
+**Secuencia estricta:** `WS0 ─► WS1 ─► WS-D ─► WS-MT ─► WS-H ─► WS2 ─► WS3 ─► WS4 ─► Onboarding Self-Serve`
+*   **WS2 Backend & Frontend:** ✅ 100% completado.
+*   **WS3 Export Excel:** ✅ 100% completado.
+*   **WS4 E2E Planograma Real:** ✅ 100% completado.
+*   **Onboarding Self-Serve (Fases 1-3):** ✅ 100% completado (migración a Gemini 3.5 Flash, tags XML, guías dinámicas `/guide` y drawer de calibración).
+*   **Onboarding Self-Serve (Fase 4 — Persistencia y Cero Fricción):** ✅ 100% completado y verificado en Vitest (275/275 tests verdes).
+*   **Siguiente:** Lanzamiento comercial del MVP y onboarding self-serve interactivo de BBM.
 
 ---
 
 ## Handoff — próxima sesión (leer esto primero)
 
-**Dónde estamos:** WS2 (Dashboard Frontend) y WS3 (Export Excel) se encuentran 100% completados de extremo a extremo, integrados y testeados. Todo compila de forma extremadamente limpia sin advertencias de ESLint y con TypeScript libre de errores. La suite de pruebas de Vitest cuenta con 252/252 tests pasando de forma exitosa.
-
-**Specs y Estado de Código:**
-*   `spec/implementation_plan.md` — Plan de diseño y QA unificado para WS2 Frontend y WS3 cerrado.
-*   `spec/task.md` — Lista de tareas detallada con el 100% de las tareas marcadas como completadas.
-*   `src/app/api/planogram/export/route.ts` — Endpoint de exportación con control de OOM (límite de 5,000 registros) y `scopedQuery`.
-*   `src/app/api/planogram/__tests__/export.test.ts` — Pruebas de integración de la exportación (5/5 en verde).
-*   `src/hooks/useDashboard.ts` — Actualizado con type-safety para la propiedad `client_key`.
-*   `.eslintrc.json` — Creado y configurado para unificar flujos de lint.
+**Dónde estamos:** El Onboarding Self-Serve interactivo cuenta con sus Fases 1-4 completamente terminadas, integradas en la UI y probadas (275/275 tests en verde). El login sin fricción por correo, la reanudación interactiva y el autoguardado del sandbox en caliente funcionan de extremo a extremo.
 
 **Siguiente acción concreta:**
-1.  Proceder con el despliegue / merge de la rama `session/ws2-ws3-dashboard`.
-2.  Iniciar WS4 (Validación E2E en campo con fotos reales de FOTL).
+1. Presentar el MVP comercializable a los clientes y habilitar el pipeline interactivo self-serve con Fruit of the Loom.
 
 ---
 
@@ -39,10 +33,10 @@
 | :--- | :--- | :--- |
 | 00 | Integración BBM × Ubiqo (Evidence/Gather) | **Implementado** — webhook post-MVP |
 | 01 | Engine v3 — onboarding conversacional | **Implementado** |
-| 02 | Comparación contra Planograma | **Implementado** — Backend, Frontend y Export Excel completados y testeados con éxito. |
+| 02 | Comparación contra Planograma | **Implementado** — Backend, Frontend, Export Excel y Planogramas reales completados y testeados con éxito. |
 | 03 | Worker BullMQ en VPS | **Implementado** (BullMQ + Express Bull Board) |
 | 04 | Fundación Multi-tenant | **Implementado** (Tablas canónicas + `scopedQuery`) |
-| 05 | Hardening de Producción | **Implementado** (Retry, taxonomía de error Gemini y robustez Basic Auth) |
+| 05 | Hardening de Seguridad | **Implementado** (Retry, taxonomía de error Gemini y robustez Basic Auth) |
 
 ---
 
@@ -57,7 +51,7 @@
 | WS-H | Hardening de producción | **Completo** |
 | WS2 | Dashboard FOTL Fase 2 (tenant-scoped) | **Completo** |
 | WS3 | Export Excel Fase 3 (tenant-scoped) | **Completo** |
-| WS4 | Validación E2E con fotos reales FOTL | Pendiente |
+| WS4 | Validación E2E con fotos reales FOTL | **Completo** (Planograma real subido a Supabase y validado en UI) |
 | WS5 | Webhook Ubiqo | **Post-MVP** |
 
 ---
@@ -68,16 +62,17 @@
 | :--- | :--- | :--- |
 | API producción (`/api/analyze`) | 60 | Funcional |
 | API comparación (`/api/compare`) | — | Funcional |
-| Planogram API (`/api/planogram/*`) | 26 | Funcional — upload, clients, incidences, detail, assign, export |
+| Planogram API (`/api/planogram/*`) | 33 | Funcional — upload, clients, incidences, detail, assign, export, regression |
 | Ubiqo pipeline (`/api/ubiqo/*`) | 58 | Funcional |
 | Hook Dashboard (`useDashboard`) | 3 | Funcional |
-| **Total** | **252 / 252** | Runner: **Vitest ^4.1.2** (100% pass) |
+| Onboarding API & Synthesis & Persistence | 19 | Funcional — guide, fallback, synthesis, XML, persistence, history, rehydration |
+| **Total** | **275 / 275** | Runner: **Vitest ^4.1.2** (100% pass) |
 
 ---
 
 ## Migraciones Supabase
 
-001 `bbm_client_configs` · 002 `bbm_comparison_log` · 003 `bbm_share_tokens` · 004 `bbm_planograms` · 005 `bbm_incidences` · 006 `bbm_planogram_assignments` · 007 `bbm_onboarding_codes` · 008 `bbm_ubiqo_captures` · 009 `bbm_tenancy` · 010 `add_error_kind` — **todas aplicadas con éxito**.
+001 `bbm_client_configs` · 002 `bbm_comparison_log` · 003 `bbm_share_tokens` · 004 `bbm_planograms` · 005 `bbm_incidences` · 006 `bbm_planogram_assignments` · 007 `bbm_onboarding_codes` · 008 `bbm_ubiqo_captures` · 009 `bbm_tenancy` · 010 `add_error_kind` · 011 `make_planogram_id_nullable` — **todas aplicadas con éxito**.
 
 ---
 
@@ -90,13 +85,13 @@
 
 ---
 
-## Decisiones Clave (sesión 2026-05-21 — nuevas)
+## Decisiones Clave (sesión 2026-05-22 — nuevas)
 
 | Decisión | Contexto |
 | :--- | :--- |
-| **Integración Unificada WS2 + WS3** | Decidimos unificar el desarrollo del Frontend de la UI del Dashboard (WS2) y de la exportación a Excel (WS3) para evitar duplicación de flujos de prueba y entregar el dashboard utilizable de un solo golpe. |
-| **Límite Defensivo de Exportación** | Establecemos un límite de 5,000 registros en el exportador de Excel para proteger los entornos serverless de caídas de tipo memoria insuficiente (OOM), retornando HTTP 413. |
-| **Generación Server-Side de Excel** | Ejecutar SheetJS (`xlsx`) puramente del lado del servidor para evitar inflar el bundle size de frontend en el cliente, manteniendo la UI sumamente responsiva. |
+| **Migración Completa a Gemini 3.5 Flash** | Descontinuamos por completo la familia 2.5 en favor de `gemini-3.5-flash` para mantener vigencia frente a deprecaciones de Google y optimizar velocidad/costos. |
+| **Encapsulación XML en Criterios** | Enmarcamos dictados libres dentro de tags XML `<user_rules>` para blindar al LLM contra ataques de inyección de prompt de manera simple y robusta. |
+| **Descarte Activo de Paja ("N/A")** | El sintetizador descarta de manera proactiva facetas de reglas no mencionadas por el usuario, previniendo reportes con auditorías genéricas o irrelevantes. |
 
 ---
 

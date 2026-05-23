@@ -75,7 +75,16 @@ const initialState: OnboardingState = {
 
 type Action =
   | { type: 'START_SESSION' }
-  | { type: 'SESSION_CREATED'; sessionId: string; token: string; clientName: string }
+  | {
+      type: 'SESSION_CREATED';
+      sessionId: string;
+      token: string;
+      clientName: string;
+      transcript?: any[];
+      partialConfig?: any;
+      synthesizedConfig?: any;
+      status?: string;
+    }
   | { type: 'SEND_MESSAGE'; text: string }
   | { type: 'MESSAGE_SENT' }
   | { type: 'CHAT_RESPONSE'; response: string; isComplete: boolean; turnCount: number }
@@ -108,15 +117,41 @@ function reducer(state: OnboardingState, action: Action): OnboardingState {
     case 'START_SESSION':
       return { ...state, loading: true, error: null };
 
-    case 'SESSION_CREATED':
+    case 'SESSION_CREATED': {
+      let calculatedPhase: OnboardingState['phase'] = 'chatting';
+      if (action.status === 'active' || action.status === 'approved') {
+        calculatedPhase = 'approved';
+      } else if (action.synthesizedConfig) {
+        calculatedPhase = 'testing';
+      } else if (action.partialConfig?.isComplete) {
+        calculatedPhase = 'reviewing';
+      }
+
+      const dbMessages = action.transcript || [];
+      const messages: ChatMessage[] = dbMessages.map((msg: any) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+        timestamp: msg.timestamp || Date.now(),
+      }));
+
+      const testPhotos: TestPhoto[] = action.partialConfig?.sandbox_photos || [];
+      const iterationCount = action.partialConfig?.iteration_count || 0;
+
       return {
         ...state,
         loading: false,
-        phase: 'chatting',
+        phase: calculatedPhase,
         sessionId: action.sessionId,
         token: action.token,
         clientName: action.clientName,
+        messages,
+        partialConfig: action.partialConfig || null,
+        synthesizedConfig: action.synthesizedConfig || null,
+        testPhotos,
+        iterationCount,
+        isComplete: action.partialConfig?.isComplete ?? false,
       };
+    }
 
     case 'SEND_MESSAGE':
       return {
@@ -296,13 +331,53 @@ export function useOnboardingChat() {
     }
   };
 
-  const startSession = useCallback(async (code: string) => {
+  const saveSandboxPhotos = useCallback(async (photos: TestPhoto[], iterationCount?: number) => {
+    const { sessionId, token } = stateRef.current;
+    if (!sessionId || !token) return;
+    try {
+      await fetch('/api/onboarding/photos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sessionId, photos, iterationCount }),
+      });
+    } catch (err) {
+      console.error('[useOnboardingChat] Failed to save sandbox photos:', err);
+    }
+  }, []);
+
+  const resumeSession = useCallback((sessionData: {
+    sessionId: string;
+    clientId: string;
+    clientName: string;
+    token: string;
+    transcript: any[];
+    partialConfig: any;
+    synthesizedConfig: any;
+    status: string;
+  }) => {
+    dispatch({
+      type: 'SESSION_CREATED',
+      sessionId: sessionData.sessionId,
+      token: sessionData.token,
+      clientName: sessionData.clientName,
+      transcript: sessionData.transcript,
+      partialConfig: sessionData.partialConfig,
+      synthesizedConfig: sessionData.synthesizedConfig,
+      status: sessionData.status,
+    });
+  }, []);
+
+  const startSession = useCallback(async (param: string | { email: string; clientName: string }) => {
     dispatch({ type: 'START_SESSION' });
     try {
+      const body = typeof param === 'string' ? { code: param } : param;
       const res = await fetch('/api/onboarding/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión');
@@ -311,7 +386,15 @@ export function useOnboardingChat() {
         sessionId: data.sessionId,
         token: data.token,
         clientName: data.clientName,
+        transcript: data.transcript,
+        partialConfig: data.partialConfig,
+        synthesizedConfig: data.synthesizedConfig,
+        status: data.status,
       });
+
+      if (data.transcript && data.transcript.length > 0) {
+        return;
+      }
 
       // Auto-send initial message so Gemini starts the conversation
       try {
@@ -490,15 +573,30 @@ export function useOnboardingChat() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       dispatch({ type: 'TEST_PHOTO_RESULT', photoId, result: data.result as EngineV3Result });
+
+      const updatedPhotos = stateRef.current.testPhotos.map(p =>
+        p.id === photoId ? { ...p, status: 'done' as const, result: data.result as EngineV3Result } : p
+      );
+      await saveSandboxPhotos(updatedPhotos);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al analizar foto';
       dispatch({ type: 'TEST_PHOTO_ERROR', photoId, error: message });
-    }
-  }, []);
 
-  const rateTestResult = useCallback((photoId: string, rating: 'ok' | 'no', feedback = '') => {
+      const updatedPhotos = stateRef.current.testPhotos.map(p =>
+        p.id === photoId ? { ...p, status: 'error' as const } : p
+      );
+      await saveSandboxPhotos(updatedPhotos);
+    }
+  }, [saveSandboxPhotos]);
+
+  const rateTestResult = useCallback(async (photoId: string, rating: 'ok' | 'no', feedback = '') => {
     dispatch({ type: 'RATE_TEST_RESULT', photoId, rating, feedback });
-  }, []);
+
+    const updatedPhotos = stateRef.current.testPhotos.map(p =>
+      p.id === photoId ? { ...p, rating, feedback } : p
+    );
+    await saveSandboxPhotos(updatedPhotos);
+  }, [saveSandboxPhotos]);
 
   const deployConfig = useCallback(async () => {
     const { sessionId, token } = stateRef.current;
@@ -522,10 +620,12 @@ export function useOnboardingChat() {
     }
   }, []);
 
-  const requestAdjustment = useCallback(() => {
+  const requestAdjustment = useCallback(async () => {
     if (stateRef.current.iterationCount >= 5) return;
+    const nextIteration = stateRef.current.iterationCount + 1;
     dispatch({ type: 'REQUEST_ADJUSTMENT' });
-  }, []);
+    await saveSandboxPhotos([], nextIteration);
+  }, [saveSandboxPhotos]);
 
   const startVoiceSession = useCallback(async () => {
     const { sessionId, token } = stateRef.current;
@@ -579,6 +679,7 @@ export function useOnboardingChat() {
   return {
     state,
     startSession,
+    resumeSession,
     sendMessage,
     startSynthesis,
     approveConfig,

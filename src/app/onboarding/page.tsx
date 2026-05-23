@@ -6,31 +6,85 @@ import { useOnboardingChat } from '@/hooks/useOnboardingChat';
 import type { TestPhoto } from '@/hooks/useOnboardingChat';
 import { useVoiceSession } from '@/hooks/useVoiceSession';
 import type { ClientConfig, EvaluationArea, EscalationRule } from '@/types/engine';
+import './onboarding.css';
 
-// ─── Typing indicator ─────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-function TypingIndicator() {
+const STANDARD_INDUSTRIES = [
+  { id: 'qsr', name: 'QSR / Comida Rápida', icon: '🍔',
+    questions: [
+      '¿Las mesas y áreas de comensales se ven limpias y ordenadas?',
+      '¿El uniforme de los empleados (gorra, delantal) se usa correctamente?',
+      '¿Los alimentos y condimentos en barra están debidamente tapados y frescos?',
+      '¿El área de caja o cobro se encuentra libre de objetos personales?'
+    ]
+  },
+  { id: 'retail_btl', name: 'Retail / BTL', icon: '🏷️',
+    questions: [
+      '¿El anaquel tiene los productos principales con el logotipo al frente?',
+      '¿La publicidad del mes (BTL, pósteres) está visible y sin daños?',
+      '¿Existe suficiente stock del producto estelar o hay huecos vacíos?',
+      '¿Los precios marcados coinciden con la promoción vigente?'
+    ]
+  },
+  { id: 'construccion', name: 'Construcción / Telecom', icon: '🚧',
+    questions: [
+      '¿El personal en la obra porta su casco, chaleco y botas de seguridad?',
+      '¿La zona de excavación o trabajo de altura tiene barandales de seguridad?',
+      '¿Las herramientas de trabajo y materiales están ordenados y clasificados?',
+      '¿Existen obstrucciones en las salidas de emergencia o extintores?'
+    ]
+  },
+  { id: 'servicios', name: 'Servicios', icon: '🛎️',
+    questions: [
+      '¿La zona de recepción o lobby luce limpia, despejada y ordenada?',
+      '¿Los botes de basura están por debajo de su límite de capacidad?',
+      '¿Las pantallas publicitarias o informativas están encendidas y operando?',
+      '¿La atención y presentación del personal cumple con el protocolo de marca?'
+    ]
+  },
+  { id: 'operaciones', name: 'Operaciones', icon: '⚙️',
+    questions: [
+      '¿El flujo de maquinaria o vehículos en patio está despejado de obstáculos?',
+      '¿Las zonas críticas tienen señalamientos visibles de seguridad?',
+      '¿El nivel de iluminación de las áreas de trabajo es óptimo y suficiente?',
+      '¿Las bitácoras físicas de supervisión están firmadas y al día?'
+    ]
+  },
+  { id: 'otros', name: 'Otros / Personalizado', icon: '🌟',
+    questions: [
+      '¿Cuáles son las áreas o zonas más importantes que necesitas auditar visualmente a través de fotografías?',
+      '¿Qué elementos específicos de orden, limpieza o presentación deben estar presentes?',
+      '¿Cuáles son las fallas operativas o condiciones críticas que consideras inaceptables?',
+      '¿Qué estándares rigurosos de tu manual de marca deben cumplir los colaboradores?'
+    ]
+  }
+];
+
+const SCORING_LABELS: Record<ClientConfig['globalScoringMethod'], string> = {
+  weighted: 'Promedio ponderado',
+  equal: 'Promedio igual',
+  pass_fail: 'Aprobado / Reprobado',
+};
+
+// ─── Step Indicator ───────────────────────────────────────────────────────────
+
+interface StepIndicatorProps {
+  currentStep: number;
+}
+
+function StepIndicator({ currentStep }: StepIndicatorProps) {
   return (
-    <div style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '4px',
-      padding: '0.75rem 1rem',
-      background: 'var(--bg-white)',
-      border: '2px solid var(--border-light)',
-    }}>
-      {[0, 1, 2].map(i => (
-        <span
-          key={i}
-          className="spinner"
-          style={{
-            width: '6px',
-            height: '6px',
-            borderWidth: '1px',
-            animationDelay: `${i * 150}ms`,
-          }}
-        />
-      ))}
+    <div className="step-indicator-bar">
+      <div className={`step-badge ${currentStep === 1 ? 'active' : ''} ${currentStep > 1 ? 'completed' : ''}`}>
+        Paso 1: Reglas
+      </div>
+      <div className={`step-badge ${currentStep === 2 ? 'active' : ''} ${currentStep > 2 ? 'completed' : ''}`}>
+        Paso 2: Sandbox
+      </div>
+      <div className={`step-badge ${currentStep === 3 ? 'active' : ''} ${currentStep > 3 ? 'completed' : ''}`}>
+        Paso 3: Reporte
+      </div>
     </div>
   );
 }
@@ -39,278 +93,425 @@ function TypingIndicator() {
 
 function ConfidenceBadge({ confidence }: { confidence: number }) {
   const pct = Math.round(confidence * 100);
-  const badgeClass =
-    pct >= 80 ? 'badge badge--green' :
-    pct >= 60 ? 'badge badge--yellow' :
-                'badge badge--red';
+  const badgeStyle = pct >= 80 ? 'badge badge--green' : pct >= 60 ? 'badge badge--yellow' : 'badge badge--red';
   return (
-    <span className={badgeClass}>
-      {pct}% confianza
+    <span className={badgeStyle} style={{ border: '2px solid var(--border)', fontWeight: 800 }}>
+      {pct}% de Confianza
     </span>
   );
 }
 
-// ─── Evaluation area card ─────────────────────────────────────────────────────
+// ─── IdleView ─────────────────────────────────────────────────────────────────
 
-function AreaCard({ area }: { area: EvaluationArea }) {
-  const weightPct = Math.round(area.weight * 100);
-  return (
-    <div className="card" style={{ marginBottom: '0.75rem' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
-        <div>
-          <h3 style={{ fontWeight: 700, fontSize: '0.95rem' }}>{area.name}</h3>
-          {area.description && (
-            <p className="text-sm muted" style={{ marginTop: '0.25rem' }}>{area.description}</p>
-          )}
-        </div>
-        <span className="badge badge--blue" style={{ flexShrink: 0 }}>
-          {weightPct}%
-        </span>
-      </div>
-      {area.criteria.length > 0 && (
-        <ul style={{ listStyle: 'none', marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {area.criteria.map(c => {
-            const typeClass =
-              c.type === 'binary' ? 'badge badge--neutral' :
-              c.type === 'scale'  ? 'badge badge--blue' :
-              c.type === 'count'  ? 'badge badge--yellow' :
-                                    'badge badge--neutral';
-            return (
-              <li key={c.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem' }}>
-                <span className={typeClass} style={{ flexShrink: 0 }}>
-                  {c.type}
-                </span>
-                <span>
-                  {c.name}
-                  {c.critical && (
-                    <span style={{ marginLeft: '0.5rem', color: 'var(--accent-red)', fontSize: '0.75rem', fontWeight: 600 }}>
-                      crítico
-                    </span>
-                  )}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-// ─── Escalation rule item ─────────────────────────────────────────────────────
-
-function EscalationRuleItem({ rule }: { rule: EscalationRule }) {
-  const severityColor =
-    rule.severity === 'critical' ? 'var(--accent-red)' :
-    rule.severity === 'high'     ? 'var(--accent-yellow)' :
-    rule.severity === 'medium'   ? 'var(--accent-yellow)' :
-                                   'var(--text-muted)';
-  return (
-    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem' }}>
-      <span style={{ flexShrink: 0, fontWeight: 600, textTransform: 'capitalize', color: severityColor }}>
-        {rule.severity}
-      </span>
-      <span className="muted">&mdash;</span>
-      <span>{rule.description}</span>
-    </li>
-  );
-}
-
-// ─── Scoring method label ─────────────────────────────────────────────────────
-
-const SCORING_LABELS: Record<ClientConfig['globalScoringMethod'], string> = {
-  weighted:   'Promedio ponderado',
-  equal:      'Promedio igual',
-  pass_fail:  'Aprobado / Reprobado',
-};
-
-// ─── Phase views ──────────────────────────────────────────────────────────────
+// ─── IdleView ─────────────────────────────────────────────────────────────────
 
 interface IdleViewProps {
-  onStart: () => void;
+  onStart: (param: { email: string; clientName: string }) => void;
+  onResume: (sessionData: any) => void;
   loading: boolean;
 }
 
-function IdleView({ onStart, loading }: IdleViewProps) {
-  return (
-    <div className="gate-container">
-      <div className="gate-card">
-        <h1 className="gate-title">BLACK BOX MAGIC</h1>
-        <p className="gate-subtitle" style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-          Onboarding
-        </p>
-        <p style={{
-          fontSize: '0.9rem',
-          color: 'var(--text-muted)',
-          lineHeight: 1.7,
-          marginBottom: '2rem',
-          maxWidth: '400px',
-        }}>
-          Vamos a configurar el analisis visual para tu operacion. Te hare algunas preguntas
-          para entender que es lo mas importante en tu negocio.
-        </p>
-        <button
-          onClick={onStart}
-          disabled={loading}
-          className="btn btn--primary gate-btn"
-        >
-          {loading ? 'CARGANDO...' : 'COMENZAR'}
-        </button>
-      </div>
-    </div>
-  );
-}
+function IdleView({ onStart, onResume, loading }: IdleViewProps) {
+  const [activeTab, setActiveTab] = useState<'new' | 'resume'>('new');
+  
+  // Tab 'new' state
+  const [clientName, setClientName] = useState('');
+  const [email, setEmail] = useState('');
+  
+  // Tab 'resume' state
+  const [resumeEmail, setResumeEmail] = useState('');
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
 
-interface ChatViewProps {
-  messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>;
-  loading: boolean;
-  isComplete: boolean;
-  onSend: (text: string) => void;
-  onStartSynthesis: () => void;
-  onStartVoice: () => void;
-}
-
-function ChatView({ messages, loading, isComplete, onSend, onStartSynthesis, onStartVoice }: ChatViewProps) {
-  const [input, setInput] = useState('');
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
-
-  const handleSubmit = (e: FormEvent) => {
+  const handleStartNew = (e: FormEvent) => {
     e.preventDefault();
-    const text = input.trim();
-    if (!text || loading) return;
-    setInput('');
-    onSend(text);
+    if (!clientName.trim() || !email.trim() || loading) return;
+    onStart({ email: email.trim(), clientName: clientName.trim() });
+  };
+
+  const handleSearchSessions = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!resumeEmail.trim() || searching) return;
+    setSearching(true);
+    setSearchError('');
+    setSessions([]);
+    try {
+      const res = await fetch('/api/onboarding/session/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resumeEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al buscar sesiones');
+      
+      if (data.sessions && data.sessions.length > 0) {
+        setSessions(data.sessions);
+      } else {
+        setSearchError('No se encontraron sesiones para este correo.');
+      }
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : 'Error de red al buscar sesiones');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleResumeClick = async (sessionId: string) => {
+    setSearching(true);
+    setSearchError('');
+    try {
+      const res = await fetch('/api/onboarding/session/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al reanudar sesión');
+      onResume(data);
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : 'Error al reanudar sesión');
+    } finally {
+      setSearching(false);
+    }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 4rem)' }}>
-      {/* Messages */}
-      <div
-        role="log"
-        aria-live="polite"
-        aria-label="Conversacion de onboarding"
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          paddingTop: '1rem',
-          paddingBottom: '0.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-        }}
-      >
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'flex',
-              justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-            }}
-          >
-            <div
-              style={{
-                maxWidth: '80%',
-                padding: '0.75rem 1rem',
-                fontSize: '0.875rem',
-                lineHeight: 1.6,
-                whiteSpace: 'pre-wrap',
-                border: '2px solid var(--border)',
-                ...(msg.role === 'user'
-                  ? { background: 'var(--text)', color: 'var(--bg-white)' }
-                  : { background: 'var(--bg-white)', color: 'var(--text)' }
-                ),
-              }}
-            >
-              {msg.content}
-            </div>
-          </div>
-        ))}
+    <div className="gate-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+      <div className="gate-card neo-card" style={{ width: '100%', maxWidth: '520px', padding: '2.5rem' }}>
+        <h1 className="neo-title" style={{ justifyContent: 'center', fontSize: '1.8rem', marginBottom: '0.25rem' }}>BLACK BOX MAGIC</h1>
+        <p className="gate-subtitle" style={{ textAlign: 'center', letterSpacing: '0.1em', fontWeight: 800, fontSize: '0.8rem', marginBottom: '2rem' }}>
+          ONBOARDING SELF-SERVE
+        </p>
 
-        {loading && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <TypingIndicator />
-          </div>
-        )}
-
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Complete banner */}
-      {isComplete && !loading && (
-        <div style={{
-          background: 'var(--bg-white)',
-          border: '2px solid var(--accent-green)',
-          padding: '1rem',
-          marginBottom: '0.75rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-        }}>
-          <p style={{ color: 'var(--accent-green)', fontSize: '0.875rem', flex: 1, fontWeight: 600 }}>
-            Tengo suficiente informacion para generar tu configuracion.
-          </p>
+        {/* Tab Selector */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '3px solid var(--neo-border)', paddingBottom: '0.75rem' }}>
           <button
-            onClick={onStartSynthesis}
-            className="btn btn--primary"
-            style={{ minHeight: '44px' }}
+            onClick={() => setActiveTab('new')}
+            className={`neo-btn ${activeTab === 'new' ? 'neo-btn-primary' : 'neo-btn-muted'}`}
+            style={{ flex: 1, padding: '0.6rem 0.5rem', fontSize: '0.8rem', borderWidth: '2.5px' }}
           >
-            GENERAR CONFIGURACION
+            Nuevo Onboarding
+          </button>
+          <button
+            onClick={() => setActiveTab('resume')}
+            className={`neo-btn ${activeTab === 'resume' ? 'neo-btn-primary' : 'neo-btn-muted'}`}
+            style={{ flex: 1, padding: '0.6rem 0.5rem', fontSize: '0.8rem', borderWidth: '2.5px' }}
+          >
+            Reanudar Sesión
           </button>
         </div>
-      )}
 
-      {/* Input row */}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <label htmlFor="chat-input" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
-          Escribe tu respuesta
-        </label>
-        <input
-          id="chat-input"
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Escribe tu respuesta..."
-          disabled={loading}
-          autoComplete="off"
-          className="gate-input"
-          style={{ flex: 1, minHeight: '44px' }}
-        />
-        <button
-          type="submit"
-          disabled={loading || !input.trim()}
-          aria-label="Enviar mensaje"
-          className="btn btn--primary"
-          style={{ minHeight: '44px', minWidth: '44px', padding: '0.75rem' }}
-        >
-          &rarr;
-        </button>
-        {/* Mic button */}
-        <button
-          type="button"
-          onClick={onStartVoice}
-          disabled={loading}
-          aria-label="Cambiar a modo de voz"
-          title="Hablar con el asistente"
-          className="btn btn--secondary"
-          style={{ minHeight: '44px', minWidth: '44px', padding: '0.75rem' }}
-        >
-          <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round"
-              d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-            <path strokeLinecap="round" strokeLinejoin="round"
-              d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
-          </svg>
-        </button>
-      </form>
+        {/* Tab Content: New */}
+        {activeTab === 'new' && (
+          <form onSubmit={handleStartNew} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label htmlFor="company-name" style={{ fontWeight: 800, fontSize: '0.85rem' }}>Nombre de tu Empresa:</label>
+              <input
+                id="company-name"
+                type="text"
+                className="other-industry-input"
+                style={{ padding: '0.65rem 0.85rem' }}
+                value={clientName}
+                onChange={e => setClientName(e.target.value)}
+                placeholder="Ej. Fruit of the Loom"
+                required
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label htmlFor="company-email" style={{ fontWeight: 800, fontSize: '0.85rem' }}>Tu Correo Electrónico:</label>
+              <input
+                id="company-email"
+                type="email"
+                className="other-industry-input"
+                style={{ padding: '0.65rem 0.85rem' }}
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="correo@ejemplo.com"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading || !clientName.trim() || !email.trim()}
+              className="neo-btn neo-btn-success"
+              style={{ width: '100%', marginTop: '1rem', padding: '0.9rem' }}
+            >
+              {loading ? 'CREANDO SESIÓN...' : 'COMENZAR ONBOARDING'}
+            </button>
+          </form>
+        )}
+
+        {/* Tab Content: Resume */}
+        {activeTab === 'resume' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <form onSubmit={handleSearchSessions} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label htmlFor="resume-email" style={{ fontWeight: 800, fontSize: '0.85rem' }}>Ingresa tu Correo Electrónico:</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  id="resume-email"
+                  type="email"
+                  className="other-industry-input"
+                  style={{ padding: '0.65rem 0.85rem' }}
+                  value={resumeEmail}
+                  onChange={e => setResumeEmail(e.target.value)}
+                  placeholder="correo@ejemplo.com"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={searching || !resumeEmail.trim()}
+                  className="neo-btn neo-btn-primary"
+                  style={{ flexShrink: 0, padding: '0.65rem 1.25rem', borderWidth: '2.5px' }}
+                >
+                  {searching ? 'Buscando...' : 'Buscar'}
+                </button>
+              </div>
+            </form>
+
+            {searchError && (
+              <p style={{ color: 'var(--neo-danger)', fontWeight: 800, fontSize: '0.85rem', margin: '0.5rem 0 0 0', textAlign: 'center' }}>
+                {searchError}
+              </p>
+            )}
+
+            {/* Session list selector */}
+            {sessions.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '1rem', maxHeight: '280px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                <p style={{ fontWeight: 800, fontSize: '0.85rem', margin: '0 0 0.25rem 0' }}>Selecciona la sesión a reanudar:</p>
+                {sessions.map(s => {
+                  const dateStr = new Date(s.updatedAt).toLocaleDateString('es-MX', {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+                  return (
+                    <div
+                      key={s.sessionId}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0.85rem 1rem',
+                        border: '2.5px solid var(--neo-border)',
+                        borderRadius: '8px',
+                        background: '#fafafa',
+                        gap: '1rem',
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {s.clientName}
+                        </p>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--neo-muted)' }}>
+                          {s.industry === 'qsr' ? '🍔 QSR' : s.industry === 'retail_btl' ? '🏷️ Retail' : '⚙️ Operaciones'} &middot; {dateStr}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleResumeClick(s.sessionId)}
+                        disabled={searching}
+                        className="neo-btn neo-btn-success"
+                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem', borderWidth: '2px', flexShrink: 0 }}
+                      >
+                        Ingresar
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─── Voice view ───────────────────────────────────────────────────────────────
+// ─── Step 1: Industry Selection & Dictation ───────────────────────────────────
+
+interface Step1ViewProps {
+  loading: boolean;
+  onSend: (text: string) => void;
+  onStartSynthesis: () => void;
+  onStartVoice: () => void;
+  token: string | null;
+}
+
+function Step1View({ loading, onSend, onStartSynthesis, onStartVoice, token }: Step1ViewProps) {
+  const [selectedIndustry, setSelectedIndustry] = useState<string>('qsr');
+  const [otherIndustryText, setOtherIndustryText] = useState<string>('');
+  const [customRules, setCustomRules] = useState<string>('');
+  const [guidingQuestions, setGuidingQuestions] = useState<string[]>(
+    STANDARD_INDUSTRIES[0].questions
+  );
+  const [loadingQuestions, setLoadingQuestions] = useState<boolean>(false);
+
+  // Update questions when selection changes
+  useEffect(() => {
+    if (selectedIndustry !== 'otros') {
+      const match = STANDARD_INDUSTRIES.find(ind => ind.id === selectedIndustry);
+      if (match) setGuidingQuestions(match.questions);
+    } else {
+      setGuidingQuestions(STANDARD_INDUSTRIES.find(ind => ind.id === 'otros')!.questions);
+    }
+  }, [selectedIndustry]);
+
+  // Load custom questions dynamically for "Otros"
+  const handleGenerateCustomQuestions = async () => {
+    if (!otherIndustryText.trim() || !token) return;
+    setLoadingQuestions(true);
+    try {
+      const response = await fetch('/api/onboarding/guide', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ industry: otherIndustryText.trim() }),
+      });
+      const data = await response.json();
+      if (data.questions && data.questions.length === 4) {
+        setGuidingQuestions(data.questions);
+      }
+    } catch (e) {
+      console.error('Error cargando preguntas dinámicas:', e);
+    } finally {
+      setLoadingQuestions(false);
+    }
+  };
+
+  const handleCreateRules = () => {
+    if (!customRules.trim() || loading) return;
+    const finalContext = selectedIndustry === 'otros' 
+      ? `Industria: ${otherIndustryText}\nReglas: ${customRules}`
+      : `Industria: ${selectedIndustry}\nReglas: ${customRules}`;
+    
+    onSend(finalContext);
+    onStartSynthesis();
+  };
+
+  return (
+    <div className="neo-card">
+      <StepIndicator currentStep={1} />
+      
+      <h2 className="neo-title" style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>
+        1. Selecciona tu Industria
+      </h2>
+      <p className="neo-subtitle" style={{ marginBottom: '1.5rem' }}>
+        Elige el sector que mejor describa tu operación de campo para guiar tus reglas de auditoría.
+      </p>
+
+      {/* Industry Selector Grid */}
+      <div className="industry-grid">
+        {STANDARD_INDUSTRIES.map((ind) => (
+          <div
+            key={ind.id}
+            className={`industry-card ${selectedIndustry === ind.id ? 'active' : ''}`}
+            onClick={() => setSelectedIndustry(ind.id)}
+          >
+            <span className="industry-card-icon">{ind.icon}</span>
+            <span>{ind.name}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Dynamic input for "Otros" */}
+      {selectedIndustry === 'otros' && (
+        <div className="other-industry-input-container">
+          <label className="calibration-label" htmlFor="other-industry">
+            Describe tu industria o sector específico:
+          </label>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <input
+              id="other-industry"
+              type="text"
+              className="other-industry-input"
+              value={otherIndustryText}
+              onChange={(e) => setOtherIndustryText(e.target.value)}
+              placeholder="Ej. Gimnasios, Escuelas, Hotelería, Oficinas corporativas"
+            />
+            <button
+              type="button"
+              className="neo-btn neo-btn-primary"
+              disabled={loadingQuestions || !otherIndustryText.trim()}
+              onClick={handleGenerateCustomQuestions}
+              style={{ flexShrink: 0, padding: '0.5rem 1rem' }}
+            >
+              {loadingQuestions ? 'Generando...' : 'Obtener Guía'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Guiding Questions Panel */}
+      <div style={{ margin: '2rem 0' }}>
+        <h3 className="calibration-label" style={{ fontSize: '1rem', marginBottom: '0.75rem' }}>
+          💡 Preguntas Guía para Diseñar tus Reglas:
+        </h3>
+        <div className="guides-container">
+          {guidingQuestions.map((q, idx) => (
+            <div key={idx} className="guide-card">
+              {q}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Rules Custom TextArea */}
+      <div className="dictation-container">
+        <label className="calibration-label" style={{ fontSize: '1.1rem' }} htmlFor="custom-rules">
+          Dicta o Escribe las Reglas del Negocio
+        </label>
+        <p className="neo-subtitle" style={{ marginTop: '-0.5rem', marginBottom: '0.5rem' }}>
+          Describe detalladamente qué debe revisar la IA en cada foto (ej. limpieza, orden, presencia de marca).
+        </p>
+        <textarea
+          id="custom-rules"
+          className="dictation-textarea"
+          value={customRules}
+          onChange={(e) => setCustomRules(e.target.value)}
+          placeholder="Ej: El personal debe portar obligatoriamente chaleco de seguridad y casco. No debe haber herramientas tiradas en el piso. El área de trabajo debe estar limpia..."
+        />
+      </div>
+
+      {/* Voice & Dictation Control */}
+      <div className="mic-button-wrapper">
+        <button
+          type="button"
+          onClick={onStartVoice}
+          className="neo-mic-button"
+          title="Iniciar dictado por voz interactivo"
+          aria-label="Hablar para dictar reglas"
+        >
+          <div className="mic-level-ring" />
+          <svg style={{ width: '32px', height: '32px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
+          </svg>
+        </button>
+      </div>
+      <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--neo-muted)', marginTop: '-0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
+        Haz clic en el micrófono para dictar por voz
+      </p>
+
+      {/* Submit Button */}
+      <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={handleCreateRules}
+          disabled={loading || !customRules.trim()}
+          className="neo-btn neo-btn-success"
+          style={{ width: '100%', maxWidth: '320px' }}
+        >
+          {loading ? 'SINTETIZANDO MOTOR...' : 'GENERAR Y CONTINUAR'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Voice View (Interactive Dictation Mode) ──────────────────────────────────
 
 interface VoiceViewProps {
   wsUrl: string;
@@ -339,7 +540,7 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
   }, [onTranscript]);
 
   const handleToolCall = useCallback((_name: string, _args: Record<string, unknown>) => {
-    // Tool calls are handled server-side during synthesis; we just acknowledge silently
+    // Ack silently
   }, []);
 
   const { status, connect, disconnect, startListening, stopListening, audioLevel } = useVoiceSession({
@@ -355,7 +556,6 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
     },
   });
 
-  // Auto-connect on mount
   useEffect(() => {
     connect();
     return () => { disconnect(); };
@@ -367,21 +567,21 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
   }, [transcriptLines]);
 
   const STATUS_LABEL: Record<typeof status, string> = {
-    connecting:  'Conectando con el asistente de voz...',
-    connected:   'Presiona el microfono para hablar',
-    listening:   'Escuchando...',
-    processing:  'Procesando tu respuesta...',
-    speaking:    'Respondiendo...',
-    error:       'Error de conexion',
-    closed:      'Sesion cerrada',
+    connecting: 'Conectando con el asistente de voz...',
+    connected: 'Asistente de voz listo. Presiona el micrófono para hablar.',
+    listening: 'Escuchando tu voz...',
+    processing: 'Procesando dictado...',
+    speaking: 'Asistente respondiendo...',
+    error: 'Error de conexión',
+    closed: 'Sesión de voz finalizada',
   };
 
-  const isListening  = status === 'listening';
-  const isSpeaking   = status === 'speaking';
+  const isListening = status === 'listening';
+  const isSpeaking = status === 'speaking';
   const isProcessing = status === 'processing';
   const isConnecting = status === 'connecting';
-  const isError      = status === 'error' || status === 'closed';
-  const canListen    = status === 'connected' || status === 'listening';
+  const isError = status === 'error' || status === 'closed';
+  const canListen = status === 'connected' || status === 'listening';
 
   const levelPct = Math.min(100, Math.round(audioLevel * 600));
 
@@ -393,86 +593,50 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
     }
   };
 
-  // Status indicator color
-  const statusDotColor =
-    isConnecting               ? 'var(--accent-yellow)' :
-    isError                    ? 'var(--accent-red)' :
-    isSpeaking || isProcessing ? 'var(--accent-blue)' :
-    isListening                ? 'var(--accent-green)' :
-                                 'var(--accent-green)';
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 4rem)' }}>
-      {/* Status announcement for screen readers */}
-      <div role="status" aria-live="polite" aria-atomic="true" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
-        {STATUS_LABEL[status]}
-      </div>
-
-      {/* Top bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+    <div className="neo-card" style={{ display: 'flex', flexDirection: 'column', height: '70vh' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '2.5px solid var(--neo-border)', paddingBottom: '0.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <div
-            aria-hidden="true"
             style={{
-              width: '8px',
-              height: '8px',
+              width: '10px',
+              height: '10px',
               borderRadius: '50%',
-              background: statusDotColor,
+              background: isListening ? 'var(--neo-danger)' : 'var(--neo-success)',
+              animation: isListening ? 'mic-pulse 1.2s infinite' : 'none'
             }}
           />
-          <span className="text-sm muted">{STATUS_LABEL[status]}</span>
+          <span style={{ fontWeight: 800, fontSize: '0.9rem', textTransform: 'uppercase' }}>
+            {STATUS_LABEL[status]}
+          </span>
         </div>
-        <button
-          onClick={onSwitchToText}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontFamily: 'var(--font)',
-            fontSize: '0.75rem',
-            color: 'var(--text-muted)',
-            cursor: 'pointer',
-            textDecoration: 'underline',
-            padding: 0,
-          }}
-        >
-          Cambiar a texto
+        <button onClick={onSwitchToText} className="neo-btn neo-btn-muted" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+          Regresar a Texto
         </button>
       </div>
 
-      {/* Transcript */}
-      <div
-        role="log"
-        aria-live="polite"
-        aria-label="Transcripcion de la conversacion de voz"
-        className="card"
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-          padding: '1rem',
-          marginBottom: '1rem',
-        }}
-      >
+      {/* Voice Transcript Container */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', background: '#fafafa', border: '2.5px solid var(--neo-border)', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {transcriptLines.length === 0 && !isConnecting && (
-          <p className="muted" style={{ textAlign: 'center', fontSize: '0.85rem', paddingTop: '2rem' }}>
-            La conversacion aparecera aqui
+          <p style={{ textAlign: 'center', color: 'var(--neo-muted)', fontWeight: 600, fontSize: '0.9rem', paddingTop: '2rem' }}>
+            Háblale a BBM. Los detalles dictados aparecerán en este bloque en tiempo real.
           </p>
         )}
         {transcriptLines.map((line, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: line.role === 'user' ? 'flex-end' : 'flex-start' }}>
             <div style={{
-              maxWidth: '80%',
-              padding: '0.75rem 1rem',
-              fontSize: '0.875rem',
-              lineHeight: 1.6,
-              whiteSpace: 'pre-wrap',
-              border: '2px solid var(--border)',
+              maxWidth: '85%',
+              padding: '0.75rem 1.25rem',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              lineHeight: 1.5,
+              border: '2px solid var(--neo-border)',
+              borderRadius: '8px',
+              boxShadow: '2px 2px 0px var(--neo-shadow)',
               ...(line.role === 'user'
-                ? { background: 'var(--text)', color: 'var(--bg-white)' }
-                : { background: 'var(--bg-white)', color: 'var(--text)' }
-              ),
+                ? { background: 'var(--neo-dark)', color: '#ffffff' }
+                : { background: '#ffffff', color: 'var(--neo-dark)' }
+              )
             }}>
               {line.text}
             </div>
@@ -481,65 +645,43 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
         <div ref={transcriptBottomRef} />
       </div>
 
-      {/* Controls */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', paddingBottom: 'env(safe-area-inset-bottom)', paddingTop: '1rem' }}>
-        {/* Audio level bar */}
+      {/* Mic Animation Controller */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
         {isListening && (
-          <div className="progress-bar" style={{ width: '100%', maxWidth: '200px' }}>
-            <div className="progress-bar__fill" style={{ width: `${levelPct}%`, transition: 'width 75ms' }} />
+          <div className="progress-bar" style={{ width: '100%', maxWidth: '240px', border: '2.5px solid var(--neo-border)', background: '#e2e8f0', height: '14px', borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="progress-bar__fill" style={{ width: `${levelPct}%`, background: 'var(--neo-danger)', height: '100%', transition: 'width 75ms' }} />
           </div>
         )}
 
-        {/* Mic button */}
         {!isError && (
           <button
             onClick={handleMicPress}
             disabled={!canListen || isConnecting}
-            aria-label={isListening ? 'Detener grabacion' : 'Iniciar grabacion'}
+            className={`neo-mic-button ${isListening ? 'listening' : ''} ${isProcessing ? 'processing' : ''}`}
             aria-pressed={isListening}
-            className="btn"
-            style={{
-              width: '72px',
-              height: '72px',
-              borderRadius: '50%',
-              padding: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '3px solid var(--border)',
-              background: isListening ? 'var(--accent-green)' : 'var(--bg-white)',
-              color: isListening ? 'var(--bg-white)' : 'var(--text)',
-              position: 'relative',
-            }}
+            style={{ width: '84px', height: '84px' }}
           >
-            {/* Icon */}
             {isSpeaking ? (
-              <svg style={{ width: '28px', height: '28px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M15.536 8.464a5 5 0 0 1 0 7.072M18.364 5.636a9 9 0 0 1 0 12.728M11 5L6 9H3v6h3l5 4V5z" />
+              <svg style={{ width: '32px', height: '32px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 0 1 0 7.072M18.364 5.636a9 9 0 0 1 0 12.728M11 5L6 9H3v6h3l5 4V5z" />
               </svg>
             ) : isProcessing ? (
-              <div className="spinner" aria-hidden="true" />
+              <div className="spinner" style={{ width: '28px', height: '28px', borderWidth: '3px' }} />
             ) : (
-              <svg style={{ width: '28px', height: '28px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
+              <svg style={{ width: '32px', height: '32px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
               </svg>
             )}
           </button>
         )}
 
-        {/* Error fallback */}
         {isError && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', textAlign: 'center' }}>
-            <p style={{ color: 'var(--accent-red)', fontSize: '0.875rem' }}>{STATUS_LABEL[status]}</p>
-            <button
-              onClick={onSwitchToText}
-              className="btn btn--secondary"
-              style={{ minHeight: '44px' }}
-            >
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ color: 'var(--neo-danger)', fontWeight: 800, marginBottom: '1rem' }}>
+              La sesión de voz ha concluido o tuvo un error.
+            </p>
+            <button onClick={onSwitchToText} className="neo-btn neo-btn-primary">
               CONTINUAR POR TEXTO
             </button>
           </div>
@@ -549,7 +691,7 @@ function VoiceView({ wsUrl, token, expiresAt, systemPrompt, tools, onTranscript,
   );
 }
 
-// ─── Synthesizing view ───────────────────────────────────────────────────────
+// ─── Synthesizing View ────────────────────────────────────────────────────────
 
 interface SynthesizingViewProps {
   progress: string;
@@ -557,153 +699,19 @@ interface SynthesizingViewProps {
 
 function SynthesizingView({ progress }: SynthesizingViewProps) {
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '1.5rem',
-      paddingTop: '4rem',
-      paddingBottom: '4rem',
-      textAlign: 'center',
-    }}>
-      <div
-        role="status"
-        aria-label="Generando configuracion"
-        className="spinner"
-        style={{ width: '40px', height: '40px', borderWidth: '4px' }}
-      />
-      <div>
-        <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>{progress || 'Analizando tu conversacion...'}</p>
-        <p className="text-sm muted">Este paso toma aproximadamente 2 minutos</p>
-      </div>
+    <div className="neo-card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+      <div className="spinner" style={{ width: '48px', height: '48px', borderWidth: '4px', margin: '0 auto 1.5rem auto' }} />
+      <h3 className="neo-title" style={{ fontSize: '1.5rem', display: 'block', marginBottom: '0.5rem' }}>
+        {progress || 'Generando tu motor de auditoría visual...'}
+      </h3>
+      <p className="neo-subtitle" style={{ fontSize: '0.95rem' }}>
+        Gemini 3.5 Flash está analizando tus reglas y construyendo un perfil robusto. Esto tomará unos segundos.
+      </p>
     </div>
   );
 }
 
-// ─── Reviewing view ──────────────────────────────────────────────────────────
-
-interface ReviewingViewProps {
-  config: ClientConfig;
-  gaps: string[];
-  confidence: number;
-  onApprove: () => void;
-  onModify: () => void;
-}
-
-function ReviewingView({ config, gaps, confidence, onApprove, onModify }: ReviewingViewProps) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Header */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Tu configuracion</h2>
-            <p className="text-sm muted" style={{ marginTop: '0.25rem' }}>{config.clientName}</p>
-          </div>
-          <ConfidenceBadge confidence={confidence} />
-        </div>
-        <p className="text-sm muted" style={{ marginTop: '0.5rem' }}>
-          Metodo de puntuacion:{' '}
-          <span style={{ fontWeight: 600, color: 'var(--text)' }}>
-            {SCORING_LABELS[config.globalScoringMethod]}
-          </span>
-          {config.passingScore !== undefined && (
-            <> &middot; Aprobacion desde <span style={{ fontWeight: 600, color: 'var(--text)' }}>{config.passingScore}%</span></>
-          )}
-        </p>
-      </div>
-
-      {/* Evaluation areas */}
-      <div>
-        <h3 style={{
-          fontSize: '0.75rem',
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          color: 'var(--text-muted)',
-          marginBottom: '0.75rem',
-        }}>
-          Areas de evaluacion
-        </h3>
-        {config.evaluationAreas.map(area => (
-          <AreaCard key={area.id} area={area} />
-        ))}
-      </div>
-
-      {/* Escalation rules */}
-      {config.escalationRules.length > 0 && (
-        <div>
-          <h3 style={{
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            color: 'var(--text-muted)',
-            marginBottom: '0.75rem',
-          }}>
-            Reglas de escalacion
-          </h3>
-          <div className="card" style={{ padding: '1rem' }}>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {config.escalationRules.map(rule => (
-                <EscalationRuleItem key={rule.id} rule={rule} />
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {/* Gaps */}
-      {gaps.length > 0 && (
-        <div className="truncation-banner" style={{
-          background: '#fef3c7',
-          borderColor: 'var(--accent-yellow)',
-        }}>
-          <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-            Informacion pendiente
-          </h3>
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            {gaps.map((gap, i) => (
-              <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem' }}>
-                <span style={{
-                  marginTop: '0.35rem',
-                  flexShrink: 0,
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: 'var(--accent-yellow)',
-                  display: 'inline-block',
-                }} />
-                {gap}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '0.5rem' }}>
-        <button
-          onClick={onApprove}
-          className="btn btn--primary"
-          style={{ width: '100%', minHeight: '44px' }}
-        >
-          APROBAR Y PROBAR
-        </button>
-        <button
-          onClick={onModify}
-          className="btn btn--secondary"
-          style={{ width: '100%', minHeight: '44px' }}
-        >
-          MODIFICAR
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Testing view ─────────────────────────────────────────────────────────────
+// ─── Reviewing / Testing View (Sandbox de Fotos) ──────────────────────────────
 
 interface TestingViewProps {
   photos: TestPhoto[];
@@ -712,9 +720,32 @@ interface TestingViewProps {
   onRate: (photoId: string, rating: 'ok' | 'no', feedback?: string) => void;
   onDeploy: () => void;
   onAdjust: () => void;
+  onModify: () => void;
+  config: ClientConfig | null;
+  gaps: string[];
+  confidence: number;
+  openCalibrationDrawer: () => void;
+  historyList: any[];
+  onResumeSession: (sessionId: string) => Promise<void>;
+  currentSessionId: string | null;
 }
 
-function TestingView({ photos, iterationCount, onAddPhoto, onRate, onDeploy, onAdjust }: TestingViewProps) {
+function TestingView({
+  photos,
+  iterationCount,
+  onAddPhoto,
+  onRate,
+  onDeploy,
+  onAdjust,
+  onModify,
+  config,
+  gaps,
+  confidence,
+  openCalibrationDrawer,
+  historyList,
+  onResumeSession,
+  currentSessionId
+}: TestingViewProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({});
@@ -742,27 +773,33 @@ function TestingView({ photos, iterationCount, onAddPhoto, onRate, onDeploy, onA
   const hasNoRatings = photos.some(p => p.rating === 'no');
   const canDeploy = allRated && !hasNoRatings;
   const canAdjust = allRated && hasNoRatings;
-  const MAX_PHOTOS = 10;
+  const MAX_PHOTOS = 100;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Header */}
-      <div>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Prueba tu configuracion</h2>
-        <p className="text-sm muted" style={{ marginTop: '0.25rem' }}>
-          Sube 5-10 fotos de tus visitas de campo para verificar que el analisis funciona correctamente.
-        </p>
-        {iterationCount > 0 && (
-          <p style={{ color: 'var(--accent-yellow)', fontSize: '0.75rem', marginTop: '0.25rem', fontWeight: 600 }}>
-            Iteracion {iterationCount} de 5
+    <div className="neo-card">
+      <StepIndicator currentStep={2} />
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div>
+          <h2 className="neo-title" style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
+            2. Sandbox de Pruebas
+          </h2>
+          <p className="neo-subtitle" style={{ marginBottom: 0 }}>
+            Sube fotos de prueba para validar en tiempo real cómo responde la IA a tus criterios.
           </p>
-        )}
+          {iterationCount > 0 && (
+            <span className="badge badge--yellow" style={{ border: '2px solid var(--border)', fontWeight: 800, marginTop: '0.5rem', display: 'inline-block' }}>
+              Ronda de Calibración #{iterationCount}
+            </span>
+          )}
+        </div>
+        {config && <ConfidenceBadge confidence={confidence} />}
       </div>
 
-      {/* Upload area */}
+      {/* Upload zone */}
       {photos.length < MAX_PHOTOS && (
         <div
-          className={`drop-zone${dragActive ? ' drop-zone--active' : ''}`}
+          className={`sandbox-dropzone ${dragActive ? 'active' : ''}`}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -776,240 +813,348 @@ function TestingView({ photos, iterationCount, onAddPhoto, onRate, onDeploy, onA
             style={{ display: 'none' }}
             onChange={e => { if (e.target.files) handleFiles(e.target.files); e.target.value = ''; }}
           />
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>&#128247;</div>
-          <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.25rem' }}>
-            {dragActive ? 'Suelta las fotos aqui' : 'Arrastra fotos o haz clic para seleccionar'}
-          </div>
-          <div className="text-sm muted">JPEG, PNG o WebP &middot; max. 10 MB &middot; {photos.length}/{MAX_PHOTOS} fotos</div>
+          <span className="sandbox-dropzone-icon">📸</span>
+          <h3 style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.5rem' }}>
+            {dragActive ? '¡Suelta tus fotos aquí!' : 'Arrastra tus fotos de campo aquí o haz clic para buscar'}
+          </h3>
+          <p className="text-sm muted" style={{ fontWeight: 600 }}>
+            PNG, JPG o WebP &middot; Máx 10MB por foto &middot; Sandbox Libre ({photos.length} / {MAX_PHOTOS} subidas)
+          </p>
         </div>
       )}
 
-      {/* Photo list */}
+      {/* Sandbox Photo Grid */}
       {photos.length > 0 && (
-        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {photos.map(photo => (
-            <li key={photo.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              {/* Photo row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem' }}>
-                {/* Thumbnail */}
+        <div className="sandbox-grid">
+          {photos.map((photo) => (
+            <div key={photo.id} className="photo-card">
+              <div className="photo-card-header">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photo.previewUrl}
-                  alt={photo.fileName}
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    objectFit: 'cover',
-                    flexShrink: 0,
-                    border: '1px solid var(--border-light)',
-                  }}
-                />
-
-                {/* Info */}
+                <img src={photo.previewUrl} alt={photo.fileName} className="photo-card-thumb" />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '0.875rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
                     {photo.fileName}
                   </p>
                   {photo.status === 'done' && photo.result && (
-                    <p className="text-xs muted" style={{ marginTop: '0.15rem' }}>
-                      Puntaje:{' '}
-                      <span style={{ color: photo.result.passed ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 600 }}>
-                        {Math.round(photo.result.globalScore)}%
-                      </span>
-                      {' \u00b7 '}
-                      <span style={{ color: photo.result.passed ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 600 }}>
-                        {photo.result.passed ? 'Aprobado' : 'Reprobado'}
-                      </span>
-                    </p>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: photo.result.passed ? 'var(--neo-success-hover)' : 'var(--neo-danger)' }}>
+                      Puntaje: {Math.round(photo.result.globalScore)}% ({photo.result.passed ? 'Cumple' : 'Rechazado'})
+                    </span>
                   )}
-                  {photo.status === 'error' && (
-                    <p className="text-xs" style={{ color: 'var(--accent-red)', marginTop: '0.15rem' }}>Error al analizar</p>
-                  )}
-                  {photo.status === 'analyzing' && (
-                    <p className="text-xs" style={{ color: 'var(--accent-blue)', marginTop: '0.15rem' }}>Analizando...</p>
-                  )}
-                  {photo.status === 'pending' && (
-                    <p className="text-xs muted" style={{ marginTop: '0.15rem' }}>En cola</p>
-                  )}
+                  {photo.status === 'analyzing' && <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--neo-primary)' }}>Analizando con IA...</span>}
+                  {photo.status === 'pending' && <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--neo-muted)' }}>En cola...</span>}
+                  {photo.status === 'error' && <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--neo-danger)' }}>Error en análisis</span>}
                 </div>
-
-                {/* Status indicator */}
                 <div style={{ flexShrink: 0 }}>
-                  {photo.status === 'analyzing' && (
-                    <div
-                      role="status"
-                      aria-label="Analizando"
-                      className="spinner"
-                      style={{ width: '18px', height: '18px', borderWidth: '2px' }}
-                    />
-                  )}
                   {photo.status === 'done' && photo.rating === null && (
                     <button
                       onClick={() => setExpandedId(prev => prev === photo.id ? null : photo.id)}
-                      aria-label="Ver resultado"
-                      className="btn btn--small"
-                      style={{ padding: '0.25rem 0.5rem' }}
+                      className="neo-btn neo-btn-muted"
+                      style={{ padding: '0.25rem 0.5rem', borderWidth: '2px', fontSize: '0.75rem' }}
                     >
-                      {expandedId === photo.id ? '\u25B2' : '\u25BC'}
+                      {expandedId === photo.id ? '▲ Ver menos' : '▼ Ver detalles'}
                     </button>
                   )}
                   {photo.status === 'done' && photo.rating === 'ok' && (
-                    <span className="badge badge--green">OK</span>
+                    <span className="badge badge--green" style={{ border: '2px solid var(--border)', fontWeight: 800 }}>Aprobado</span>
                   )}
                   {photo.status === 'done' && photo.rating === 'no' && (
-                    <span className="badge badge--red">NO</span>
+                    <span className="badge badge--red" style={{ border: '2px solid var(--border)', fontWeight: 800 }}>Reportado</span>
                   )}
                 </div>
               </div>
 
-              {/* Expanded result + rating */}
+              {/* Expansion block */}
               {photo.status === 'done' && photo.result && (expandedId === photo.id || photo.rating === null) && photo.rating === null && (
-                <div style={{ borderTop: '1px solid var(--border-light)', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {/* Summary */}
-                  <p className="text-sm">{photo.result.summary}</p>
+                <div className="photo-card-body" style={{ borderTop: '2.5px solid var(--neo-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {/* Clean Visual Analysis Summary */}
+                  <h4 style={{ fontWeight: 800, fontSize: '0.9rem', margin: 0 }}>Reporte de Visión:</h4>
+                  <p style={{ fontSize: '0.85rem', lineHeight: 1.4, margin: 0, fontWeight: 500 }}>
+                    {photo.result.summary}
+                  </p>
 
-                  {/* Area scores */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', background: '#f8fafc', padding: '0.5rem', border: '2px solid var(--neo-border)', borderRadius: '6px' }}>
                     {photo.result.areas.map(area => (
-                      <div key={area.areaId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                        <span className="muted">{area.areaName}</span>
-                        <span style={{ color: area.passed ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 600 }}>
+                      <div key={area.areaId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700 }}>
+                        <span style={{ color: 'var(--neo-muted)' }}>{area.areaName}</span>
+                        <span style={{ color: area.passed ? 'var(--neo-success-hover)' : 'var(--neo-danger)' }}>
                           {Math.round(area.score)}%
                         </span>
                       </div>
                     ))}
                   </div>
 
-                  {/* Rating buttons */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <p className="text-xs muted" style={{ fontWeight: 600 }}>El resultado es correcto?</p>
+                  {/* Sandbox rating checklist */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <p style={{ fontSize: '0.8rem', fontWeight: 800, margin: 0 }}>¿El dictamen de la IA es correcto?</p>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button
                         onClick={() => {
                           onRate(photo.id, 'ok');
                           setExpandedId(null);
                         }}
-                        className="btn btn--primary"
-                        style={{ flex: 1, minHeight: '44px', background: 'var(--accent-green)', borderColor: 'var(--accent-green)', fontSize: '0.8rem' }}
+                        className="neo-btn neo-btn-success"
+                        style={{ flex: 1, padding: '0.5rem', fontSize: '0.8rem' }}
                       >
-                        SI, ESTA BIEN
+                        Sí, coincide
                       </button>
                       <button
                         onClick={() => setExpandedId(photo.id)}
-                        className="btn btn--primary"
-                        style={{ flex: 1, minHeight: '44px', background: 'var(--accent-red)', borderColor: 'var(--accent-red)', fontSize: '0.8rem' }}
+                        className="neo-btn neo-btn-danger"
+                        style={{ flex: 1, padding: '0.5rem', fontSize: '0.8rem' }}
                       >
-                        NO, HAY PROBLEMAS
+                        No coincide
                       </button>
                     </div>
 
-                    {/* Feedback for NO */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <label htmlFor={`feedback-${photo.id}`} style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
-                        Que esperabas diferente?
-                      </label>
-                      <input
-                        id={`feedback-${photo.id}`}
-                        type="text"
-                        value={feedbackMap[photo.id] ?? ''}
-                        onChange={e => setFeedbackMap(prev => ({ ...prev, [photo.id]: e.target.value }))}
-                        placeholder="Que esperabas diferente?"
-                        className="gate-input"
-                        style={{ minHeight: '44px' }}
-                      />
-                      <button
-                        onClick={() => {
-                          onRate(photo.id, 'no', feedbackMap[photo.id] ?? '');
-                          setExpandedId(null);
-                        }}
-                        disabled={!feedbackMap[photo.id]?.trim()}
-                        className="btn btn--primary"
-                        style={{ width: '100%', minHeight: '44px', background: 'var(--accent-red)', borderColor: 'var(--accent-red)' }}
-                      >
-                        CONFIRMAR PROBLEMA
-                      </button>
-                    </div>
+                    {/* Calibrate feedback input */}
+                    {expandedId === photo.id && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem', borderTop: '2px dashed var(--neo-border)', paddingTop: '0.5rem' }}>
+                        <label className="calibration-label" style={{ fontSize: '0.75rem' }} htmlFor={`feedback-${photo.id}`}>
+                          ¿Qué ignoró la IA o en qué se equivocó?
+                        </label>
+                        <input
+                          id={`feedback-${photo.id}`}
+                          type="text"
+                          className="other-industry-input"
+                          style={{ fontSize: '0.8rem', padding: '0.5rem' }}
+                          value={feedbackMap[photo.id] ?? ''}
+                          onChange={e => setFeedbackMap(prev => ({ ...prev, [photo.id]: e.target.value }))}
+                          placeholder="Ej. Omitió evaluar que la mesa del fondo estaba sucia"
+                        />
+                        <button
+                          onClick={() => {
+                            onRate(photo.id, 'no', feedbackMap[photo.id] ?? '');
+                            setExpandedId(null);
+                          }}
+                          disabled={!feedbackMap[photo.id]?.trim()}
+                          className="neo-btn neo-btn-danger"
+                          style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                        >
+                          Confirmar Error
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
-      {/* Bottom actions */}
+      {/* Global Actions for Step 2 */}
       {photos.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '0.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2.5rem', borderTop: '3px solid var(--neo-border)', paddingTop: '1.5rem' }}>
           {canDeploy && (
-            <button
-              onClick={onDeploy}
-              className="btn btn--primary"
-              style={{ width: '100%', minHeight: '44px' }}
-            >
-              DESPLEGAR CONFIGURACION
+            <button onClick={onDeploy} className="neo-btn neo-btn-success" style={{ width: '100%', maxWidth: '320px' }}>
+              ✔ APROBAR Y DESPLEGAR MOTOR
             </button>
           )}
           {canAdjust && iterationCount < 5 && (
-            <button
-              onClick={onAdjust}
-              className="btn btn--primary"
-              style={{ width: '100%', minHeight: '44px', background: 'var(--accent-yellow)', borderColor: 'var(--accent-yellow)', color: 'var(--text)' }}
-            >
-              AJUSTAR CONFIGURACION
+            <button onClick={openCalibrationDrawer} className="neo-btn neo-btn-warning" style={{ width: '100%', maxWidth: '320px' }}>
+              ⚡ MODIFICAR Y RE-CALIBRAR
             </button>
           )}
           {canAdjust && iterationCount >= 5 && (
-            <div className="truncation-banner" style={{ textAlign: 'center', background: '#fee2e2', borderColor: 'var(--accent-red)' }}>
-              <p style={{ fontSize: '0.875rem' }}>
-                Alcanzaste el limite de iteraciones. Contacta soporte para continuar.
+            <div className="neo-card" style={{ background: '#fee2e2', border: '2px solid var(--neo-danger)', padding: '0.75rem', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+              <p style={{ color: 'var(--neo-danger)', fontWeight: 800, margin: 0, fontSize: '0.85rem' }}>
+                Límite de iteraciones gratuitas alcanzado. Contacta soporte para ampliar.
               </p>
             </div>
           )}
-          {!allRated && allDone && (
-            <p className="text-sm muted" style={{ textAlign: 'center' }}>
-              Califica todos los resultados para continuar
-            </p>
-          )}
-          {!allDone && photos.length > 0 && (
-            <p className="text-sm muted" style={{ textAlign: 'center' }}>
-              Esperando analisis...
-            </p>
-          )}
+        </div>
+      )}
+
+      {/* Historial de Versiones */}
+      {historyList.length > 1 && (
+        <div style={{ marginTop: '2.5rem', borderTop: '2px dashed var(--neo-border)', paddingTop: '1.5rem' }}>
+          <h3 style={{ fontWeight: 800, fontSize: '1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            ⏳ Historial de Versiones y Calibraciones
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {historyList.map((hist) => {
+              const isActive = hist.id === currentSessionId;
+              const dateStr = new Date(hist.createdAt).toLocaleDateString('es-MX', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+              return (
+                <div
+                  key={hist.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    border: isActive ? '2.5px solid var(--neo-primary)' : '2px solid var(--neo-border)',
+                    borderRadius: '8px',
+                    background: isActive ? '#eff6ff' : '#ffffff',
+                    boxShadow: isActive ? '2px 2px 0px var(--neo-primary)' : '2px 2px 0px var(--neo-border)',
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>
+                      Versión {hist.version} {hist.status === 'active' ? ' (Activa)' : hist.status === 'draft' ? ' (Borrador)' : ''}
+                    </span>
+                    <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.75rem', color: 'var(--neo-muted)', fontWeight: 600 }}>
+                      Modificado el {dateStr}
+                    </p>
+                  </div>
+                  {!isActive && (
+                    <button
+                      onClick={() => onResumeSession(hist.id)}
+                      className="neo-btn neo-btn-primary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderWidth: '2px', flexShrink: 0 }}
+                    >
+                      Cargar Versión
+                    </button>
+                  )}
+                  {isActive && (
+                    <span className="badge badge--green" style={{ border: '2px solid var(--border)', fontWeight: 800, fontSize: '0.7rem', flexShrink: 0 }}>
+                      Actual
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// ─── Deploying view ───────────────────────────────────────────────────────────
+// ─── Calibration Drawer Panel (Slide-out Overlay) ────────────────────────────
 
-function DeployingView() {
+interface CalibrationDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmitCalibration: (severity: string, omissions: string, pajaOptions: Record<string, boolean>) => void;
+}
+
+function CalibrationDrawer({ isOpen, onClose, onSubmitCalibration }: CalibrationDrawerProps) {
+  const [severity, setSeverity] = useState<string>('adecuado');
+  const [omissions, setOmissions] = useState<string>('');
+  const [pajaOptions, setPajaOptions] = useState<Record<string, boolean>>({
+    iluminacion: false,
+    seguridad: false,
+    competencia: false,
+  });
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    onSubmitCalibration(severity, omissions, pajaOptions);
+    onClose();
+  };
+
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '1.5rem',
-      paddingTop: '4rem',
-      paddingBottom: '4rem',
-      textAlign: 'center',
-    }}>
-      <div
-        role="status"
-        aria-label="Desplegando configuracion"
-        className="spinner"
-        style={{ width: '40px', height: '40px', borderWidth: '4px' }}
-      />
-      <div>
-        <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Desplegando tu configuracion...</p>
-        <p className="text-sm muted">Esto tomara unos segundos</p>
+    <div className="calibration-sidebar-overlay" onClick={onClose}>
+      <div className="calibration-sidebar" onClick={(e) => e.stopPropagation()}>
+        <div className="sidebar-header">
+          <h3 className="sidebar-title">Bucle de Calibración</h3>
+          <button className="sidebar-close-btn" onClick={onClose}>X</button>
+        </div>
+        
+        <form onSubmit={handleSubmit}>
+          {/* Severity Input */}
+          <div className="calibration-form-group">
+            <label className="calibration-label" htmlFor="calibrate-severity">
+              Ajuste de Rigidez / Severidad
+            </label>
+            <select
+              id="calibrate-severity"
+              className="calibration-select"
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value)}
+            >
+              <option value="tolerante">Demasiado Tolerante (Calificación Amigable)</option>
+              <option value="adecuado">Nivel Adecuado (Normal)</option>
+              <option value="estricto">Demasiado Estricto (Criterio Riguroso)</option>
+            </select>
+          </div>
+
+          {/* Omissions Input */}
+          <div className="calibration-form-group">
+            <label className="calibration-label" htmlFor="calibrate-omissions">
+              ¿Qué omitió la IA o qué áreas faltaron?
+            </label>
+            <textarea
+              id="calibrate-omissions"
+              className="calibration-textarea"
+              value={omissions}
+              onChange={(e) => setOmissions(e.target.value)}
+              placeholder="Ej. Ignoró que los botes de basura estaban desbordados o que los precios en carteles no eran legibles..."
+            />
+          </div>
+
+          {/* Clean Paja Checklist */}
+          <div className="calibration-form-group">
+            <label className="calibration-label">
+              Descarte de Paja (Quitar análisis innecesarios)
+            </label>
+            <div className="paja-checkbox-group">
+              <label className="paja-checkbox-label">
+                <input
+                  type="checkbox"
+                  className="paja-checkbox"
+                  checked={pajaOptions.iluminacion}
+                  onChange={(e) => setPajaOptions(prev => ({ ...prev, iluminacion: e.target.checked }))}
+                />
+                Eliminar análisis de iluminación de foto
+              </label>
+              <label className="paja-checkbox-label">
+                <input
+                  type="checkbox"
+                  className="paja-checkbox"
+                  checked={pajaOptions.seguridad}
+                  onChange={(e) => setPajaOptions(prev => ({ ...prev, seguridad: e.target.checked }))}
+                />
+                Eliminar teoría técnica sobre seguridad física
+              </label>
+              <label className="paja-checkbox-label">
+                <input
+                  type="checkbox"
+                  className="paja-checkbox"
+                  checked={pajaOptions.competencia}
+                  onChange={(e) => setPajaOptions(prev => ({ ...prev, competencia: e.target.checked }))}
+                />
+                Omitir detección de marcas de competidores
+              </label>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '2.5rem' }}>
+            <button type="submit" className="neo-btn neo-btn-success" style={{ width: '100%' }}>
+              ✔ APLICAR Y RE-CALIBRAR MOTOR
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
 
-// ─── Approved view ───────────────────────────────────────────────────────────
+// ─── Deploying View ──────────────────────────────────────────────────────────
+
+function DeployingView() {
+  return (
+    <div className="neo-card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+      <div className="spinner" style={{ width: '48px', height: '48px', borderWidth: '4px', margin: '0 auto 1.5rem auto' }} />
+      <h3 className="neo-title" style={{ fontSize: '1.5rem', display: 'block', marginBottom: '0.5rem' }}>
+        Desplegando tu motor en producción...
+      </h3>
+      <p className="neo-subtitle" style={{ fontSize: '0.95rem' }}>
+        Activando los perfiles de scoring visual para tus sucursales. Esto tomará sólo un momento.
+      </p>
+    </div>
+  );
+}
+
+// ─── Approved View ───────────────────────────────────────────────────────────
 
 interface ApprovedViewProps {
   config: ClientConfig;
@@ -1017,53 +1162,42 @@ interface ApprovedViewProps {
 
 function ApprovedView({ config }: ApprovedViewProps) {
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      textAlign: 'center',
-      gap: '1.5rem',
-      paddingTop: '3rem',
-      paddingBottom: '3rem',
-    }}>
+    <div className="neo-card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
       <div style={{
-        width: '64px',
-        height: '64px',
+        width: '72px',
+        height: '72px',
         borderRadius: '50%',
-        border: '3px solid var(--accent-green)',
+        border: '3px solid var(--neo-success)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        margin: '0 auto 1.5rem auto',
+        background: '#d1fae5'
       }}>
-        <svg
-          style={{ width: '28px', height: '28px', color: 'var(--accent-green)' }}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={3}
-          aria-hidden="true"
-        >
+        <svg style={{ width: '36px', height: '36px', color: 'var(--neo-success-hover)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Configuracion aprobada</h2>
-        <p className="muted">
-          El perfil de <span style={{ fontWeight: 600, color: 'var(--text)' }}>{config.clientName}</span> ha sido guardado.
+      
+      <h2 className="neo-title" style={{ fontSize: '1.75rem', display: 'block', marginBottom: '0.5rem' }}>
+        ¡Motor Activado y Desplegado!
+      </h2>
+      <p className="neo-subtitle" style={{ fontSize: '1rem', marginBottom: '2rem' }}>
+        El perfil de auditoría visual para <span style={{ fontWeight: 800, color: 'var(--neo-dark)' }}>{config.clientName}</span> está activo y listo para procesar visitas.
+      </p>
+
+      <div className="card" style={{ border: '2.5px solid var(--neo-border)', borderRadius: '8px', padding: '1.5rem', maxWidth: '440px', margin: '0 auto', textAlign: 'left', background: '#fafafa' }}>
+        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: 600 }}>
+          <span style={{ color: 'var(--neo-muted)' }}>Industria: </span>
+          <span style={{ textTransform: 'capitalize', fontWeight: 800 }}>{config.industry.replace('_', ' ')}</span>
         </p>
-      </div>
-      <div className="card" style={{ textAlign: 'left', width: '100%', maxWidth: '360px' }}>
-        <p className="text-sm" style={{ marginBottom: '0.35rem' }}>
-          <span className="muted">Industria: </span>
-          <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{config.industry.replace('_', ' ')}</span>
+        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: 600 }}>
+          <span style={{ color: 'var(--neo-muted)' }}>Espacios de Auditoría: </span>
+          <span style={{ fontWeight: 800 }}>{config.evaluationAreas.length} Áreas</span>
         </p>
-        <p className="text-sm" style={{ marginBottom: '0.35rem' }}>
-          <span className="muted">Areas de evaluacion: </span>
-          <span style={{ fontWeight: 600 }}>{config.evaluationAreas.length}</span>
-        </p>
-        <p className="text-sm">
-          <span className="muted">Metodo de puntuacion: </span>
-          <span style={{ fontWeight: 600 }}>{SCORING_LABELS[config.globalScoringMethod]}</span>
+        <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>
+          <span style={{ color: 'var(--neo-muted)' }}>Método de Scoring: </span>
+          <span style={{ fontWeight: 800 }}>{SCORING_LABELS[config.globalScoringMethod]}</span>
         </p>
       </div>
     </div>
@@ -1075,60 +1209,43 @@ function ApprovedView({ config }: ApprovedViewProps) {
 interface ErrorBannerProps {
   message: string;
   onDismiss: () => void;
-  onRetry?: () => void;
 }
 
-function ErrorBanner({ message, onDismiss, onRetry }: ErrorBannerProps) {
+function ErrorBanner({ message, onDismiss }: ErrorBannerProps) {
   return (
     <div
       role="alert"
+      className="neo-card"
       style={{
         display: 'flex',
-        alignItems: 'flex-start',
-        gap: '0.75rem',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         background: '#fee2e2',
-        border: '2px solid var(--accent-red)',
-        padding: '1rem',
-        marginBottom: '1rem',
+        borderColor: 'var(--neo-danger)',
+        padding: '1rem 1.5rem',
+        marginBottom: '1.5rem',
+        boxShadow: '4px 4px 0px var(--neo-danger)',
+        borderRadius: '8px',
       }}
     >
-      <span style={{ flexShrink: 0, color: 'var(--accent-red)', fontWeight: 700 }} aria-hidden="true">!</span>
-      <p style={{ flex: 1, fontSize: '0.875rem' }}>{message}</p>
-      <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-        {onRetry && (
-          <button
-            onClick={onRetry}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontFamily: 'var(--font)',
-              fontSize: '0.8rem',
-              color: 'var(--accent-red)',
-              cursor: 'pointer',
-              textDecoration: 'underline',
-              padding: 0,
-            }}
-          >
-            Reintentar
-          </button>
-        )}
-        <button
-          onClick={onDismiss}
-          aria-label="Cerrar error"
-          style={{
-            background: 'none',
-            border: 'none',
-            fontFamily: 'var(--font)',
-            fontSize: '0.875rem',
-            color: 'var(--accent-red)',
-            cursor: 'pointer',
-            fontWeight: 700,
-            padding: 0,
-          }}
-        >
-          X
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <span style={{ color: 'var(--neo-danger)', fontWeight: 900, fontSize: '1.25rem' }}>⚠</span>
+        <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700 }}>{message}</p>
       </div>
+      <button
+        onClick={onDismiss}
+        aria-label="Cerrar error"
+        style={{
+          background: 'none',
+          border: '2px solid var(--neo-border)',
+          borderRadius: '4px',
+          fontWeight: 900,
+          cursor: 'pointer',
+          padding: '0.2rem 0.5rem',
+        }}
+      >
+        X
+      </button>
     </div>
   );
 }
@@ -1141,6 +1258,7 @@ function OnboardingPageInner() {
   const {
     state,
     startSession,
+    resumeSession,
     sendMessage,
     startSynthesis,
     approveConfig,
@@ -1155,12 +1273,49 @@ function OnboardingPageInner() {
     endVoiceSession,
   } = useOnboardingChat();
 
-  const handleStart = () => {
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [historyList, setHistoryList] = useState<any[]>([]);
+
+  // S6: Auto-login if code exists in URL (bypass tabs)
+  useEffect(() => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!code || !uuidRegex.test(code)) {
-      return;
+    if (code && uuidRegex.test(code)) {
+      startSession(code);
     }
-    startSession(code);
+  }, [code, startSession]);
+
+  const fetchHistory = useCallback(async () => {
+    if (!state.token || (state.phase !== 'testing' && state.phase !== 'reviewing')) return;
+    try {
+      const res = await fetch('/api/onboarding/session/history', {
+        headers: { Authorization: `Bearer ${state.token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.history) {
+        setHistoryList(data.history);
+      }
+    } catch (err) {
+      console.error('Error fetching config history:', err);
+    }
+  }, [state.token, state.phase]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory, state.sessionId, state.synthesizedConfig]);
+
+  const handleLoadHistoricalVersion = async (sessionId: string) => {
+    try {
+      const res = await fetch('/api/onboarding/session/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al cargar versión histórica');
+      resumeSession(data);
+    } catch (err) {
+      console.error('Error resuming historical session:', err);
+    }
   };
 
   const handleStartVoice = () => {
@@ -1180,75 +1335,95 @@ function OnboardingPageInner() {
     [sendMessage],
   );
 
+  const handleApplyCalibration = (severity: string, omissions: string, pajaOptions: Record<string, boolean>) => {
+    // Generate instruction string based on calibration adjustments
+    const cleanPajaStr = Object.entries(pajaOptions)
+      .filter(([_, enabled]) => enabled)
+      .map(([opt]) => opt === 'iluminacion' ? 'iluminación de la foto' : opt === 'seguridad' ? 'teoría técnica laboral' : 'competencia')
+      .join(', ');
+
+    const calibrationFeedback = `[AJUSTE DE CALIBRACIÓN]:
+- Nivel de Severidad / Rigidez: ${severity}
+- Omisiones detectadas: ${omissions || 'Ninguna'}
+- Quitar paja de: ${cleanPajaStr || 'Ninguna'}`;
+
+    // Dispatches adjustment message to synthesiser
+    requestAdjustment(); // Transitions back to chatting state & clears sandbox photos
+    sendMessage(calibrationFeedback);
+    startSynthesis(); // Fires off the automatic re-synthesis
+  };
+
   return (
-    <div style={{ position: 'relative' }}>
-      {/* Error banner */}
-      {state.error && (
-        <ErrorBanner
-          message={state.error}
-          onDismiss={resetError}
-          onRetry={state.phase === 'chatting' ? undefined : undefined}
+    <div className="onboarding-wrapper">
+      <div className="onboarding-container">
+        {/* Error banner */}
+        {state.error && (
+          <ErrorBanner message={state.error} onDismiss={resetError} />
+        )}
+
+        {state.phase === 'idle' && (
+          <IdleView onStart={startSession} onResume={resumeSession} loading={state.loading} />
+        )}
+
+        {state.phase === 'chatting' && !state.voiceMode && (
+          <Step1View
+            loading={state.loading}
+            onSend={sendMessage}
+            onStartSynthesis={startSynthesis}
+            onStartVoice={handleStartVoice}
+            token={state.token}
+          />
+        )}
+
+        {state.phase === 'chatting' && state.voiceMode && state.voiceSession && (
+          <VoiceView
+            wsUrl={state.voiceSession.wsUrl}
+            token={state.voiceSession.token}
+            expiresAt={state.voiceSession.expiresAt}
+            systemPrompt={state.voiceSession.systemPrompt}
+            tools={state.voiceSession.tools}
+            onTranscript={handleVoiceTranscript}
+            onComplete={startSynthesis}
+            onSwitchToText={handleSwitchToText}
+          />
+        )}
+
+        {state.phase === 'synthesizing' && (
+          <SynthesizingView progress={state.synthesisProgress} />
+        )}
+
+        {(state.phase === 'reviewing' || state.phase === 'testing') && (
+          <TestingView
+            photos={state.testPhotos}
+            iterationCount={state.iterationCount}
+            onAddPhoto={addTestPhoto}
+            onRate={rateTestResult}
+            onDeploy={deployConfig}
+            onAdjust={requestAdjustment}
+            onModify={requestModification}
+            config={state.synthesizedConfig}
+            gaps={state.gaps}
+            confidence={state.confidence}
+            openCalibrationDrawer={() => setIsDrawerOpen(true)}
+            historyList={historyList}
+            onResumeSession={handleLoadHistoricalVersion}
+            currentSessionId={state.sessionId}
+          />
+        )}
+
+        {state.phase === 'deploying' && <DeployingView />}
+
+        {state.phase === 'approved' && state.synthesizedConfig && (
+          <ApprovedView config={state.synthesizedConfig} />
+        )}
+
+        {/* Side-Drawer Calibration overlay */}
+        <CalibrationDrawer
+          isOpen={isDrawerOpen}
+          onClose={() => setIsDrawerOpen(false)}
+          onSubmitCalibration={handleApplyCalibration}
         />
-      )}
-
-      {state.phase === 'idle' && (
-        <IdleView onStart={handleStart} loading={state.loading} />
-      )}
-
-      {state.phase === 'chatting' && !state.voiceMode && (
-        <ChatView
-          messages={state.messages}
-          loading={state.loading}
-          isComplete={state.isComplete}
-          onSend={sendMessage}
-          onStartSynthesis={startSynthesis}
-          onStartVoice={handleStartVoice}
-        />
-      )}
-
-      {state.phase === 'chatting' && state.voiceMode && state.voiceSession && (
-        <VoiceView
-          wsUrl={state.voiceSession.wsUrl}
-          token={state.voiceSession.token}
-          expiresAt={state.voiceSession.expiresAt}
-          systemPrompt={state.voiceSession.systemPrompt}
-          tools={state.voiceSession.tools}
-          onTranscript={handleVoiceTranscript}
-          onComplete={startSynthesis}
-          onSwitchToText={handleSwitchToText}
-        />
-      )}
-
-      {state.phase === 'synthesizing' && (
-        <SynthesizingView progress={state.synthesisProgress} />
-      )}
-
-      {state.phase === 'reviewing' && state.synthesizedConfig && (
-        <ReviewingView
-          config={state.synthesizedConfig}
-          gaps={state.gaps}
-          confidence={state.confidence}
-          onApprove={startTesting}
-          onModify={requestModification}
-        />
-      )}
-
-      {state.phase === 'testing' && (
-        <TestingView
-          photos={state.testPhotos}
-          iterationCount={state.iterationCount}
-          onAddPhoto={addTestPhoto}
-          onRate={rateTestResult}
-          onDeploy={deployConfig}
-          onAdjust={requestAdjustment}
-        />
-      )}
-
-      {state.phase === 'deploying' && <DeployingView />}
-
-      {state.phase === 'approved' && state.synthesizedConfig && (
-        <ApprovedView config={state.synthesizedConfig} />
-      )}
+      </div>
     </div>
   );
 }
@@ -1259,12 +1434,12 @@ export default function OnboardingPage() {
   return (
     <Suspense
       fallback={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '4rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '4rem', minHeight: '100vh', background: '#f5f5f7' }}>
           <div
             role="status"
             aria-label="Cargando"
             className="spinner"
-            style={{ width: '32px', height: '32px', borderWidth: '4px' }}
+            style={{ width: '48px', height: '48px', borderWidth: '4px', borderTopColor: '#3b82f6' }}
           />
         </div>
       }

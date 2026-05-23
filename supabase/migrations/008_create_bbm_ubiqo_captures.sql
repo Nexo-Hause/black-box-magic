@@ -8,7 +8,7 @@
 -- Ref: docs/ubiqo/api-validation-2026-03-31.md — Phase 0 corrections
 -- Policy: Fase 0-1 schema provisional (DROP+recrear OK, no hay datos prod).
 
-CREATE TABLE bbm_ubiqo_captures (
+CREATE TABLE IF NOT EXISTS bbm_ubiqo_captures (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Identifiers Ubiqo
@@ -60,11 +60,11 @@ CREATE TABLE bbm_ubiqo_captures (
 
 -- ─── Indexes ──────────────────────────────────────────────────────────────────
 
-CREATE INDEX idx_ubiqo_captures_status ON bbm_ubiqo_captures(status);
-CREATE INDEX idx_ubiqo_captures_form ON bbm_ubiqo_captures(ubiqo_form_id);
-CREATE INDEX idx_ubiqo_captures_alias ON bbm_ubiqo_captures(ubiqo_alias);
-CREATE INDEX idx_ubiqo_captures_date ON bbm_ubiqo_captures(photo_captured_at);
-CREATE INDEX idx_ubiqo_captures_score ON bbm_ubiqo_captures(execution_score);
+CREATE INDEX IF NOT EXISTS idx_ubiqo_captures_status ON bbm_ubiqo_captures(status);
+CREATE INDEX IF NOT EXISTS idx_ubiqo_captures_form ON bbm_ubiqo_captures(ubiqo_form_id);
+CREATE INDEX IF NOT EXISTS idx_ubiqo_captures_alias ON bbm_ubiqo_captures(ubiqo_alias);
+CREATE INDEX IF NOT EXISTS idx_ubiqo_captures_date ON bbm_ubiqo_captures(photo_captured_at);
+CREATE INDEX IF NOT EXISTS idx_ubiqo_captures_score ON bbm_ubiqo_captures(execution_score);
 
 -- ─── Stored procedures ────────────────────────────────────────────────────────
 

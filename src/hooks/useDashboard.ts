@@ -7,7 +7,7 @@ interface Client {
   client_key?: string;
 }
 
-export function useDashboard() {
+export function useDashboard(email?: string | null) {
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [rows, setRows] = useState<IncidenceRecord[]>([]);
@@ -36,8 +36,16 @@ export function useDashboard() {
     setPage(clamped);
   }, []);
 
-  // 1. Fetch available clients on mount
+  // 1. Fetch available clients when email changes/becomes non-null
   useEffect(() => {
+    const shouldFetch = email === undefined ? true : !!email;
+
+    if (!shouldFetch) {
+      setClients([]);
+      setSelectedClientId('');
+      return;
+    }
+
     let active = true;
     const fetchClients = async () => {
       try {
@@ -63,7 +71,7 @@ export function useDashboard() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [email]);
 
   // 2. Fetch incidences when filters, selected client, or page changes
   const fetchIncidences = useCallback(async () => {

@@ -1,10 +1,16 @@
 // ─── Onboarding API Contracts — Zod v4 schemas ───────────────────────────────
 import { z } from 'zod/v4';
 
-// ─── Code Exchange ───────────────────────────────────────────────────────────
-export const exchangeCodeRequestSchema = z.object({
-  code: z.string().uuid(),
-});
+// ─── Code Exchange & Session Creation ─────────────────────────────────────────
+export const exchangeCodeRequestSchema = z.union([
+  z.object({
+    code: z.string().uuid(),
+  }),
+  z.object({
+    email: z.string().email(),
+    clientName: z.string().min(1),
+  })
+]);
 export type ExchangeCodeRequest = z.infer<typeof exchangeCodeRequestSchema>;
 
 // ─── Session ─────────────────────────────────────────────────────────────────

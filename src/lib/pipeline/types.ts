@@ -4,7 +4,7 @@ import type { analyzePhoto } from '@/lib/analyze';
 import type { decryptFirma } from '@/lib/ubiqo/crypto';
 import type { downloadPlanogram } from '@/lib/planogram/storage';
 import type { buildIncidencePrompt } from '@/lib/planogram/incidence-prompt';
-import type { analyzeWithReferences } from '@/lib/gemini';
+import type { analyzeWithReferences, analyzeImage } from '@/lib/gemini';
 import type { parseIncidenceResponse } from '@/lib/planogram/incidence-parser';
 import type { fetchCaptures, extractPhotos, buildPhotoUrl } from '@/lib/ubiqo/client';
 import type { encryptFirma } from '@/lib/ubiqo/crypto';
@@ -23,9 +23,11 @@ export interface PlanogramPipelineDeps {
   downloadPhoto: typeof downloadPhoto;
   buildIncidencePrompt: typeof buildIncidencePrompt;
   analyzeWithReferences: typeof analyzeWithReferences;
+  analyzeImage?: typeof analyzeImage;
   parseIncidenceResponse: typeof parseIncidenceResponse;
   supabase: SupabaseClient;
 }
+
 
 export interface IngestParams {
   form_id: string | number;

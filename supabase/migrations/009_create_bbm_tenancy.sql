@@ -33,6 +33,12 @@ CREATE TABLE IF NOT EXISTS bbm_users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Si la tabla ya existía (ej. legacy demo bbm_users), nos aseguramos de agregar las columnas necesarias
+ALTER TABLE bbm_users 
+  ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'client_user' CHECK (role IN ('bbm_admin', 'reseller_admin', 'client_user')),
+  ADD COLUMN IF NOT EXISTS account_id UUID REFERENCES bbm_accounts(id),
+  ADD COLUMN IF NOT EXISTS client_id UUID REFERENCES bbm_clients(id);
+
 CREATE INDEX IF NOT EXISTS idx_bbm_users_account_id ON bbm_users(account_id);
 
 -- ── Columnas de tenencia en tablas de datos existentes ──────────────────────
@@ -66,7 +72,8 @@ CREATE INDEX IF NOT EXISTS idx_bbm_planograms_client_id ON bbm_planograms(client
 
 ALTER TABLE bbm_incidences ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS bbm_incidences_tenant_isolation ON bbm_incidences
+DROP POLICY IF EXISTS bbm_incidences_tenant_isolation ON bbm_incidences;
+CREATE POLICY bbm_incidences_tenant_isolation ON bbm_incidences
   FOR ALL
   USING (
     -- service-role bypasea esto; esta policy protege contra queries con anon/authenticated key
@@ -75,7 +82,8 @@ CREATE POLICY IF NOT EXISTS bbm_incidences_tenant_isolation ON bbm_incidences
 
 ALTER TABLE bbm_ubiqo_captures ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS bbm_ubiqo_captures_tenant_isolation ON bbm_ubiqo_captures
+DROP POLICY IF EXISTS bbm_ubiqo_captures_tenant_isolation ON bbm_ubiqo_captures;
+CREATE POLICY bbm_ubiqo_captures_tenant_isolation ON bbm_ubiqo_captures
   FOR ALL
   USING (
     client_id IS NOT NULL

@@ -27,7 +27,7 @@ function formatDate(dateStr: string | null | undefined) {
 
 export default function PlanogramsPage() {
   const gate = useEmailGate();
-  const dashboard = useDashboard();
+  const dashboard = useDashboard(gate.email);
 
   // Local state for planograms
   const [planograms, setPlanograms] = useState<any[]>([]);

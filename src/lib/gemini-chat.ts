@@ -7,8 +7,8 @@
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-export const CHAT_MODEL = 'gemini-2.5-flash';
-export const SYNTHESIS_MODEL = 'gemini-2.5-pro';
+export const CHAT_MODEL = 'gemini-3.5-flash';
+export const SYNTHESIS_MODEL = 'gemini-3.5-flash';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,184 @@
+.landingContainer {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at 10% 20%, rgba(248, 250, 252, 1) 0%, rgba(241, 245, 249, 1) 90%);
+  padding: 3rem 1.5rem;
+}
+
+.hero {
+  max-width: 1000px;
+  width: 100%;
+  margin: 2rem auto 4rem auto;
+  text-align: center;
+}
+
+.titleBadge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--text);
+  color: var(--bg-white);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  border: 2px solid var(--border);
+  box-shadow: 2px 2px 0px var(--border);
+}
+
+.title {
+  font-size: clamp(3rem, 7vw, 4.5rem);
+  font-weight: 950;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.titleAccent {
+  color: var(--accent-blue);
+  display: block;
+}
+
+.subtitle {
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  max-width: 650px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto 4rem auto;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.portalCard {
+  background: var(--bg-white);
+  border: 3px solid var(--border);
+  padding: 2.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 6px 6px 0px var(--border);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.portalCard:hover {
+  transform: translate(-4px, -4px);
+  box-shadow: 10px 10px 0px var(--border);
+}
+
+.cardHeader {
+  margin-bottom: 2rem;
+}
+
+.cardBadge {
+  display: inline-block;
+  margin-bottom: 1.25rem;
+}
+
+.cardTitle {
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.cardDesc {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.cardFooter {
+  margin-top: auto;
+}
+
+.cardBtn {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  font-size: 0.85rem;
+}
+
+.facetsSection {
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto 3rem auto;
+  border: 3px solid var(--border);
+  background: var(--bg-white);
+  padding: 2.5rem;
+  box-shadow: 8px 8px 0px var(--border);
+}
+
+.facetsTitle {
+  font-size: 1.15rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 3px solid var(--border);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+}
+
+.facetsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.facetItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.facetName {
+  font-weight: 850;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.facetDesc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.footer {
+  margin-top: auto;
+  text-align: center;
+  padding-top: 2rem;
+  border-top: 1.5px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}

@@ -4,7 +4,7 @@
 -- Admin generates a code, sends URL to client, client exchanges code for JWT.
 -- Codes are single-use and deleted on exchange.
 
-CREATE TABLE bbm_onboarding_codes (
+CREATE TABLE IF NOT EXISTS bbm_onboarding_codes (
   code UUID PRIMARY KEY,
   payload JSONB NOT NULL,         -- { clientId, clientName, email }
   expires_at TIMESTAMPTZ NOT NULL,
@@ -24,7 +24,7 @@ CREATE POLICY onboarding_codes_delete ON bbm_onboarding_codes
   FOR DELETE USING (false);
 
 -- Auto-cleanup: index for efficient expiry queries
-CREATE INDEX idx_onboarding_codes_expires ON bbm_onboarding_codes(expires_at);
+CREATE INDEX IF NOT EXISTS idx_onboarding_codes_expires ON bbm_onboarding_codes(expires_at);
 
 -- Rollback:
 -- DROP TABLE IF EXISTS bbm_onboarding_codes;

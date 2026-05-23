@@ -12,7 +12,7 @@
 -- Ref: spec/01-engine-v3.md — Data Model + Auditoría C11
 -- Policy: additive migrations only — do not drop columns or tables without explicit confirmation.
 
-CREATE TABLE bbm_client_configs (
+CREATE TABLE IF NOT EXISTS bbm_client_configs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Client identity
@@ -48,19 +48,19 @@ CREATE TABLE bbm_client_configs (
 
 -- Partial unique index: at most one active config per client (C11)
 -- Application layer must archive the previous active config before activating a new one.
-CREATE UNIQUE INDEX idx_one_active_per_client
+CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_per_client
   ON bbm_client_configs(client_id) WHERE status = 'active';
 
 -- General-purpose filters
-CREATE INDEX idx_client_configs_status
+CREATE INDEX IF NOT EXISTS idx_client_configs_status
   ON bbm_client_configs(status);
 
-CREATE INDEX idx_client_configs_industry
+CREATE INDEX IF NOT EXISTS idx_client_configs_industry
   ON bbm_client_configs(industry);
 
 -- Composite index for the most common query pattern: fetch active config by client
 -- (used by getActiveConfig in src/lib/engine/config.ts)
-CREATE INDEX idx_client_configs_client_status
+CREATE INDEX IF NOT EXISTS idx_client_configs_client_status
   ON bbm_client_configs(client_id, status) WHERE status = 'active';
 
 

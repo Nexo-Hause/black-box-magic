@@ -55,6 +55,8 @@ export interface PartialOnboardingConfig {
   passingScore?: number;
   escalationRules: PartialEscalationRule[];
   isComplete: boolean;
+  sandbox_photos?: any[];
+  iteration_count?: number;
 }
 
 export function createEmptyPartialConfig(): PartialOnboardingConfig {

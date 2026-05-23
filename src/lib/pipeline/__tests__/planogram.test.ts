@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { processIncidence, ingestPlanogramCaptures } from '@/lib/pipeline/planogram';
 import type { PlanogramIngestDeps } from '@/lib/pipeline/types';
+import { getActiveConfig } from '@/lib/engine/config';
+
+vi.mock('@/lib/engine/config', () => ({
+  getActiveConfig: vi.fn(),
+}));
 
 function makeDeps(over = {}) {
   const maybeSingleMock = vi.fn(async () => ({
@@ -45,6 +50,7 @@ function makeDeps(over = {}) {
     })),
     decryptFirma: vi.fn((f) => f),
     analyzePhoto: vi.fn(),
+    analyzeImage: vi.fn(),
     supabase: supabaseMock,
     ...over,
   };
@@ -78,6 +84,74 @@ describe('processIncidence', () => {
     const deps = makeDeps({ supabase: customSupabase });
     const row = { id: 'i1', planogram_id: 'p1', field_photo_paths: ['f1.jpg'] };
     await expect(processIncidence(row as any, deps as any)).rejects.toThrow('No active planogram found');
+  });
+
+  it('procesa correctamente incidencia en Modo A (Direct Audit - sin planograma)', async () => {
+    const clientConfig = {
+      clientId: 'cli-test',
+      clientName: 'Test Client',
+      industry: 'retail_btl',
+      evaluationAreas: [
+        {
+          id: 'a1',
+          name: 'Area 1',
+          description: 'Desc 1',
+          weight: 1.0,
+          criteria: [
+            { id: 'c1', name: 'Crit 1', type: 'binary', description: 'Desc crit', weight: 1.0, critical: false }
+          ]
+        }
+      ],
+      globalScoringMethod: 'weighted',
+      escalationRules: [],
+      industryContext: 'Contexto',
+      customInstructions: 'Instrucciones',
+      version: 1,
+      createdAt: '',
+      updatedAt: ''
+    };
+
+    vi.mocked(getActiveConfig).mockResolvedValue(clientConfig as any);
+
+    const maybeSingleConfigMock = vi.fn(async () => ({
+      data: {
+        config: clientConfig
+      },
+      error: null
+    }));
+    
+    const eqMock3 = vi.fn(() => ({ single: maybeSingleConfigMock }));
+    const eqMock2 = vi.fn(() => ({ eq: eqMock3 }));
+    const selectMock = vi.fn(() => ({ eq: eqMock2 }));
+
+    const updateEqMock = vi.fn(async () => ({ error: null }));
+    const updateMock = vi.fn(() => ({ eq: updateEqMock }));
+
+    const customSupabase = {
+      from: vi.fn((table: string) => {
+        if (table === 'bbm_client_configs') {
+          return { select: selectMock };
+        }
+        if (table === 'bbm_incidences') {
+          return { update: updateMock };
+        }
+        return {} as any;
+      }),
+    };
+
+    const deps = makeDeps({
+      supabase: customSupabase,
+      analyzeImage: vi.fn(async () => ({ data: {}, model: 'gemini-3.1-flash-lite-preview', tokens: { total: 100 } })),
+    });
+
+    const row = { id: 'i1', planogram_id: null, client_id: 'cli-test', field_photo_paths: ['f1.jpg'] };
+    
+    const r = await processIncidence(row as any, deps as any);
+    
+    expect(deps.analyzeImage).toHaveBeenCalledOnce();
+    expect(deps.parseIncidenceResponse).toHaveBeenCalledOnce();
+    expect(r.status).toBe('completed');
+    expect(r.model).toBe('gemini-3.1-flash-lite-preview');
   });
 });
 
