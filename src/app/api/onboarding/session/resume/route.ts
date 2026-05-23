@@ -15,7 +15,30 @@ const resumeRequestSchema = z.union([
 
 export const maxDuration = 15;
 
+// In-memory rate limiting store (production should ideally use Redis)
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 5;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (entry.count >= MAX_REQUESTS_PER_WINDOW) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
+}
+
 export async function POST(request: NextRequest) {
+  // Parse body
   let rawBody: unknown;
   try {
     rawBody = await request.json();
@@ -23,6 +46,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: 'Invalid JSON body', status: 400 },
       { status: 400 }
+    );
+  }
+
+  // Rate limiting by IP + email combination
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  const body = rawBody as any;
+  const emailKey = typeof body?.email === 'string' ? body.email.toLowerCase().trim() : 'unknown';
+  const rateLimitKey = `${ip}:${emailKey}`;
+
+  if (!checkRateLimit(rateLimitKey)) {
+    return NextResponse.json(
+      { error: 'Demasiadas solicitudes. Por favor intente más tarde.', status: 429 },
+      { status: 429 }
     );
   }
 

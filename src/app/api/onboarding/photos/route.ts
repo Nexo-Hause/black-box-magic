@@ -5,7 +5,7 @@ import { z } from 'zod/v4';
 
 const savePhotosRequestSchema = z.object({
   sessionId: z.string().uuid(),
-  photos: z.array(z.any()),
+  photos: z.array(z.any()).max(100, 'Maximum 100 photos per request'),
   iterationCount: z.number().optional(),
 });
 
