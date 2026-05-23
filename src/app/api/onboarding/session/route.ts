@@ -106,17 +106,15 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         console.error('[onboarding/session] Error creating config row:', insertError.message);
-        // Graceful degradation: return a session without persistent storage
-        return NextResponse.json({
-          sessionId: newId,
-          clientId,
-          clientName,
-          token,
-          transcript: [],
-          partialConfig: createEmptyPartialConfig(),
-          synthesizedConfig: null,
-          status: 'draft',
-        });
+        const status = insertError.message?.includes('connection') || insertError.message?.includes('fetch') ? 503 : 500;
+        return NextResponse.json(
+          { 
+            error: 'No se pudo crear la sesión persistente de onboarding. Por favor reintente.', 
+            details: insertError.message, 
+            status 
+          },
+          { status }
+        );
       }
 
       return NextResponse.json({

@@ -21,45 +21,24 @@ const MAX_REQUESTS_PER_WINDOW = 5;
 const MAX_RATE_LIMIT_KEYS = 10000;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
-// Periodic cleanup every 5 minutes to avoid memory leaks
-const intervalId = setInterval(() => {
-  const now = Date.now();
-  rateLimitMap.forEach((entry, key) => {
-    if (now > entry.resetAt) {
-      rateLimitMap.delete(key);
-    }
-  });
-}, 5 * 60 * 1000);
-
-if (typeof intervalId !== 'number' && intervalId && 'unref' in intervalId) {
-  (intervalId as any).unref();
-}
-
-// Prevent memory leaks / double intervals during Next.js hot-reload in dev
-if (typeof globalThis !== 'undefined') {
-  if ((globalThis as any).__rateLimitInterval) {
-    clearInterval((globalThis as any).__rateLimitInterval);
-  }
-  (globalThis as any).__rateLimitInterval = intervalId;
-}
-
 function checkRateLimit(key: string): boolean {
   const now = Date.now();
 
-  // Evitar crecimiento ilimitado del Map
-  if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS && !rateLimitMap.has(key)) {
-    // Limpiar entradas expiradas agresivamente
+  // Cleanup agresivo si estamos cerca del límite de llaves (80%)
+  if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS * 0.8 && !rateLimitMap.has(key)) {
     const expiredKeys: string[] = [];
     rateLimitMap.forEach((entry, k) => {
-      if (now > entry.resetAt) expiredKeys.push(k);
+      if (now > entry.resetAt) {
+        expiredKeys.push(k);
+      }
     });
     expiredKeys.forEach(k => rateLimitMap.delete(k));
+  }
 
-    // Si aún estamos llenos, rechazar la solicitud para proteger la memoria
-    if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS) {
-      console.warn('[onboarding/resume] Rate limit map full, rejecting request to protect memory');
-      return false;
-    }
+  // Rechazo si aún estamos sobre el límite absoluto
+  if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS && !rateLimitMap.has(key)) {
+    console.warn('[onboarding/resume] Rate limit map full, rejecting request to protect memory');
+    return false;
   }
 
   const entry = rateLimitMap.get(key);
