@@ -1,7 +1,7 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-05-22 (Sesión 21 — Implementación del Onboarding Automático e Interactivo Self-Serve en Gemini 3.5 Flash, mitigación XML de inyección y endpoint dinámico para guías de industrias personalizadas. Se incorporó el diseño y especificación técnica de la Fase 4: Onboarding Persistente, Multi-Tenant y sin Fricción, verificado con 269/269 tests de Vitest en verde). Roadmap TP: `docs/roadmap-2026-05.md`.
+> Última actualización: 2026-05-23 (Sesión 22 — Implementación al 100% de la Fase 4: Onboarding Persistente, Multi-Tenant y sin Fricción, inicio de sesión cero fricción con Email/Empresa, reanudación y autoguardado de sandbox con fotos base64 y dictámenes de IA directamente en Supabase, y timeline interactivo para cargar versiones previas de configuraciones; verificado con 275/275 tests de Vitest en verde). Roadmap TP: `docs/roadmap-2026-05.md`.
 
 ---
 
@@ -13,22 +13,17 @@
 *   **WS3 Export Excel:** ✅ 100% completado.
 *   **WS4 E2E Planograma Real:** ✅ 100% completado.
 *   **Onboarding Self-Serve (Fases 1-3):** ✅ 100% completado (migración a Gemini 3.5 Flash, tags XML, guías dinámicas `/guide` y drawer de calibración).
-*   **Onboarding Self-Serve (Fase 4 — Persistencia y Cero Fricción):** 📋 Diseño y especificación técnica cerrado y guardado en `spec/implementation_plan.md` y `spec/task.md`.
-*   **Siguiente:** Proceder a ejecutar el desarrollo de la Fase 4 de Onboarding Persistente y sin Fricción.
+*   **Onboarding Self-Serve (Fase 4 — Persistencia y Cero Fricción):** ✅ 100% completado y verificado en Vitest (275/275 tests verdes).
+*   **Siguiente:** Lanzamiento comercial del MVP y onboarding self-serve interactivo de BBM.
 
 ---
 
 ## Handoff — próxima sesión (leer esto primero)
 
-**Dónde estamos:** El Onboarding Self-Serve interactivo cuenta con sus Fases 1-3 completamente terminadas y probadas (269/269 tests en verde). Adicionalmente, ante el feedback de Gonzalo, diseñamos y especificamos detalladamente la **Fase 4: Onboarding Persistente, Multi-Tenant y sin Fricción**, la cual está documentada en [implementation_plan.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/implementation_plan.md) y [task.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/task.md).
-
-**Estrategia Diseñada (Fase 4):**
-1.  **Acceso sin fricción:** Habilitar creación de sesión instantánea ingresando Correo y Empresa, o reanudación ingresando únicamente Correo, eliminando la necesidad de códigos UUID de administrador.
-2.  **Persistencia del Sandbox:** Guardar incrementalmente en Supabase (`partial_config.sandbox_photos`) el lote de fotos base64, reportes generados, comentarios y ratings (OK/NO) al vuelo.
-3.  **Historial de Prompts:** Listar versiones previas de configuraciones para el cliente y permitir cargar e importar prompts/reglas antiguas de vuelta para re-calibración.
+**Dónde estamos:** El Onboarding Self-Serve interactivo cuenta con sus Fases 1-4 completamente terminadas, integradas en la UI y probadas (275/275 tests en verde). El login sin fricción por correo, la reanudación interactiva y el autoguardado del sandbox en caliente funcionan de extremo a extremo.
 
 **Siguiente acción concreta:**
-1.  Comenzar directamente con el desarrollo de la **Fase 4** de acuerdo con el checklist en `spec/task.md` (desarrollar endpoints de `/resume`, `/photos` e `/history`, y cablear la UI).
+1. Presentar el MVP comercializable a los clientes y habilitar el pipeline interactivo self-serve con Fruit of the Loom.
 
 ---
 
@@ -70,8 +65,8 @@
 | Planogram API (`/api/planogram/*`) | 33 | Funcional — upload, clients, incidences, detail, assign, export, regression |
 | Ubiqo pipeline (`/api/ubiqo/*`) | 58 | Funcional |
 | Hook Dashboard (`useDashboard`) | 3 | Funcional |
-| Onboarding API & Synthesis | 13 | Funcional — guide generation, fallback, synthesis, XML injection test |
-| **Total** | **267 / 267** | Runner: **Vitest ^4.1.2** (100% pass) |
+| Onboarding API & Synthesis & Persistence | 19 | Funcional — guide, fallback, synthesis, XML, persistence, history, rehydration |
+| **Total** | **275 / 275** | Runner: **Vitest ^4.1.2** (100% pass) |
 
 ---
 

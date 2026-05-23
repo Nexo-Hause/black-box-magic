@@ -20,6 +20,8 @@
 | 18 | 2026-05-21 | session/ws2-ws3-dashboard | Completado el 100% de WS2 y WS3 (Dashboard UI responsivo + Exportador Excel server-side multi-hoja y protegido contra DDE y OOM). 252 tests verdes y 0 errores. | pendiente |
 | 19 | 2026-05-21 | session/ws2-ws3-dashboard | Corrección del bug de sesión 401 reactivo en el hook useDashboard, validación E2E completa del pipeline y exportación de Excel en local. 258 tests verdes. | — |
 | 20 | 2026-05-22 | main | Diagnóstico y resolución del planograma verde en la UI cargando un planograma real y profesional en Supabase Storage, suite de tests en 259/259 verde. | — |
+| 21 | 2026-05-22 | session/21-onboarding-interactive | Migración e implementación del Onboarding Automático e Interactivo Self-Serve en Gemini 3.5 Flash (Fases 1-3) y especificación técnica de la Fase 4. 269 tests verdes. | — |
+| 22 | 2026-05-23 | session/22-onboarding-persistence | Ejecución completa al 100% de la Fase 4: Onboarding Persistente, Multi-Tenant y sin Fricción. Endpoints, autoguardado de sandbox base64 en Supabase e historial. 275 tests verdes. | pendiente |
 
 
 ### Sesión 3 (2026-03-28)
@@ -121,4 +123,7 @@ Diagnóstico y resolución de la visualización del planograma de referencia en 
 
 ### Sesión 21 (2026-05-22)
 Migración e implementación del Onboarding Automático e Interactivo Self-Serve en Gemini 3.5 Flash (Fases 1-3 completadas: tags XML, descarte "N/A", guías dinámicas `/guide` y drawer de calibración lateral). Adicionalmente, ante el feedback de Gonzalo, diseñamos y redactamos la especificación técnica completa de la **Fase 4: Onboarding Persistente, Multi-Tenant y sin Fricción** en `spec/implementation_plan.md` y `spec/task.md` (login por correo sin códigos obligatorios, persistencia del sandbox base64 en `partial_config.sandbox_photos` en Supabase, e historial de restauración de prompts antiguos). La suite completa corre en Vitest con **269/269 tests exitosos (100% Green)** y 0 errores de TypeScript.
+
+### Sesión 22 (2026-05-23)
+Ejecución completa al 100% de la **Fase 4: Onboarding Persistente, Multi-Tenant y sin Fricción**. Desarrollamos los endpoints `/session/resume`, `/photos` e `/history`, y adaptamos `/session` para soportar creación directa con email y nombre de empresa. En el frontend, integramos la rehidratación completa en `useOnboardingChat.ts`, implementamos el autoguardado asíncrono y transparente de fotos en el Sandbox (incluyendo base64, estatus, calificaciones y comentarios), y rediseñamos la pantalla inicial de `IdleView` con un layout premium Neo-Brutalista de pestañas. Asimismo, incorporamos la línea de tiempo del "Historial de Versiones" en el Sandbox para permitir la restauración instantánea de prompts históricos. Se escribieron tests de integración exhaustivos y toda la suite de Vitest pasó con **275/275 tests exitosos (100% Green)** sin errores de TypeScript.
 

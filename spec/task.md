@@ -46,19 +46,19 @@ Este checklist interactivo organiza las tareas técnicas necesarias para impleme
     npx vitest run
     ```
 
-## [/] Fase 4: Persistencia Sandbox, Inicio de Sesión por Correo e Historial de Prompts
-- [ ] **Desarrollo de Nuevos Endpoints en Backend:**
-  - [ ] Implementar `/api/onboarding/session/resume` para buscar y reanudar sesiones por correo.
-  - [ ] Adaptar `/api/onboarding/session` para crear sesiones instantáneas al vuelo con `{ email, clientName }`.
-  - [ ] Desarrollar `/api/onboarding/photos` para guardar el lote de fotos base64 y reportes en Supabase.
-  - [ ] Desarrollar `/api/onboarding/session/history` para obtener la lista de versiones y prompts previos.
-- [ ] **Sincronización Automática en `useOnboardingChat.ts`:**
-  - [ ] Reconstruir la acción `SESSION_CREATED` del reducer para restaurar el chat transcript, el Sandbox de fotos, la fase del onboarding y el prompt de forma dinámica.
-  - [ ] Integrar autoguardado en `addTestPhoto` y `rateTestResult` llamando al endpoint de fotos.
-- [ ] **Actualización de Interfaz en `page.tsx`:**
-  - [ ] Rediseñar la pantalla de entrada en `IdleView` con layout premium de pestañas: "Comenzar Nuevo Onboarding" (Correo + Empresa) y "Reanudar Onboarding" (Correo).
-  - [ ] Añadir selector visual de sesiones para correos con múltiples registros.
-  - [ ] Añadir sección/drawer de "Historial de Versiones" para listar las configuraciones históricas y permitir restaurar prompts antiguos.
-- [ ] **Ejecución y Verificación:**
-  - [ ] Crear tests de integración para reanudación e historial.
-  - [ ] Asegurar que Vitest pase con 100% verde y no existan errores de compilación de TypeScript.
+## [x] Fase 4: Persistencia Sandbox, Inicio de Sesión por Correo e Historial de Prompts
+- [x] **Desarrollo de Nuevos Endpoints en Backend:**
+  - [x] Implementar `/api/onboarding/session/resume` para buscar y reanudar sesiones por correo.
+  - [x] Adaptar `/api/onboarding/session` para crear sesiones instantáneas al vuelo con `{ email, clientName }`.
+  - [x] Desarrollar `/api/onboarding/photos` para guardar el lote de fotos base64 y reportes en Supabase.
+  - [x] Desarrollar `/api/onboarding/session/history` para obtener la lista de versiones y prompts previos.
+- [x] **Sincronización Automática en `useOnboardingChat.ts`:**
+  - [x] Reconstruir la acción `SESSION_CREATED` del reducer para restaurar el chat transcript, el Sandbox de fotos, la fase del onboarding y el prompt de forma dinámica.
+  - [x] Integrar autoguardado en `addTestPhoto` y `rateTestResult` llamando al endpoint de fotos.
+- [x] **Actualización de Interfaz en `page.tsx`:**
+  - [x] Rediseñar la pantalla de entrada en `IdleView` con layout premium de pestañas: "Comenzar Nuevo Onboarding" (Correo + Empresa) y "Reanudar Onboarding" (Correo).
+  - [x] Añadir selector visual de sesiones para correos con múltiples registros.
+  - [x] Añadir sección/drawer de "Historial de Versiones" para listar las configuraciones históricas y permitir restaurar prompts antiguos.
+- [x] **Ejecución y Verificación:**
+  - [x] Crear tests de integración para reanudación e historial.
+  - [x] Asegurar que Vitest pase con 100% verde y no existan errores de compilación de TypeScript.
