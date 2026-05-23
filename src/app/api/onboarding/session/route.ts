@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exchangeCode } from '@/lib/onboarding/auth';
+import { exchangeCode, generateOnboardingToken } from '@/lib/onboarding/auth';
 import { createEmptyPartialConfig } from '@/lib/onboarding/tools';
 import { exchangeCodeRequestSchema } from '@/types/onboarding';
 import { supabase } from '@/lib/supabase';
@@ -23,31 +23,46 @@ export async function POST(request: NextRequest) {
   const parsed = exchangeCodeRequestSchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Invalid request: code must be a valid UUID', status: 400 },
+      { error: 'Invalid request: must provide code or email + clientName', status: 400 },
       { status: 400 }
     );
   }
 
-  const { code } = parsed.data;
+  let clientId: string;
+  let clientName: string;
+  let email: string;
+  let token: string;
 
-  // Exchange code for JWT
-  const exchanged = await exchangeCode(code);
-  if (!exchanged) {
-    return NextResponse.json(
-      { error: 'Invalid or expired code', status: 401 },
-      { status: 401 }
-    );
+  if ('code' in parsed.data) {
+    const { code } = parsed.data;
+    // Exchange code for JWT
+    const exchanged = await exchangeCode(code);
+    if (!exchanged) {
+      return NextResponse.json(
+        { error: 'Invalid or expired code', status: 401 },
+        { status: 401 }
+      );
+    }
+    clientId = exchanged.payload.clientId;
+    clientName = exchanged.payload.clientName;
+    email = exchanged.payload.email;
+    token = exchanged.token;
+  } else {
+    const { email: inputEmail, clientName: inputClientName } = parsed.data;
+    email = inputEmail;
+    clientName = inputClientName;
+    const clientKebab = clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const cleanKebab = clientKebab || 'client';
+    clientId = `cli-${cleanKebab}-${randomUUID().slice(0, 8)}`;
+    token = await generateOnboardingToken({ clientId, clientName, email });
   }
-
-  const { token, payload } = exchanged;
-  const { clientId, clientName } = payload;
 
   // ─── Supabase: check for existing draft config (S6: reuse if exists) ───────
   if (supabase) {
     try {
       const { data: existing, error: fetchError } = await supabase
         .from('bbm_client_configs')
-        .select('id')
+        .select('id, transcript, partial_config, config, status')
         .eq('client_id', clientId)
         .eq('status', 'draft')
         .order('created_at', { ascending: false })
@@ -65,6 +80,10 @@ export async function POST(request: NextRequest) {
           clientId,
           clientName,
           token,
+          transcript: existing.transcript || [],
+          partialConfig: existing.partial_config || createEmptyPartialConfig(),
+          synthesizedConfig: existing.config || null,
+          status: existing.status,
         });
       }
 
@@ -80,6 +99,7 @@ export async function POST(request: NextRequest) {
           status: 'draft',
           transcript: [],
           partial_config: createEmptyPartialConfig(),
+          created_by: email,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
@@ -92,6 +112,10 @@ export async function POST(request: NextRequest) {
           clientId,
           clientName,
           token,
+          transcript: [],
+          partialConfig: createEmptyPartialConfig(),
+          synthesizedConfig: null,
+          status: 'draft',
         });
       }
 
@@ -100,6 +124,10 @@ export async function POST(request: NextRequest) {
         clientId,
         clientName,
         token,
+        transcript: [],
+        partialConfig: createEmptyPartialConfig(),
+        synthesizedConfig: null,
+        status: 'draft',
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -114,6 +142,10 @@ export async function POST(request: NextRequest) {
     clientId,
     clientName,
     token,
+    transcript: [],
+    partialConfig: createEmptyPartialConfig(),
+    synthesizedConfig: null,
+    status: 'draft',
   });
 }
 

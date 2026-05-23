@@ -1,0 +1,124 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
+import { generateOnboardingToken } from '@/lib/onboarding/auth';
+import { createEmptyPartialConfig } from '@/lib/onboarding/tools';
+import { z } from 'zod/v4';
+
+const resumeRequestSchema = z.union([
+  z.object({
+    email: z.string().email(),
+  }),
+  z.object({
+    sessionId: z.string().uuid(),
+  })
+]);
+
+export const maxDuration = 15;
+
+export async function POST(request: NextRequest) {
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid JSON body', status: 400 },
+      { status: 400 }
+    );
+  }
+
+  const parsed = resumeRequestSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid request: must provide email or sessionId', status: 400 },
+      { status: 400 }
+    );
+  }
+
+  if (!supabase) {
+    return NextResponse.json(
+      { error: 'Database service is unavailable', status: 503 },
+      { status: 503 }
+    );
+  }
+
+  try {
+    if ('email' in parsed.data) {
+      const { email } = parsed.data;
+
+      // Query sessions created by this email
+      const { data: configs, error } = await supabase
+        .from('bbm_client_configs')
+        .select('id, client_id, client_name, status, industry, updated_at')
+        .eq('created_by', email)
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('[onboarding/resume] Error querying sessions:', error.message);
+        return NextResponse.json(
+          { error: 'Failed to query onboarding sessions', status: 500 },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        sessions: configs.map(c => ({
+          sessionId: c.id,
+          clientId: c.client_id,
+          clientName: c.client_name,
+          status: c.status,
+          industry: c.industry,
+          updatedAt: c.updated_at,
+        }))
+      });
+    } else {
+      const { sessionId } = parsed.data;
+
+      // Query single session details
+      const { data: config, error } = await supabase
+        .from('bbm_client_configs')
+        .select('id, client_id, client_name, status, industry, transcript, partial_config, config, created_by')
+        .eq('id', sessionId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[onboarding/resume] Error fetching session:', error.message);
+        return NextResponse.json(
+          { error: 'Failed to fetch onboarding session', status: 500 },
+          { status: 500 }
+        );
+      }
+
+      if (!config) {
+        return NextResponse.json(
+          { error: 'Session not found', status: 404 },
+          { status: 404 }
+        );
+      }
+
+      // Generate a new JWT token for this session
+      const token = await generateOnboardingToken({
+        clientId: config.client_id,
+        clientName: config.client_name,
+        email: config.created_by || 'unknown@client.com',
+      });
+
+      return NextResponse.json({
+        sessionId: config.id,
+        clientId: config.client_id,
+        clientName: config.client_name,
+        token,
+        transcript: config.transcript || [],
+        partialConfig: config.partial_config || createEmptyPartialConfig(),
+        synthesizedConfig: config.config || null,
+        status: config.status,
+      });
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[onboarding/resume] Server error:', message);
+    return NextResponse.json(
+      { error: 'Internal server error', status: 500 },
+      { status: 500 }
+    );
+  }
+}

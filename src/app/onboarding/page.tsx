@@ -103,37 +103,226 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
 
 // ─── IdleView ─────────────────────────────────────────────────────────────────
 
+// ─── IdleView ─────────────────────────────────────────────────────────────────
+
 interface IdleViewProps {
-  onStart: () => void;
+  onStart: (param: { email: string; clientName: string }) => void;
+  onResume: (sessionData: any) => void;
   loading: boolean;
 }
 
-function IdleView({ onStart, loading }: IdleViewProps) {
+function IdleView({ onStart, onResume, loading }: IdleViewProps) {
+  const [activeTab, setActiveTab] = useState<'new' | 'resume'>('new');
+  
+  // Tab 'new' state
+  const [clientName, setClientName] = useState('');
+  const [email, setEmail] = useState('');
+  
+  // Tab 'resume' state
+  const [resumeEmail, setResumeEmail] = useState('');
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+
+  const handleStartNew = (e: FormEvent) => {
+    e.preventDefault();
+    if (!clientName.trim() || !email.trim() || loading) return;
+    onStart({ email: email.trim(), clientName: clientName.trim() });
+  };
+
+  const handleSearchSessions = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!resumeEmail.trim() || searching) return;
+    setSearching(true);
+    setSearchError('');
+    setSessions([]);
+    try {
+      const res = await fetch('/api/onboarding/session/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resumeEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al buscar sesiones');
+      
+      if (data.sessions && data.sessions.length > 0) {
+        setSessions(data.sessions);
+      } else {
+        setSearchError('No se encontraron sesiones para este correo.');
+      }
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : 'Error de red al buscar sesiones');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleResumeClick = async (sessionId: string) => {
+    setSearching(true);
+    setSearchError('');
+    try {
+      const res = await fetch('/api/onboarding/session/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al reanudar sesión');
+      onResume(data);
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : 'Error al reanudar sesión');
+    } finally {
+      setSearching(false);
+    }
+  };
+
   return (
-    <div className="gate-container">
-      <div className="gate-card neo-card" style={{ textAlign: 'center', padding: '3rem' }}>
-        <h1 className="neo-title" style={{ justifyContent: 'center' }}>BLACK BOX MAGIC</h1>
-        <p className="gate-subtitle" style={{ letterSpacing: '0.1em', fontWeight: 800 }}>
+    <div className="gate-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+      <div className="gate-card neo-card" style={{ width: '100%', maxWidth: '520px', padding: '2.5rem' }}>
+        <h1 className="neo-title" style={{ justifyContent: 'center', fontSize: '1.8rem', marginBottom: '0.25rem' }}>BLACK BOX MAGIC</h1>
+        <p className="gate-subtitle" style={{ textAlign: 'center', letterSpacing: '0.1em', fontWeight: 800, fontSize: '0.8rem', marginBottom: '2rem' }}>
           ONBOARDING SELF-SERVE
         </p>
-        <p style={{
-          fontSize: '1rem',
-          color: 'var(--neo-muted)',
-          lineHeight: 1.7,
-          marginBottom: '2rem',
-          maxWidth: '480px',
-          fontWeight: 600,
-        }}>
-          Configura y calibra tu propio motor de auditoría visual con IA en cuestión de minutos. Elige tu industria, dicta tus reglas y prueba con tus fotos de campo.
-        </p>
-        <button
-          onClick={onStart}
-          disabled={loading}
-          className="neo-btn neo-btn-primary"
-          style={{ width: '100%', maxWidth: '280px', padding: '1rem' }}
-        >
-          {loading ? 'CARGANDO...' : 'COMENZAR ONBOARDING'}
-        </button>
+
+        {/* Tab Selector */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '3px solid var(--neo-border)', paddingBottom: '0.75rem' }}>
+          <button
+            onClick={() => setActiveTab('new')}
+            className={`neo-btn ${activeTab === 'new' ? 'neo-btn-primary' : 'neo-btn-muted'}`}
+            style={{ flex: 1, padding: '0.6rem 0.5rem', fontSize: '0.8rem', borderWidth: '2.5px' }}
+          >
+            Nuevo Onboarding
+          </button>
+          <button
+            onClick={() => setActiveTab('resume')}
+            className={`neo-btn ${activeTab === 'resume' ? 'neo-btn-primary' : 'neo-btn-muted'}`}
+            style={{ flex: 1, padding: '0.6rem 0.5rem', fontSize: '0.8rem', borderWidth: '2.5px' }}
+          >
+            Reanudar Sesión
+          </button>
+        </div>
+
+        {/* Tab Content: New */}
+        {activeTab === 'new' && (
+          <form onSubmit={handleStartNew} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label htmlFor="company-name" style={{ fontWeight: 800, fontSize: '0.85rem' }}>Nombre de tu Empresa:</label>
+              <input
+                id="company-name"
+                type="text"
+                className="other-industry-input"
+                style={{ padding: '0.65rem 0.85rem' }}
+                value={clientName}
+                onChange={e => setClientName(e.target.value)}
+                placeholder="Ej. Fruit of the Loom"
+                required
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label htmlFor="company-email" style={{ fontWeight: 800, fontSize: '0.85rem' }}>Tu Correo Electrónico:</label>
+              <input
+                id="company-email"
+                type="email"
+                className="other-industry-input"
+                style={{ padding: '0.65rem 0.85rem' }}
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="correo@ejemplo.com"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading || !clientName.trim() || !email.trim()}
+              className="neo-btn neo-btn-success"
+              style={{ width: '100%', marginTop: '1rem', padding: '0.9rem' }}
+            >
+              {loading ? 'CREANDO SESIÓN...' : 'COMENZAR ONBOARDING'}
+            </button>
+          </form>
+        )}
+
+        {/* Tab Content: Resume */}
+        {activeTab === 'resume' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <form onSubmit={handleSearchSessions} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label htmlFor="resume-email" style={{ fontWeight: 800, fontSize: '0.85rem' }}>Ingresa tu Correo Electrónico:</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  id="resume-email"
+                  type="email"
+                  className="other-industry-input"
+                  style={{ padding: '0.65rem 0.85rem' }}
+                  value={resumeEmail}
+                  onChange={e => setResumeEmail(e.target.value)}
+                  placeholder="correo@ejemplo.com"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={searching || !resumeEmail.trim()}
+                  className="neo-btn neo-btn-primary"
+                  style={{ flexShrink: 0, padding: '0.65rem 1.25rem', borderWidth: '2.5px' }}
+                >
+                  {searching ? 'Buscando...' : 'Buscar'}
+                </button>
+              </div>
+            </form>
+
+            {searchError && (
+              <p style={{ color: 'var(--neo-danger)', fontWeight: 800, fontSize: '0.85rem', margin: '0.5rem 0 0 0', textAlign: 'center' }}>
+                {searchError}
+              </p>
+            )}
+
+            {/* Session list selector */}
+            {sessions.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '1rem', maxHeight: '280px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                <p style={{ fontWeight: 800, fontSize: '0.85rem', margin: '0 0 0.25rem 0' }}>Selecciona la sesión a reanudar:</p>
+                {sessions.map(s => {
+                  const dateStr = new Date(s.updatedAt).toLocaleDateString('es-MX', {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+                  return (
+                    <div
+                      key={s.sessionId}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0.85rem 1rem',
+                        border: '2.5px solid var(--neo-border)',
+                        borderRadius: '8px',
+                        background: '#fafafa',
+                        gap: '1rem',
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {s.clientName}
+                        </p>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--neo-muted)' }}>
+                          {s.industry === 'qsr' ? '🍔 QSR' : s.industry === 'retail_btl' ? '🏷️ Retail' : '⚙️ Operaciones'} &middot; {dateStr}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleResumeClick(s.sessionId)}
+                        disabled={searching}
+                        className="neo-btn neo-btn-success"
+                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem', borderWidth: '2px', flexShrink: 0 }}
+                      >
+                        Ingresar
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -536,6 +725,9 @@ interface TestingViewProps {
   gaps: string[];
   confidence: number;
   openCalibrationDrawer: () => void;
+  historyList: any[];
+  onResumeSession: (sessionId: string) => Promise<void>;
+  currentSessionId: string | null;
 }
 
 function TestingView({
@@ -549,7 +741,10 @@ function TestingView({
   config,
   gaps,
   confidence,
-  openCalibrationDrawer
+  openCalibrationDrawer,
+  historyList,
+  onResumeSession,
+  currentSessionId
 }: TestingViewProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -767,6 +962,64 @@ function TestingView({
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Historial de Versiones */}
+      {historyList.length > 1 && (
+        <div style={{ marginTop: '2.5rem', borderTop: '2px dashed var(--neo-border)', paddingTop: '1.5rem' }}>
+          <h3 style={{ fontWeight: 800, fontSize: '1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            ⏳ Historial de Versiones y Calibraciones
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {historyList.map((hist) => {
+              const isActive = hist.id === currentSessionId;
+              const dateStr = new Date(hist.createdAt).toLocaleDateString('es-MX', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+              return (
+                <div
+                  key={hist.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    border: isActive ? '2.5px solid var(--neo-primary)' : '2px solid var(--neo-border)',
+                    borderRadius: '8px',
+                    background: isActive ? '#eff6ff' : '#ffffff',
+                    boxShadow: isActive ? '2px 2px 0px var(--neo-primary)' : '2px 2px 0px var(--neo-border)',
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>
+                      Versión {hist.version} {hist.status === 'active' ? ' (Activa)' : hist.status === 'draft' ? ' (Borrador)' : ''}
+                    </span>
+                    <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.75rem', color: 'var(--neo-muted)', fontWeight: 600 }}>
+                      Modificado el {dateStr}
+                    </p>
+                  </div>
+                  {!isActive && (
+                    <button
+                      onClick={() => onResumeSession(hist.id)}
+                      className="neo-btn neo-btn-primary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderWidth: '2px', flexShrink: 0 }}
+                    >
+                      Cargar Versión
+                    </button>
+                  )}
+                  {isActive && (
+                    <span className="badge badge--green" style={{ border: '2px solid var(--border)', fontWeight: 800, fontSize: '0.7rem', flexShrink: 0 }}>
+                      Actual
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -1005,6 +1258,7 @@ function OnboardingPageInner() {
   const {
     state,
     startSession,
+    resumeSession,
     sendMessage,
     startSynthesis,
     approveConfig,
@@ -1020,13 +1274,48 @@ function OnboardingPageInner() {
   } = useOnboardingChat();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [historyList, setHistoryList] = useState<any[]>([]);
 
-  const handleStart = () => {
+  // S6: Auto-login if code exists in URL (bypass tabs)
+  useEffect(() => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!code || !uuidRegex.test(code)) {
-      return;
+    if (code && uuidRegex.test(code)) {
+      startSession(code);
     }
-    startSession(code);
+  }, [code, startSession]);
+
+  const fetchHistory = useCallback(async () => {
+    if (!state.token || (state.phase !== 'testing' && state.phase !== 'reviewing')) return;
+    try {
+      const res = await fetch('/api/onboarding/session/history', {
+        headers: { Authorization: `Bearer ${state.token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.history) {
+        setHistoryList(data.history);
+      }
+    } catch (err) {
+      console.error('Error fetching config history:', err);
+    }
+  }, [state.token, state.phase]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory, state.sessionId, state.synthesizedConfig]);
+
+  const handleLoadHistoricalVersion = async (sessionId: string) => {
+    try {
+      const res = await fetch('/api/onboarding/session/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al cargar versión histórica');
+      resumeSession(data);
+    } catch (err) {
+      console.error('Error resuming historical session:', err);
+    }
   };
 
   const handleStartVoice = () => {
@@ -1073,7 +1362,7 @@ function OnboardingPageInner() {
         )}
 
         {state.phase === 'idle' && (
-          <IdleView onStart={handleStart} loading={state.loading} />
+          <IdleView onStart={startSession} onResume={resumeSession} loading={state.loading} />
         )}
 
         {state.phase === 'chatting' && !state.voiceMode && (
@@ -1116,6 +1405,9 @@ function OnboardingPageInner() {
             gaps={state.gaps}
             confidence={state.confidence}
             openCalibrationDrawer={() => setIsDrawerOpen(true)}
+            historyList={historyList}
+            onResumeSession={handleLoadHistoricalVersion}
+            currentSessionId={state.sessionId}
           />
         )}
 
