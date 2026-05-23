@@ -182,7 +182,7 @@ describe('Onboarding Phase 4 Endpoints Integration Tests', () => {
         },
       } as any);
 
-      const currentPartialConfig = { partial_config: { areas: [], isComplete: false } };
+      const currentPartialConfig = { client_id: 'cli-test', partial_config: { areas: [], isComplete: false } };
       const query = mockSupabaseChain(currentPartialConfig);
       vi.mocked(supabase!.from).mockReturnValue(query as any);
 

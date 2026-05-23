@@ -24,8 +24,8 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 function checkRateLimit(key: string): boolean {
   const now = Date.now();
 
-  // Cleanup agresivo si estamos cerca del límite de llaves (80%)
-  if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS * 0.8 && !rateLimitMap.has(key)) {
+  // Cleanup agresivo si estamos cerca del límite de llaves (50%)
+  if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS * 0.5 && !rateLimitMap.has(key)) {
     const expiredKeys: string[] = [];
     rateLimitMap.forEach((entry, k) => {
       if (now > entry.resetAt) {
@@ -37,8 +37,18 @@ function checkRateLimit(key: string): boolean {
 
   // Rechazo si aún estamos sobre el límite absoluto
   if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS && !rateLimitMap.has(key)) {
-    console.warn('[onboarding/resume] Rate limit map full, rejecting request to protect memory');
-    return false;
+    // Desalojo agresivo del 10% más antiguo/aleatorio si persiste la saturación extrema
+    const keys = Array.from(rateLimitMap.keys());
+    const countToEvict = Math.floor(keys.length * 0.1);
+    for (let i = 0; i < countToEvict && i < keys.length; i++) {
+      rateLimitMap.delete(keys[i]);
+    }
+
+    // Si sigue lleno, rechazar la solicitud para proteger la memoria
+    if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS) {
+      console.warn('[onboarding/resume] Rate limit map full, rejecting request to protect memory');
+      return false;
+    }
   }
 
   const entry = rateLimitMap.get(key);

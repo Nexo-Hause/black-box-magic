@@ -51,6 +51,46 @@ export async function POST(request: NextRequest) {
     const { email: inputEmail, clientName: inputClientName } = parsed.data;
     email = inputEmail;
     clientName = inputClientName;
+
+    // Check if a draft session already exists for this email first (Fase 4: prevent duplicates)
+    if (supabase) {
+      try {
+        const { data: existingByEmail, error: emailFetchError } = await supabase
+          .from('bbm_client_configs')
+          .select('id, client_id, client_name, status, transcript, partial_config, config')
+          .eq('created_by', email)
+          .eq('status', 'draft')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (emailFetchError) {
+          console.error('[onboarding/session] Error fetching existing by email:', emailFetchError.message);
+        }
+
+        if (existingByEmail) {
+          const reusedToken = await generateOnboardingToken({
+            clientId: existingByEmail.client_id,
+            clientName: existingByEmail.client_name,
+            email,
+          });
+
+          return NextResponse.json({
+            sessionId: existingByEmail.id,
+            clientId: existingByEmail.client_id,
+            clientName: existingByEmail.client_name,
+            token: reusedToken,
+            transcript: existingByEmail.transcript || [],
+            partialConfig: existingByEmail.partial_config || createEmptyPartialConfig(),
+            synthesizedConfig: existingByEmail.config || null,
+            status: existingByEmail.status,
+          });
+        }
+      } catch (err) {
+        console.error('[onboarding/session] Supabase email lookup error:', err);
+      }
+    }
+
     const clientKebab = clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const cleanKebab = clientKebab || 'client';
     clientId = `cli-${cleanKebab}-${randomUUID().slice(0, 8)}`;

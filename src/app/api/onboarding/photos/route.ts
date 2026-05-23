@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // 1. Fetch current partial_config to avoid overriding other fields
+    // 1. Fetch current partial_config to avoid overriding other fields and verify ownership
     const { data: configRow, error: fetchError } = await supabase
       .from('bbm_client_configs')
-      .select('partial_config')
+      .select('client_id, partial_config')
       .eq('id', sessionId)
       .maybeSingle();
 
@@ -83,7 +83,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const currentPartialConfig = configRow?.partial_config && typeof configRow.partial_config === 'object'
+    if (!configRow) {
+      return NextResponse.json(
+        { error: 'Session not found', status: 404 },
+        { status: 404 }
+      );
+    }
+
+    // Enforce ownership: matching the authenticated clientId from requireOnboardingAuth
+    if (configRow.client_id !== auth.payload.clientId) {
+      console.error(`[onboarding/photos] Unauthorized session edit attempt: client_id mismatch (JWT: ${auth.payload.clientId}, Row: ${configRow.client_id})`);
+      return NextResponse.json(
+        { error: 'Access denied: you do not own this session', status: 403 },
+        { status: 403 }
+      );
+    }
+
+    const currentPartialConfig = configRow.partial_config && typeof configRow.partial_config === 'object'
       ? (configRow.partial_config as Record<string, unknown>)
       : {};
 
