@@ -1,64 +1,64 @@
-# Task Checklist — WS2 (Dashboard Frontend) y WS3 (Export Excel)
+# Checklist de Ejecución — Onboarding Automático e Interactivo Self-Serve
 
-## Fase 1: Configuración y Modelos de Datos (WS2)
-- [x] **Tarea 0b:** Modificar `src/app/api/planogram/upload/route.ts` para resolver, validar y estampar `client_id` de tenencia en `bbm_planograms`.
-- [x] **Tarea 0:** Extender `IncidenceFilters` e `IncidenceRecord` en `src/types/incidence.ts`.
-  - [x] Paso 1: Agregar `clientId?: string` y `sort?: 'captured_desc' | 'captured_asc'` a `IncidenceFilters`.
-  - [x] Paso 2: Agregar `client_id?: string | null` a `IncidenceRecord`.
-  - [x] Paso 3: Validar que `npx tsc --noEmit` pase.
-  - [x] Paso 4: Hacer commit local de la Tarea 0.
+Este checklist interactivo organiza las tareas técnicas necesarias para implementar la experiencia de onboarding autogestionado en BBM y Ubiqo bajo la familia **Gemini 3.5 Flash**.
 
-## Fase 2: APIs de Backend y Cobertura TDD (WS2)
-- [x] **Tarea 1:** `GET /api/planogram/clients` + tests.
-  - [x] Paso 1: Crear tests unitarios en `src/app/api/planogram/__tests__/clients.test.ts`.
-  - [x] Paso 2: Ejecutar y verificar que los tests fallen.
-  - [x] Paso 3: Crear el endpoint en `src/app/api/planogram/clients/route.ts` con `resolveSession` y `scopedQuery`.
-  - [x] Paso 4: Ejecutar tests y verificar que pasen.
-  - [x] Paso 5: Validar con `tsc` y linter.
-  - [x] Paso 6: Hacer commit local.
-- [x] **Tarea 2a:** `GET /api/planogram/incidences` + tests.
-  - [x] Paso 1: Crear tests unitarios en `src/app/api/planogram/__tests__/incidences.test.ts` (paginación, clamping, tenant-scoping).
-  - [x] Paso 2: Ejecutar y verificar que los tests fallen.
-  - [x] Paso 3: Crear el endpoint en `src/app/api/planogram/incidences/route.ts` aplicando `scopedQuery` y paginación.
-  - [x] Paso 4: Ejecutar tests y verificar que pasen.
-  - [x] Paso 5: Validar con `tsc` y linter.
-  - [x] Paso 6: Hacer commit local.
-- [x] **Tarea 2b:** `GET /api/planogram/incidences/[id]` + tests.
-  - [x] Paso 1: Añadir tests para el detalle de incidencia (signed URLs y **HTTP 404** ante acceso cruzado).
-  - [x] Paso 2: Verificar que fallen.
-  - [x] Paso 3: Crear el endpoint en `src/app/api/planogram/incidences/[id]/route.ts`.
-  - [x] Paso 4: Verificar que pasen.
-  - [x] Paso 5: Validar con `tsc` y linter.
-  - [x] Paso 6: Hacer commit local.
-- [x] **Tarea 3:** `POST /api/planogram/assign` + tests.
-  - [x] Paso 1: Crear tests unitarios en `src/app/api/planogram/__tests__/assign.test.ts` (asignación 1:1, duplicados HTTP 409, cross-tenant HTTP 404).
-  - [x] Paso 2: Verificar que fallen.
-  - [x] Paso 3: Crear el endpoint en `src/app/api/planogram/assign/route.ts`.
-  - [x] Paso 4: Verificar que pasen.
-  - [x] Paso 5: Validar con `tsc` y linter.
-  - [x] Paso 6: Hacer commit local.
+---
 
-## Fase 3: Lógica y UI del Cliente (WS2 Frontend)
-- [x] **Tarea 4:** Hook de React `useDashboard.ts` + tests.
-  - [x] Paso 1: Crear hook `src/hooks/useDashboard.ts`.
-  - [x] Paso 2: Crear suite de tests `src/hooks/__tests__/useDashboard.test.ts` con fetch mockeado.
-  - [x] Paso 3: Validar que `npm test` y `tsc` compilen al 100%.
-  - [x] Paso 4: Hacer commit local.
-- [x] **Tarea 5:** Vista principal `/dashboard` (gate de login, selector de clientes por rol, tabla con row-hover, modal detalle, 3 empty states y paginación).
-- [x] **Tarea 6:** Vista `/dashboard/planograms` (grid de planogramas con thumbnails seguros, drag&drop de subida, y formulario de asignación de `form_id`).
-- [x] **Tarea 7:** Estilos CSS avanzados (sticky headers, table row hover) en `src/app/globals.css`.
+## [x] Fase 1: Backend de Modelos y API (Gemini 3.5 Flash)
+- [x] **Actualización de Constantes de Modelos en `gemini-chat.ts`**
+  - [x] Redefinir `CHAT_MODEL` y `SYNTHESIS_MODEL` estrictamente a `'gemini-3.5-flash'` para depreciar la familia 2.5.
+- [x] **Prevención de Prompt Injection en `synthesis.ts`**
+  - [x] Modificar el prompt en `src/lib/onboarding/synthesis.ts` para enmarcar el dictado libre del usuario en etiquetas XML `<user_rules>...</user_rules>`.
+  - [x] Instruir a Gemini para tratar este bloque únicamente de forma pasiva y como criterios de auditoría.
+- [x] **Filtro de Relevancia Dinámico (Descarte de Paja) en Síntesis**
+  - [x] Modificar el prompt del sintetizador para descartar facetas no relacionadas con lo que el cliente dictó, marcándolas como `"N/A"` en la configuración resultante.
+- [x] **Creación del Endpoint `/api/onboarding/guide`**
+  - [x] Crear `src/app/api/onboarding/guide/route.ts` para resolver el flujo dinámico de industrias personalizadas ("Otros").
+  - [x] Realizar una llamada rápida y ligera a `gemini-3.5-flash` para retornar 4 preguntas guía específicas en formato JSON.
+  - [x] Añadir try-catch blindado de robustez y control de fallas con respuestas de fallback estructuradas.
 
-## Fase 4: Exportación de Reportes a Excel (WS3)
-- [x] **Tarea 8:** Builder de Excel con 4 hojas (`src/lib/exports/incidences-excel.ts`) + tests.
-  - [x] Paso 1: Crear suite de pruebas `src/lib/exports/__tests__/incidences-excel.test.ts` (nombres de hojas, pivotes y sanitización de celdas).
-  - [x] Paso 2: Exportar la función `sanitize` en `src/lib/exports/excel.ts`.
-  - [x] Paso 3: Codificar el generador de libro `buildIncidencesWorkbook` importando y sanitizando celdas de texto.
-  - [x] Paso 4: Ejecutar tests y validar exit 0.
-- [x] **Tarea 9:** Endpoint `GET /api/planogram/export` + tests.
-  - [x] Paso 1: Crear suite de pruebas `src/app/api/planogram/__tests__/export.test.ts` (restricción por tenant, tope de 5,000 registros, cabeceras del archivo).
-  - [x] Paso 2: Implementar la ruta `/api/planogram/export/route.ts` con `resolveSession` y `scopedQuery`.
-  - [x] Paso 3: Ejecutar y verificar pruebas.
-- [x] **Tarea 10:** Integración de descarga en la UI del Dashboard.
-  - [x] Paso 1: Añadir el botón "Exportar Excel" en la barra de filtros de `/dashboard/page.tsx`.
-  - [x] Paso 2: Construir los query params en el click usando `URLSearchParams` y redirigir el href de descarga.
-  - [x] Paso 3: Probar manual de extremo a extremo en el navegador y adjuntar evidencias.
+## [x] Fase 2: Componentes de Interfaz de Usuario y Estilos (Vanilla CSS)
+- [x] **Creación de Estilos Modulares (`onboarding.css`)**
+  - [x] Crear `src/app/onboarding/onboarding.css` usando Vanilla CSS y variables modulares heredadas de `globals.css`.
+  - [x] Diseñar los botones interactivos del selector de industrias, el micrófono Neo-Brutalista y el panel lateral de calibración.
+  - [x] Añadir micro-animaciones fluidas de parpadeo y pulso CSS para los estados del micrófono (`listening`, `processing`).
+- [x] **Rediseño del Componente Principal de Onboarding (`page.tsx`)**
+  - [x] Modificar `src/app/onboarding/page.tsx` para articular el **Flujo de 3 Pasos Premium**:
+    - [x] **Paso 1:** Selector de industria con guías dinámicas basadas en los clusters del repo. Entrada de dictado por voz y texto con micrófono interactivo.
+    - [x] **Paso 2:** Zona de carga drag-and-drop de fotos de prueba del Sandbox de 100 fotos. Barra de progreso en tiempo real con estados.
+    - [x] **Paso 3:** Resultados ultra-limpios (sin paja genérica) con botones de acción rápida **"OK (Activar Motor)"** y **"Modificar (Ajustar)"**.
+- [x] **Implementación de Panel de Calibración Lateral**
+  - [x] Integrar el panel colapsable que se abre al dar clic en "Modificar" con los 3 inputs universales:
+    - [x] Selector de Severidad (Estricto / Adecuado / Tolerante).
+    - [x] Entrada de Omisiones (Texto libre).
+    - [x] Checkboxes de Descarte de Paja (iluminación, teoría laboral, marcas competidoras).
+  - [x] Integrar el trigger de re-síntesis asíncrona que actualice el reporte de prueba en caliente.
+
+## [x] Fase 3: Pruebas y Robustez de Control (QA)
+- [x] **Ajuste de Suites de Vitest Existentes**
+  - [x] Analizar y reescribir aserciones rígidas en `synthesis.test.ts` que validen strings de modelos viejos, alineándolas al nuevo `'gemini-3.5-flash'`.
+- [x] **Creación de Nuevos Tests de Cobertura**
+  - [x] Añadir test unitario para validar que `synthesis.ts` encapsule correctamente el input libre dentro de los tags XML delimitados.
+  - [x] Añadir test de integración para el endpoint `/api/onboarding/guide` con diferentes tipos de industrias personalizadas ("Otros").
+- [x] **Verificación y Ejecución Completa de Pruebas**
+  - [x] Correr la suite de Vitest localmente asegurando que todos los tests pasen (Exit 0):
+    ```bash
+    npx vitest run
+    ```
+
+## [/] Fase 4: Persistencia Sandbox, Inicio de Sesión por Correo e Historial de Prompts
+- [ ] **Desarrollo de Nuevos Endpoints en Backend:**
+  - [ ] Implementar `/api/onboarding/session/resume` para buscar y reanudar sesiones por correo.
+  - [ ] Adaptar `/api/onboarding/session` para crear sesiones instantáneas al vuelo con `{ email, clientName }`.
+  - [ ] Desarrollar `/api/onboarding/photos` para guardar el lote de fotos base64 y reportes en Supabase.
+  - [ ] Desarrollar `/api/onboarding/session/history` para obtener la lista de versiones y prompts previos.
+- [ ] **Sincronización Automática en `useOnboardingChat.ts`:**
+  - [ ] Reconstruir la acción `SESSION_CREATED` del reducer para restaurar el chat transcript, el Sandbox de fotos, la fase del onboarding y el prompt de forma dinámica.
+  - [ ] Integrar autoguardado en `addTestPhoto` y `rateTestResult` llamando al endpoint de fotos.
+- [ ] **Actualización de Interfaz en `page.tsx`:**
+  - [ ] Rediseñar la pantalla de entrada en `IdleView` con layout premium de pestañas: "Comenzar Nuevo Onboarding" (Correo + Empresa) y "Reanudar Onboarding" (Correo).
+  - [ ] Añadir selector visual de sesiones para correos con múltiples registros.
+  - [ ] Añadir sección/drawer de "Historial de Versiones" para listar las configuraciones históricas y permitir restaurar prompts antiguos.
+- [ ] **Ejecución y Verificación:**
+  - [ ] Crear tests de integración para reanudación e historial.
+  - [ ] Asegurar que Vitest pase con 100% verde y no existan errores de compilación de TypeScript.

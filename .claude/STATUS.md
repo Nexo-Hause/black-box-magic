@@ -1,34 +1,34 @@
 # Estado del Proyecto — Black Box Magic
 
 > Se actualiza al final de cada sesión con `/cierre`.
-> Última actualización: 2026-05-22 (Sesión 21 — Implementación del Onboarding Automático e Interactivo Self-Serve en Gemini 3.5 Flash, mitigación XML de inyección y endpoint dinámico para guías de industrias personalizadas, verificado con 267/267 tests de Vitest en verde). Roadmap TP: `docs/roadmap-2026-05.md`.
+> Última actualización: 2026-05-22 (Sesión 21 — Implementación del Onboarding Automático e Interactivo Self-Serve en Gemini 3.5 Flash, mitigación XML de inyección y endpoint dinámico para guías de industrias personalizadas. Se incorporó el diseño y especificación técnica de la Fase 4: Onboarding Persistente, Multi-Tenant y sin Fricción, verificado con 269/269 tests de Vitest en verde). Roadmap TP: `docs/roadmap-2026-05.md`.
 
 ---
 
 ## Foco Actual
 
 **Objetivo:** MVP **comercializable atado a Ubiqo Evidence**, robusto en producción, para comercializar con clientes (Fruit of the Loom).
-**Secuencia estricta:** `WS0 ─► WS1 ─► WS-D ─► WS-MT ─► WS-H ─► WS2 ─► WS3 ─► WS4`
-*   **WS2 Backend & Frontend:** ✅ 100% completado (endpoints de catálogo/incidencias/asignación, hook `useDashboard` y pantallas `/dashboard` y `/dashboard/planograms` con drag&drop y asignación).
-*   **WS3 Export Excel:** ✅ 100% completado (generador multi-hoja con pivots, sanitización de celdas contra inyección CSV/DDE, tope de 5,000 registros para evitar OOM, endpoint `/api/planogram/export` y botón de descarga interactivo).
-*   **WS4 E2E Planograma Real:** ✅ 100% completado (reemplazo de la imagen placeholder verde de 1x1 píxeles por un planograma real y profesional en Supabase Storage).
-*   **Siguiente:** Proceder al merge de la sesión actual a `main`.
+**Secuencia estricta:** `WS0 ─► WS1 ─► WS-D ─► WS-MT ─► WS-H ─► WS2 ─► WS3 ─► WS4 ─► Onboarding Self-Serve`
+*   **WS2 Backend & Frontend:** ✅ 100% completado.
+*   **WS3 Export Excel:** ✅ 100% completado.
+*   **WS4 E2E Planograma Real:** ✅ 100% completado.
+*   **Onboarding Self-Serve (Fases 1-3):** ✅ 100% completado (migración a Gemini 3.5 Flash, tags XML, guías dinámicas `/guide` y drawer de calibración).
+*   **Onboarding Self-Serve (Fase 4 — Persistencia y Cero Fricción):** 📋 Diseño y especificación técnica cerrado y guardado en `spec/implementation_plan.md` y `spec/task.md`.
+*   **Siguiente:** Proceder a ejecutar el desarrollo de la Fase 4 de Onboarding Persistente y sin Fricción.
 
 ---
 
 ## Handoff — próxima sesión (leer esto primero)
 
-**Dónde estamos:** El Onboarding Automático e Interactivo Self-Serve está 100% completado, integrado y probado. Migramos el backend del onboarding, síntesis y chat a la familia **Gemini 3.5 Flash**, depreciando la obsoleta familia 2.5. Implementamos mitigaciones de prompt injection encapsulando dictados en tags XML `<user_rules>` e instruyendo tratamiento pasivo. Desarrollamos un endpoint dinámico para guías de industrias personalizadas (`/api/onboarding/guide`) y un selector interactivo Neo-Brutalista con estados del micrófono CSS y un drawer lateral de calibración en caliente para re-síntesis asíncrona. La suite completa cuenta con 267/267 tests pasando con éxito.
+**Dónde estamos:** El Onboarding Self-Serve interactivo cuenta con sus Fases 1-3 completamente terminadas y probadas (269/269 tests en verde). Adicionalmente, ante el feedback de Gonzalo, diseñamos y especificamos detalladamente la **Fase 4: Onboarding Persistente, Multi-Tenant y sin Fricción**, la cual está documentada en [implementation_plan.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/implementation_plan.md) y [task.md](file:///c:/Users/gleon/Projects/black-box-magic/spec/task.md).
 
-**Specs y Estado de Código:**
-*   `src/lib/gemini-chat.ts` — Constantes de modelos migradas a `'gemini-3.5-flash'`.
-*   `src/lib/onboarding/synthesis.ts` — Encapsulación XML, descarte de paja ("N/A") y mitigación de inyección.
-*   `src/app/api/onboarding/guide/route.ts` — Endpoint de preguntas guía dinámicas con fallback estructurado.
-*   `src/app/onboarding/onboarding.css` — Estilos Neo-Brutalistas, micrófono pulsante y slide-out calibration drawer.
-*   `src/app/onboarding/page.tsx` — Flujo interactivo de 3 pasos y drawer colapsable.
+**Estrategia Diseñada (Fase 4):**
+1.  **Acceso sin fricción:** Habilitar creación de sesión instantánea ingresando Correo y Empresa, o reanudación ingresando únicamente Correo, eliminando la necesidad de códigos UUID de administrador.
+2.  **Persistencia del Sandbox:** Guardar incrementalmente en Supabase (`partial_config.sandbox_photos`) el lote de fotos base64, reportes generados, comentarios y ratings (OK/NO) al vuelo.
+3.  **Historial de Prompts:** Listar versiones previas de configuraciones para el cliente y permitir cargar e importar prompts/reglas antiguas de vuelta para re-calibración.
 
 **Siguiente acción concreta:**
-1.  Proceder con el merge del PR actual `session/21-onboarding-interactive` a `main` tras validar que el pipeline en CI esté 100% verde.
+1.  Comenzar directamente con el desarrollo de la **Fase 4** de acuerdo con el checklist en `spec/task.md` (desarrollar endpoints de `/resume`, `/photos` e `/history`, y cablear la UI).
 
 ---
 
