@@ -6,7 +6,7 @@ import { z } from 'zod/v4';
 
 const resumeRequestSchema = z.union([
   z.object({
-    email: z.string().email(),
+    email: z.string().email().min(3).max(254).transform(v => v.toLowerCase().trim()),
   }),
   z.object({
     sessionId: z.string().uuid(),
@@ -19,6 +19,20 @@ export const maxDuration = 15;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 5;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+// Periodic cleanup every 5 minutes to avoid memory leaks
+const intervalId = setInterval(() => {
+  const now = Date.now();
+  rateLimitMap.forEach((entry, key) => {
+    if (now > entry.resetAt) {
+      rateLimitMap.delete(key);
+    }
+  });
+}, 5 * 60 * 1000);
+
+if (typeof intervalId !== 'number' && intervalId && 'unref' in intervalId) {
+  (intervalId as any).unref();
+}
 
 function checkRateLimit(key: string): boolean {
   const now = Date.now();
