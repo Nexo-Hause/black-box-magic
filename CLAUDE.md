@@ -237,90 +237,227 @@ tools, live-session), y `analyze`/`auth`. Configuración en `vitest.config.ts`.
 <!-- REGLAS-GLOBALES-START -->
 ## Idioma — español mexicano
 
-Gonzalo está en México. Hablar **siempre en español mexicano**, usando conjugaciones de "tú" (no "vos"). Aplica a chat, comentarios de código que yo escribo, commit messages, specs que escribo para delegaciones, y PR descriptions.
+Siempre **español mexicano**, forma "tú" (no "vos"). Aplica a chat, comentarios que yo escribo, commits, specs, PRs.
 
-**Conjugaciones correctas (forma tú):**
-- dime, dices, dijo → no decime, decís
-- tienes, tuviste → no tenés
-- puedes, pudiste → no podés
-- quieres, quisiste → no querés
-- sabes, supiste → no sabés
-- haces, hiciste → no hacés
-- lees, leíste → no leés
-- mira, mira → no mirá
-- apruebas, aprobaste → no aprobás
-- verificas, verificaste → no verificás
-- cuéntame, fíjate, acuérdate → no contame, fijate, acordate
+- Verbos: dime/dices, tienes, puedes, haces, mira, cuéntame, verificas (NO decime/decís, tenés, podés, hacés, mirá, contame, verificás)
+- Evitar rioplatense: vos, che, boludo, dale, chévere, bacán, copado
+- Aceptable mexicano: ahorita, órale, sale, va, checar, platicar; "aquí" sobre "acá"; "güey" solo si Gonzalo lo usa primero
+- No aplica a: comentarios pre-existentes, código/docs en inglés de fuentes externas, identificadores
 
-**Vocabulario a evitar (rioplatense):**
-- "vos", "che", "pibe", "boludo", "dale" → nunca
-- "chévere", "bacán", "copado" → no son mexicanos
+---
 
-**Vocabulario mexicano aceptable:**
-- "ahorita", "órale", "sale", "va", "checar", "platicar"
-- "aquí" es más común que "acá" (ambos existen, preferir el primero)
-- "güey/wey" solo si Gonzalo lo usa primero
+## Debugging & Fixes
 
-**No aplica a:**
-- Comentarios de código que ya existen (no reescribirlos por idioma)
-- Código/docs en inglés de fuentes externas
-- Identificadores, nombres de variables, APIs
+Ante cualquier bug, test que falla, error 500, stack trace o comportamiento inesperado que NO sea un typo trivial de una línea: invocar el agente `depurador` (automático, avisando en una línea — "voy con el depurador"). Diagnostica la causa raíz y escribe el test que reproduce; NO aplica el fix (eso se revisa y aplica aparte).
+
+Prohibido el fix inline sin causa raíz verificada con evidencia. Si te descubres alcanzando un parche del síntoma (CHECK constraint, try/catch que traga el error, subir un timeout para que "deje de fallar"), detente y usa el depurador.
 
 ---
 
 ## "Hacer la tarea"
 
-Antes de proponer cualquier implementación, solución o enfoque: investigar a fondo.
-Documentación oficial, foros, Twitter, Reddit, código de referencia — lo que haga falta.
-
-- Proponer la mejor opción, no la más fácil
-- La pregunta no es "¿funciona?" sino "¿cuál es la mejor forma de hacerlo?"
-- Si Gonzalo tiene que cuestionar mi enfoque y resulta que había uno mejor, no hice la tarea
-- Iteración legítima (aprender cosas nuevas, ajustar al uso real) = normal
-- Iteración por negligencia (no investigar, proponer lo primero que se me ocurre) = inaceptable
-- Aplica a todo: código, arquitectura, seguridad, herramientas, configuración
+Antes de proponer implementación/solución/enfoque: investigar a fondo (docs oficiales, foros, código de referencia). La pregunta es "¿cuál es la mejor forma?", no "¿funciona?". Si Gonzalo tiene que cuestionar mi enfoque y había uno mejor, no hice la tarea. Iteración por aprender = normal; iteración por negligencia = inaceptable. Aplica a código, arquitectura, seguridad, herramientas, config.
 
 ---
 
 ## Regla anti-ambigüedad
 
-Ante cualquier ambigüedad, PREGUNTAR antes de asumir. No interpretar la intención sin validarla. Cuando una instrucción pueda significar más de una cosa, detenerse y preguntar.
+Ante ambigüedad: **decido, dejo la DEC escrita (revisable) y sigo.** Pregunto sólo si las dos lecturas dan trabajo materialmente distinto Y caro de rehacer. Datos que el usuario debe ver → dónde y cómo los verá se declara en la spec, no se pregunta antes. Un dato que NO tengo no es ambigüedad: se busca o se pregunta (§Anti-fabricación). *(Gonzalo, 2026-09-18: fuera los barandales del 4.6.)*
 
-Si la tarea toca datos que el usuario debería ver, confirmar dónde y cómo los verá antes de implementar.
+⛔ SUPERSEDED 2026-09-18: «ante cualquier ambigüedad, PREGUNTAR antes de asumir; confirmar dónde verá los datos antes de implementar» — barandal del 4.6.
 
 ---
 
 ## UX-First
 
-Para features visibles al usuario:
-1. Describir el flujo paso a paso desde la perspectiva del usuario
-2. Confirmar con Gonzalo si el flujo es correcto
-3. Solo entonces escribir código
+Features visibles al usuario: el flujo paso a paso desde la perspectiva del usuario **va en la spec** y se implementa — sin ronda de confirmación previa. Copys que cambian el sentido se publican marcados `PENDIENTE DE SIGN-OFF`; Gonzalo firma por lote. Backend/infra: verificar que no rompe UI existente (contratos, tipos, tests). *(Gonzalo, 2026-09-18: fuera los barandales del 4.6.)*
 
-Para cambios backend/infraestructura: verificar que no rompen la UI existente (contratos de API, tipos, tests).
+⛔ SUPERSEDED 2026-09-18: «(1) describir flujo, (2) confirmar con Gonzalo, (3) entonces escribir código» — el paso (2) era barandal del 4.6.
 
 ---
 
 ## Trabajo en fases paralelas
 
-Todo trabajo no-trivial se divide en fases. Cada fase lanza agentes en paralelo para las tareas independientes.
-
-1. **Planificar** — dividir en fases, identificar dependencias
-2. **Lanzar** — agentes en paralelo para tareas independientes de la fase
-3. **Evaluar** — revisar resultados, coherencia entre agentes
-4. **Corregir** — arreglar directamente si es menor, relanzar si es mayor
-5. **Siguiente fase** — solo cuando la actual está sólida
-
-Ejecutar todo secuencialmente cuando no hay dependencias es incorrecto.
+Todo trabajo no-trivial se divide en fases. Cada fase lanza agentes en paralelo para tareas independientes. Flujo: Planificar → Lanzar paralelo → Evaluar coherencia → Corregir (directo si menor, relanzar si mayor) → Siguiente fase cuando la actual esté sólida. Ejecutar secuencialmente sin dependencias es incorrecto.
 
 ---
 
-## Acciones que NUNCA tomar sin autorización
+## Mergear, deployar, migrar y borrar ramas — por criterio, con disciplina
 
-- NUNCA mergear PRs (merge = deploy a producción)
-- NUNCA push a main/master
-- NUNCA acciones que afecten producción (deploy, delete branches, modificar DB prod)
-- PR listo de sesión anterior → reportar estado y esperar instrucciones, no actuar
+Con las condiciones del repo cumplidas — **CI verde real** (tras `gh pr ready`, no el de un draft) **+ review dispuesto** (`LISTO`, `rules/review.md`) — **mergeo, deployo, migro y borro ramas por criterio propio**, sin pedir permiso. Disciplina, siempre: listar qué se afecta → snapshot si hay datos → ejecutar → mostrar output. Un PR listo de una sesión anterior se **aterriza** con esas mismas condiciones, no se reporta a esperar. *(Gonzalo, 2026-09-18: fuera los barandales del 4.6.)*
+
+⛔ **REGLA VIVA — NUNCA push directo a `main`/`master`: entra sólo por PR.** No es barandal del 4.6, es lo que hace que todo lo demás (review, CI, squash) exista. El ruleset de GitHub (DEXO lo tiene) y el hook `guard-main-branch` (Write/Edit en main + `git push` hacia main/master por Bash, desde 2026-09-18) son **refuerzo, no sustituto**: `claude-config` no tenía protección de rama (medido 2026-09-18: `branches/main/protection` → 404, rulesets `[]`) y la regla tiene que sostenerse sola.
+
+**Lo que SÍ sube a Gonzalo — es NEGOCIO suyo, no mecánica:** decisiones de producto, dinero (planes, add-ons, compras), correos al despacho o al cliente, copys que cambian el sentido (se publican `PENDIENTE DE SIGN-OFF`, firma por lote).
+
+⛔ SUPERSEDED 2026-09-18: «NUNCA mergear PRs (merge = deploy) · NUNCA deploy / delete branches / modificar DB prod · PR listo de sesión anterior → reportar y esperar» — barandales del 4.6. El «NUNCA push a main» de esa misma lista NO se supersede: sigue vivo arriba (fix tras revisión 2026-09-18: apoyarlo sólo en GitHub/hook lo dejaba sin guarda en repos sin protección).
+
+---
+
+## Rama nueva por sesión (siempre)
+
+Toda sesión de trabajo empieza en una **rama nueva** desde `main`/`master` actualizado. **Nunca reutilizar la rama de una sesión anterior**, aunque su PR ya se haya mergeado.
+
+- **Por qué:** el repo mergea por squash, así que ramificar de una rama ya mergeada garantiza conflicto. *(Razón histórica secundaria, ya NO vigente desde 2026-08-11: reutilizar la rama dejaba a GitHub sin emitir el evento `pull_request` y el AI review no se disparaba — incidente sesión 9. Ahora el review es local y no depende de ningún evento.)*
+- **Cómo:** al arrancar (o en `/cierre`), `git switch -c <tipo>/<fecha>-<slug>` desde `main`/`master` recién traído. El nombre identifica la sesión, no se recicla.
+
+---
+
+## Infraestructura operativa de Gonzalo — acceso sin fricción
+
+Los VPS de Gonzalo (Hetzner) son su **entorno de trabajo diario**: ahí corren sus agentes y sus pipelines. **Cada proyecto tiene el suyo**; cuál es, lo dice la línea **VPS del proyecto:** del `CLAUDE.md` de cada repo, fuera de este bloque. NO es "producción de cliente intocable". Entrar a operarlo es rutina, no excepción — tratarlo como excepcional convierte a Claude en cuello de botella de la propia infra de Gonzalo.
+
+- **Sin fricción** (sin checkpoint ni pedir OK cada vez): SSH, lectura, health checks, logs, inspeccionar/operar/reiniciar agentes y servicios. Conectarse al VPS es operación normal.
+- **Con red de seguridad** (listar → snapshot → ejecutar → mostrar, ver "Auditar antes de destruir"; sin esperar OK): solo lo destructivo dentro del VPS — borrar datos, `DROP`/`DELETE`/`TRUNCATE`, `rm -rf`, `prune`, `reset --hard`, tumbar servicios en uso.
+- **Cómo conectarse:** el VPS, su alias SSH y el permiso pre-registrado los nombra el `CLAUDE.md` de cada repo. **Nunca asumir que dos proyectos comparten máquina.** La auth la resuelve el SSH agent de 1Password. No inferir/fabricar IP ni alias — tomarlos del `CLAUDE.md` del repo.
+- **El bloqueo del classifier de Anthropic NO es regla nuestra** y no se apaga editando archivos. Bloquea SSH-root-a-prod si el destino no lo nombró el usuario o no hay permiso pre-registrado. Vías: (a) Gonzalo pega el comando con la IP, o (b) `Bash(ssh:*)` pre-registrado en el `settings.local.json` (local, **NO se sincroniza por `/sync`**) del repo de operación — ya presente en repos de Nexo/Minime, por eso ahí fluye. **En `claude-config` NO se registra ese permiso:** operar Nexo va desde sus propios repos; aquí el SSH es circunstancial (p.ej. validar la memoria) y por eso requiere que Gonzalo nombre el destino en el momento.
+- **Anti-patrón (incidente sesión 8, costó horas):** ante "conéctate al VPS", NO cazar credenciales ni intentar editar permisos uno mismo (el harness lo bloquea como auto-bypass y escala restricciones). **Primera acción:** usar el permiso si el repo lo tiene; si no, pedir a Gonzalo el comando con la IP. Nada más.
+
+---
+
+## Costos y prerequisitos
+
+Al recomendar activar servicio/feature/add-on, SIEMPRE especificar: (1) costo adicional y cuánto, (2) prerequisitos (ej: upgrade de plan), (3) si NO está incluido en el plan actual. Nunca "solo activa X" sin contexto de costo.
+
+---
+
+## Organizar por workstream
+
+Planes organizados por **workstream completo** (un tema de principio a fin), NO por tipo de actividad. Cada workstream incluye su validación, corrección y cierre. Un workstream se cierra antes de abrir otro. Items "diferidos" se resuelven: cerrar, absorber, o diferir con razón documentada.
+
+---
+
+## Todo al repo, nada local
+
+Specs, investigaciones, planes, decisiones → commiteados al repo. Nunca en rutas locales/temporales/fuera del repo. Razón: Gonzalo trabaja desde múltiples máquinas; si no está en el repo, se pierde.
+
+Destinos: specs → `/spec/` o `.claude/tasks/`; estado → `.claude/STATUS.md`; decisiones → STATUS.md o el spec correspondiente; análisis → `docs/`.
+
+---
+
+## Post-plan → audit automático
+
+Todo spec/plan con fases de implementación se audita antes de implementar. No empezar a escribir código sin auditar el plan. Command `/audit` existe para esto.
+
+---
+
+## Specs son de la tarea, no de la delegación
+
+Cuando escribo un spec en `.claude/tasks/`:
+
+- **Idioma:** inglés técnico. La spec la ejecuta un modelo — inglés es denso semánticamente y consistente con los identificadores del código.
+- **SÍ incluir:** context, goal, files to touch, exact changes (before/after), objective acceptance criteria, verification commands, commit message.
+- **NO incluir** lenguaje de proceso de delegación («delegar a <modelo>», «modelo sugerido», «reportá al terminar», «NO confiar en self-report») ni comandos `claude -p --bare …` en el chat. El spec se lee como instrucción técnica neutra; que se delegue es detalle operativo.
+
+---
+
+## Definición de terminado
+
+Nada está "hecho" hasta que el usuario lo puede ver y usar. Tres requisitos:
+
+- **Visibilidad** — ¿Todo dato generado tiene ruta visible en la UI?
+- **Feedback** — ¿El usuario ve errores, progreso y resultados?
+- **Tests** — ¿Hay al menos un test que verifica la experiencia del usuario?
+
+Si alguna respuesta es NO, la feature no está terminada.
+
+---
+
+## Memoria y archivos de estado: densidad
+
+El costo de contexto de STATUS/MEMORY/CLAUDE.md se paga en CADA sesión; el peso muerto y las entradas stale son deuda que se cobra sola. Reglas:
+
+- **Memoria (MEMORY.md / vault) guarda decisiones estables y lecciones, NUNCA snapshots de progreso.** Test antes de escribir: ¿esto seguirá cierto en 2 semanas? Si no, es STATUS.md, no memoria. "En qué fase va X" es siempre STATUS.
+- **STATUS.md = solo secciones vivas.** Sección cerrada/superseded → se BORRA en el mismo cierre — git es la traza (`git log -p`); no hay archivo de historia. Si STATUS pasa de ~15 KB, algo sobra.
+- **Decisiones firmes van al registro canónico (DECISIONS.md o equivalente), no solo a la bitácora.** Y si supersede una anterior, la vieja se retro-marca `SUPERSEDED por <ref>` en ese momento — una decisión vieja sin marcar es una mentira activa.
+- **Memoria que quedó falsa se corrige al detectarla**, no "después". Aplica también al declarar algo resuelto: buscar qué memoria/doc lo daba por pendiente y actualizarlo.
+
+- **Estos archivos son para MÍ, no para un lector humano → densidad semántica máxima, cero prosa.** (Gonzalo, 2026-08-05.) Aplica a `STATUS.md`, `MEMORY.md`/vault, `DECISIONS.md`, `CLAUDE.md` y equivalentes: telegrama, no párrafo; símbolos y abreviaturas (`→`, `×`, `·`), cifras desnudas, rutas literales, punteros al detalle. **Test:** si una frase se puede borrar sin perder un hecho, un número o un puntero, sobra. La prosa explicativa va al chat o a `docs/`.
+
+(Razón histórica 2026-07-07: la primera auditoría de densidad encontró STATUS con 83% de peso muerto, 2 precios superseded sin marcar en DECISIONS y 4 memorias factualmente vencidas.)
+
+---
+
+## Anti-fabricación
+
+Cuando no tengo la información, pregunto. No invento constantes, umbrales, clasificaciones, criterios de aceptación, reglas de negocio.
+
+**Señales de que estoy por fabricar:** "un valor razonable sería…", "voy a usar X como default" sin fuente, completar tabla con valores que "suenan bien", asumir que una regla sigue el patrón común.
+
+**En su lugar:** buscar rubric/spec/doc en el repo (`grep`, `find`); si no existe, preguntar ("no encuentro la fuente de X, ¿tienes el valor o confirmamos uno?"). Preferir "no sé, necesito que me confirmes Y" a inventar algo plausible.
+
+Razón histórica: Claude inventó reglas y tolerancias que desperdiciaron horas de trabajo.
+
+---
+
+## Verificación obligatoria
+
+Antes de declarar "listo/funciona/pasa/completado", corro el comando de verificación en esta sesión y muestro el output. Si no lo corrí aquí, no puedo afirmar que pasa.
+
+**Qué cuenta como evidencia:** tests con conteo (`34/34 pass`), build con exit 0, bug reproducido y luego no-reproducido, URL del PR, output de `gh pr merge`, log de deploy, output de migrate + verificación de schema, `git diff HEAD~1` revisado contra spec para agentes delegados.
+
+**Señales de declarar sin verificar:** "debería funcionar", "tiene buena pinta", "perfecto/listo/ya quedó" antes de correr el comando, confiar en self-report de Alibaba sin leer diff, extrapolar ("el lint pasó → compila"), "hace rato pasaba, asumo que sigue igual".
+
+Skill `verification` tiene el checklist completo. Aplica a TODA tarea, no solo features.
+
+---
+
+## Auditar antes de destruir
+
+Operación destructiva: (1) listar qué se afecta concretamente, (2) snapshot si son datos (respaldo de tabla, volumen, imagen o rama), (3) EJECUTAR, (4) mostrar output. **Sin esperar confirmación**: la red es el snapshot y la lista, no el permiso. Nunca asumir "es seguro". *(Gonzalo, 2026-09-18: fuera los barandales del 4.6.)*
+
+**Destructivas:** `docker prune`/`rm`, `git reset --hard`/`push --force`/`clean -fd`, `rm -rf` sobre directorios, `DROP TABLE`/`DELETE FROM`/`TRUNCATE`, eliminar branches, cerrar PRs, revertir commits publicados, desinstalar dependencias.
+
+**Verificaciones previas típicas:** `docker ps -a` antes de prune, `git log --oneline` antes de reset, `SELECT COUNT(*) WHERE ...` antes de DELETE, `gh pr view <rama> --json state` = `MERGED` antes de borrar una rama.
+
+**Señales de saltarme el flujo:** "es solo prune, no pasa nada", "la tabla está vacía, igual borro", "el branch ya se mergeó" sin haberlo preguntado a `gh`, "esto lo hago rápido mientras limpio".
+
+Origen de la disciplina de snapshot: un `docker image prune -a` destruyó la imagen activa de un bot en producción — por eso se lista y se respalda ANTES; no por eso se pide permiso.
+
+⛔ SUPERSEDED 2026-09-18: «(2) mostrar a Gonzalo, (3) esperar confirmación explícita» — barandal del 4.6; la lista y el snapshot se quedan.
+
+---
+
+## Checkpoint antes de ejecución
+
+Checkpoint **informativo: se imprime y se sigue, sin esperar respuesta.** Cuándo, si la tarea cumple CUALQUIERA: (1) batch >10 items, (2) filtra dataset con criterios, (3) pipeline multi-paso, (4) >30 min o APIs de pago / procesamiento irreversible.
+
+Checkpoint: **Qué** (acción concreta), **Cuánto** (items), **Criterio** (por qué esos), **Destino** (dónde van los resultados).
+
+**Se espera SÓLO si hay dinero real no presupuestado** (API de pago fuera del plan, add-on, compra) — eso es §Costos y prerequisitos, no mecánica.
+
+No aplica a fixes puntuales, edición de archivos individuales, commits, PRs, ni tareas con scope obvio y costo bajo de rehacer. *(Gonzalo, 2026-09-18: fuera los barandales del 4.6.)*
+
+⛔ SUPERSEDED 2026-09-18: el checkpoint como parada a esperar el OK — barandal del 4.6.
+
+---
+
+## Entorno Windows + Git Bash (MSYS)
+
+Paths distintos: MSYS `/c/Users/gleon/...`, Windows/Node.js `C:\Users\gleon\...`.
+
+- Comandos Bash → paths MSYS (`/c/...`)
+- Paths a Node.js → Windows (`C:\\...`) o dejar que Node resuelva con `path.resolve()`
+- `process.cwd()` devuelve Windows aunque el shell sea MSYS — no asumir formato
+- SFTP/SCP a Linux → paths Linux (`/home/...`), no Windows ni MSYS
+- Si un script falla con "file not found", verificar formato de path primero
+- NUNCA reescribir archivos UTF-8 existentes con `Get-Content`/`Set-Content` de PowerShell 5.1: sin BOM los decodifica como ANSI y corrompe acentos (mojibake). Editar con el Edit tool o con node; verificar después con grep de `Ã` (incidente 2026-06-09, delegation.md)
+
+---
+
+## Memoria compartida entre superficies de Claude
+
+Capa **adicional** de contexto universal de Claude: un repo externo de memoria al cual cualquier superficie acude (Claude Code CLI/web, Nexo en Telegram, agentes futuros). Es la memoria **de Claude** — Nexo es un cliente más, no su dueño. Los datos viven en **Supabase** (hoy provisional en la cuenta Nexo-Hause, a migrar a una cuenta neutral); el **motor** MCP `memoria` corre en el VPS de Nexo/Arthur (puerto 8767). Diseño: `docs/arquitectura-memoria-compartida.md`.
+
+**No reemplaza nada.** Cada proyecto sigue trabajando con su flujo de archivos como hasta ahora — `STATUS.md`, handoff, session logs, contexto por repo —, y eso **siempre** se lee al inicio (vía `resume-session`). La memoria compartida **suma** una vista cross-proyecto; no sustituye el flujo de cada repo.
+
+- **Cuándo acudir a ella:** es un **recurso al cual acudir cuando haga falta, no algo a evitar** — cuando el contexto del repo no alcanza, el tema cruza proyectos, o Gonzalo lo pide. No se vuelca entera al inicio (sería ruido), pero consultarla con `memoria_buscar` (scoped) es barato y vale cuando aporta.
+- **Escritura: automática al `/cierre`** (el recuento de la sesión). No a mitad de sesión salvo que se pida.
+- **Scoping (anti fuga cross-cliente):** scoped-by-default a `personal,proceso` + el `cliente:<uuid>` del repo activo (marcador `<!-- memoria-scope: ... -->` en su `CLAUDE.md`). Nunca devolver memoria de otro cliente sin pedido explícito.
+- **Manual:** `/memoria buscar|list|stats|olvida|corrige`, o lenguaje natural.
+
+Si el MCP `memoria` no está conectado, estas operaciones se saltan y se nota en una línea.
+<!-- REGLAS-GLOBALES-END -->
 
 ## Secretos — NUNCA exponer
 
@@ -331,181 +468,3 @@ Ejecutar todo secuencialmente cuando no hay dependencias es incorrecto.
 
 > **Lección (sesión 17):** un `view_file` de `.env.local` expuso todas las credenciales del proyecto. Se rotaron `BBM_COOKIE_SECRET` and `BBM_API_KEYS`. Los tokens de terceros quedaron pendientes de rotación manual. Ver `.claude/rules/security.md` § Manejo de Secretos por Agentes IA.
 > **Lección (sesión 18):** El archivo `cierre.md` en la raíz del proyecto (CRMD) es un skill estático con instrucciones y NUNCA debe ser modificado por agentes IA. El estado del proyecto y el handoff solo se actualizan en `.claude/STATUS.md` y `.claude/SESSION_LOG.md`.
-
----
-
-## Costos y prerequisitos
-
-Cuando recomiende activar un servicio, feature o add-on, SIEMPRE especificar:
-1. Si tiene costo adicional y cuánto
-2. Si tiene prerequisitos (ej: upgrade de plan)
-3. Si NO está incluido en el plan actual
-
-Nunca usar frases como "solo activa X" sin contexto de costo.
-
----
-
-## Organizar por workstream
-
-Cuando arme planes de trabajo, organizar por **workstream completo** (un tema de principio a fin), NO por tipo de actividad (validar → corregir → completar).
-
-- Cada workstream incluye su propia validación, corrección y cierre
-- Un workstream se cierra completamente antes de abrir otro
-- Items "diferidos" se resuelven: cerrar, absorber en un workstream, o diferir con razón documentada
-
----
-
-## Todo al repo, nada local
-
-Specs, investigaciones, planes, documentos de análisis, decisiones — todo va commiteado al repo del proyecto. Nunca guardar artefactos de trabajo en rutas locales, temporales, o fuera del repo.
-
-- Specs → `/spec/`
-- Estado del proyecto → `.claude/STATUS.md`
-- Decisiones → en el repo (STATUS.md, DECISIONS_ARCHIVE.md, o el spec correspondiente)
-- Investigaciones y análisis → como archivo en el repo (en `docs/`, `spec/`, o donde corresponda)
-
-Razón: Gonzalo trabaja desde múltiples máquinas. Si no está en el repo, se pierde.
-
----
-
-## Post-plan → audit automático
-
-Todo spec o plan con fases de implementación se audita antes de implementar. No empezar a escribir código sin haber auditado el plan. El command `/audit` existe para esto.
-
----
-
-## Definición de terminado
-
-Nada está "hecho" hasta que el usuario lo puede ver y usar.
-
-| Requisito | Pregunta |
-|-----------|----------|
-| **Visibilidad** | ¿Todo dato generado tiene ruta visible en la UI? |
-| **Feedback** | ¿El usuario ve errores, progreso y resultados? |
-| **Tests** | ¿Hay al menos un test que verifica la experiencia del usuario? |
-
-Si la respuesta a cualquiera es NO, la feature no está terminada.
-
----
-
-## Anti-fabricación
-
-**La regla:** cuando no tengo la información, pregunto. No invento datos, umbrales, clasificaciones, tolerancias, ni reglas de negocio.
-
-**Aplica especialmente a:**
-- Constantes numéricas (límites, tolerancias, timeouts)
-- Reglas de clasificación (categorías, rubrics, puntuación)
-- Criterios de aceptación
-- Umbrales de validación
-
-**Señales de que estoy por fabricar:**
-- "Un valor razonable sería..." sin referencia
-- "Voy a usar X como default" sin fuente
-- Completar una tabla con valores que "suenan bien"
-- Asumir que una regla sigue el patrón común sin verificarlo
-
-**Qué hacer en su lugar:**
-- Buscar rubric, spec, o doc de referencia en el repo (`grep`, `find`)
-- Si existe, usarlo literal
-- Si no existe, preguntar a Gonzalo: *"No encuentro la fuente para X. ¿Tienes el valor o confirmamos uno?"*
-- Preferir *"no sé, necesito que me confirmes Y"* sobre inventar algo que parezca correcto
-
-**Razón:** en proyectos anteriores, Claude inventó reglas de clasificación y tolerancias que desperdiciaron horas de trabajo.
-
----
-
-## Verificación obligatoria
-
-**La regla:** antes de declarar algo como "listo", "funciona", "pasa" o cualquier variación de éxito, corro el comando de verificación en esta sesión y muestro el output. Si no lo corrí en esta sesión, no puedo afirmar que pasa.
-
-**Qué cuenta como evidencia:**
-| Claim | Evidencia que lo prueba |
-|---|---|
-| Tests pasan | Output del test suite con conteo (ej. `34/34 pass`) |
-| Build compila | Build command con exit 0 |
-| Bug arreglado | Reproducir el caso original y confirmar que ya no ocurre |
-| PR creado | URL del PR |
-| PR mergeado | Output de `gh pr merge` o `gh pr view --json state` |
-| Deploy exitoso | Link al log de deploy con status |
-| Migración aplicada | Output del migrate tool + verificación de schema |
-| Agente delegado terminó | `git diff HEAD~1 HEAD` revisado contra la spec |
-
-**Señales de que estoy por declarar sin verificar:**
-- Escribir "debería funcionar", "tiene buena pinta", "probablemente pasa"
-- "Perfecto", "listo", "ya quedó" antes de haber corrido el comando
-- Confiar en el reporte de Alibaba sin mirar el diff
-- Extrapolar: "el lint pasó, entonces compila" (no necesariamente)
-- "Hace rato pasaba, asumo que sigue igual"
-
-**Apoyo:** la skill `verification` tiene el checklist completo con racionalizaciones típicas y cómo responder.
-
-"Listo" sin prueba no es "listo". Aplica a TODA tarea, no solo features.
-
----
-
-## Auditar antes de destruir
-
-**La regla:** antes de cualquier operación destructiva, listo qué se va a afectar y confirmo con Gonzalo. Nunca asumo que "es seguro" sin verificar primero qué está activo o en uso.
-
-**Operaciones que cuentan como destructivas:**
-- `docker prune`, `docker rm` sobre contenedores/imágenes
-- `git reset --hard`, `git push --force`, `git clean -fd`
-- `rm -rf` sobre directorios
-- `DROP TABLE`, `DELETE FROM`, `TRUNCATE`
-- Eliminar branches, cerrar PRs, revertir commits publicados
-- Desinstalar dependencias, remover servicios
-- Cualquier acción que no se pueda deshacer con `Ctrl+Z` o un comando inverso trivial
-
-**Flujo obligatorio:**
-
-1. **Listar** qué se va a afectar concretamente
-   - `docker ps -a` antes de `docker prune`
-   - `git log --oneline` antes de `reset --hard`
-   - `SELECT COUNT(*) WHERE ...` antes de `DELETE FROM`
-2. **Mostrar** la lista a Gonzalo
-3. **Esperar** confirmación explícita
-4. **Ejecutar** y mostrar output
-
-**Señales de que estoy por saltarme el flujo:**
-- "Es solo prune, no debería pasar nada" → prune borra imágenes activas
-- "La tabla está vacía, igual borro" → verifica primero
-- "El branch ya está mergeado, seguro puedo borrarlo" → confirma con Gonzalo
-- "Esto lo hago rápido mientras limpio" → las operaciones destructivas no se hacen "rápido"
-
-**Razón:** en un proyecto anterior, un `docker image prune -a` destruyó la imagen activa de un bot en producción.
-
----
-
-## Checkpoint antes de ejecución
-
-Antes de ejecutar, mostrar un checkpoint cuando la tarea cumple CUALQUIERA de estas condiciones:
-
-1. **Batch/volumen:** procesa más de ~10 items (archivos, registros, RFCs, etc.)
-2. **Selección de datos:** filtra un dataset con criterios (fechas, umbrales, categorías)
-3. **Pipeline multi-paso:** el resultado del paso 1 alimenta los pasos 2, 3, N
-4. **Costo de re-hacer alto:** >30 min de ejecución, llamadas a APIs de pago, o procesamiento irreversible
-
-El checkpoint debe incluir:
-- **Qué:** acción concreta ("descargar y procesar con Faster-Whisper")
-- **Cuánto:** cantidad de items ("847 archivos de 3,200 después de filtrar")
-- **Criterio:** por qué esos y no otros ("≥5s de silencio, formato WAV")
-- **Destino:** dónde van los resultados ("output/benchmark-run-03/")
-
-No aplica a: fixes puntuales, edición de archivos individuales, commits, PRs, ni tareas donde el scope es obvio y el costo de re-hacer es bajo.
-
----
-
-## Entorno Windows + Git Bash (MSYS)
-
-Gonzalo trabaja en Windows con Git Bash. Esto causa conflictos de paths:
-
-- **Git Bash (MSYS):** `/c/Users/gleon/Projects/...`
-- **Windows/Node.js:** `C:\Users\gleon\Projects\...`
-
-Reglas:
-- Cuando ejecuto comandos Bash, usar paths MSYS (`/c/...`)
-- Cuando paso paths a Node.js, usar paths Windows (`C:\\...`) o dejar que Node resuelva con `path.resolve()`
-- `process.cwd()` en Node devuelve path Windows aunque el shell esté en MSYS — no asumir formato
-- Para SFTP/SCP a servidores Linux, usar paths Linux (`/home/...`), no Windows ni MSYS
-- Si un script falla con "file not found", verificar primero si es un conflicto de formato de path
-<!-- REGLAS-GLOBALES-END -->
